@@ -73,6 +73,24 @@ The system MUST verify the DPD Markdown contract with deterministic renderer, in
 - THEN they MUST assert final semantic Markdown output directly
 - AND the accepted goldens and tests MUST reject the prior plain/ANSI-only drift as well as synthetic wrappers
 
+### Requirement: DPD Tables Use Markdown When Representable and HTML When Not
+
+DPD table rendering MUST prefer standard Markdown tables for simple rectangular data, but MUST fall back to HTML tables when the source structure depends on spans or other constructs that Markdown tables cannot express faithfully.
+
+#### Scenario: Simple DPD tables render as valid Markdown tables
+
+- GIVEN a DPD table has a single header row, rectangular rows, and no `rowspan` or `colspan`
+- WHEN the final Markdown payload is rendered
+- THEN the table MUST use pipe-table Markdown syntax with pipe-only divider rows
+- AND acceptance MUST fail if the divider row uses non-Markdown separators that common live previews reject
+
+#### Scenario: Complex DPD tables fall back to HTML
+
+- GIVEN a DPD table uses `rowspan`, `colspan`, or equivalent multi-level structure such as the `Tilde diacrítica en qué/...` summary table
+- WHEN the final Markdown payload is rendered
+- THEN the table MUST be emitted as HTML table markup embedded in the Markdown output
+- AND acceptance MUST fail if the renderer flattens that structure into a misleading Markdown grid that loses semantic relationships
+
 ## Out-of-Scope Guardrails
 
 - This specification does NOT redefine remote lookup, fetch, or parser ownership.

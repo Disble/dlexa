@@ -128,6 +128,9 @@ func TestDPDArticleParserExtractsMultiEntryTildeWithMixedBlocks(t *testing.T) {
 	if len(table.Rows) != 2 || table.Rows[1].Cells[1].HTML != "solo" {
 		t.Fatalf("rows = %#v", table.Rows)
 	}
+	if table.Headers[0].Cells[0].ColSpan != 0 || table.Rows[0].Cells[0].RowSpan != 0 {
+		t.Fatalf("simple table should not invent spans: %#v %#v", table.Headers[0].Cells[0], table.Rows[0].Cells[0])
+	}
 
 	second := articles[1].Sections[0]
 	if len(second.Blocks) != 2 || second.Blocks[0].Kind != ParsedBlockKindParagraph || second.Blocks[1].Kind != ParsedBlockKindParagraph {
@@ -135,6 +138,22 @@ func TestDPDArticleParserExtractsMultiEntryTildeWithMixedBlocks(t *testing.T) {
 	}
 	if !strings.Contains(second.Blocks[1].Paragraph.HTML, "vigente") {
 		t.Fatalf("second entry paragraph = %#v", second.Blocks[1].Paragraph)
+	}
+}
+
+func TestParseTablePreservesRowAndColumnSpans(t *testing.T) {
+	table := parseTable(`<table><tr><th colspan="4">Tilde diacrítica en <em>qué</em> / que</th></tr><tr><td rowspan="2">Con tilde</td><td>Caso</td><td>Ejemplo</td></tr><tr><td colspan="2"><em>¿Qué</em> calor!</td></tr></table>`)
+	if table == nil {
+		t.Fatal("table = nil")
+	}
+	if got := table.Headers[0].Cells[0].ColSpan; got != 4 {
+		t.Fatalf("header colspan = %d, want 4", got)
+	}
+	if got := table.Rows[0].Cells[0].RowSpan; got != 2 {
+		t.Fatalf("rowspan = %d, want 2", got)
+	}
+	if got := table.Rows[1].Cells[0].ColSpan; got != 2 {
+		t.Fatalf("colspan = %d, want 2", got)
 	}
 }
 

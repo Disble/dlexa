@@ -48,6 +48,10 @@ func inlineTableBlock(headers [][]model.TableCell, rows [][]model.TableCell) mod
 	return model.Block{Kind: model.ArticleBlockKindTable, Table: &table}
 }
 
+func spanningTableBlock(headers [][]model.TableCell, rows [][]model.TableCell) model.Block {
+	return inlineTableBlock(headers, rows)
+}
+
 func sampleBienArticle() *model.Article {
 	sections := []model.Section{
 		{Label: "1.", Blocks: []model.Block{paragraphBlock("Como adverbio de modo significa 'correcta y adecuadamente': *Cierra bien la ventana, por favor*; 'satisfactoriamente': *No he dormido bien esta noche*. El comparativo es *mejor*. No debe usarse *más bien* como comparativo. Este uso incorrecto no debe confundirse con los usos correctos de la locución adverbial *más bien* (→ [6](bien#S1590507271213267522)).", model.Inline{Kind: model.InlineKindText, Text: "Como adverbio de modo significa "}, model.Inline{Kind: model.InlineKindGloss, Text: "'correcta y adecuadamente'"}, model.Inline{Kind: model.InlineKindText, Text: ": "}, model.Inline{Kind: model.InlineKindExample, Text: "Cierra bien la ventana, por favor"}, model.Inline{Kind: model.InlineKindText, Text: "; 'satisfactoriamente': "}, model.Inline{Kind: model.InlineKindExample, Text: "No he dormido bien esta noche"}, model.Inline{Kind: model.InlineKindText, Text: ". El comparativo es "}, model.Inline{Kind: model.InlineKindMention, Text: "mejor"}, model.Inline{Kind: model.InlineKindText, Text: ". No debe usarse "}, model.Inline{Kind: model.InlineKindMention, Text: "más bien"}, model.Inline{Kind: model.InlineKindText, Text: " como comparativo. Este uso incorrecto no debe confundirse con los usos correctos de la locución adverbial "}, model.Inline{Kind: model.InlineKindMention, Text: "más bien"}, model.Inline{Kind: model.InlineKindText, Text: " ("}, model.Inline{Kind: model.InlineKindReference, Text: "6", Target: "bien#S1590507271213267522"}, model.Inline{Kind: model.InlineKindText, Text: ")."})}},
@@ -188,6 +192,58 @@ func TestMarkdownRendererKeepsTableCellsMarkdownOnly(t *testing.T) {
 		if strings.Contains(text, forbidden) {
 			t.Fatalf("payload leaked html %q\n%s", forbidden, text)
 		}
+	}
+}
+
+func TestMarkdownRendererUsesValidMarkdownDividerForSimpleTables(t *testing.T) {
+	renderer := NewMarkdownRenderer()
+	payload, err := renderer.Render(context.Background(), model.LookupResult{Entries: []model.Entry{{
+		Headword: "tilde",
+		Article: &model.Article{Sections: []model.Section{{
+			Label:  "1.",
+			Blocks: []model.Block{tableBlock([][]string{{"Con tilde", "Sin tilde"}}, [][]string{{"aún", "aun"}})},
+		}}},
+	}}})
+	if err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+	text := string(payload)
+	if !strings.Contains(text, "|-----------|-----------|") {
+		t.Fatalf("payload = %q, want pipe-only markdown divider", payload)
+	}
+	if strings.Contains(text, "+") {
+		t.Fatalf("payload = %q, markdown table divider must not use '+'", payload)
+	}
+}
+
+func TestMarkdownRendererFallsBackToHTMLForComplexTables(t *testing.T) {
+	renderer := NewMarkdownRenderer()
+	payload, err := renderer.Render(context.Background(), model.LookupResult{Entries: []model.Entry{{
+		Headword: "tilde",
+		Article: &model.Article{Sections: []model.Section{{
+			Label: "3.2.1",
+			Blocks: []model.Block{spanningTableBlock(
+				[][]model.TableCell{{
+					{Text: "Tilde diacrítica en *qué* / que", ColSpan: 4},
+				}},
+				[][]model.TableCell{
+					{{Text: "Con tilde", RowSpan: 2}, {Text: "Con valor interrogativo o exclamativo", RowSpan: 2}, {Text: "Encabezando estructuras"}, {Text: "*¿Qué* calor!"}},
+					{{Text: "Sustantivados"}, {Text: "el *cuándo*"}},
+				},
+			)},
+		}}},
+	}}})
+	if err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+	text := string(payload)
+	for _, want := range []string{"<table>", "<th colspan=\"4\">Tilde diacrítica en <em>qué</em> / que</th>", "<td rowspan=\"2\">Con tilde</td>", "<td><em>¿Qué</em> calor!</td>"} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("payload missing %q\n%s", want, text)
+		}
+	}
+	if strings.Contains(text, "|-----------|") {
+		t.Fatalf("payload = %q, complex tables must not render as markdown grid", payload)
 	}
 }
 

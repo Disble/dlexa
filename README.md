@@ -97,3 +97,10 @@ dlexa --version
 - Renderers are separate so domain structs remain reusable for other outputs later.
 - The project is prepared for a single binary distribution with runtime-selected behavior instead of multiple executables.
 - `dpd-live-lookup-parity` owns DPD fetch/parse/normalize semantic preservation; `dpd-terminal-semantic-rendering` owns the final stdout contract so authored DPD semantics remain visible at the terminal boundary instead of being replaced by renderer-invented wrappers.
+
+## DPD Table Rendering Strategy
+
+- DPD tables stay in the shared article model as structured table blocks with per-cell span metadata when the source uses `rowspan` or `colspan`.
+- Simple rectangular tables with exactly one header row and no spanning cells render as pipe-table Markdown so common live previews can render them directly.
+- Complex DPD tables that rely on merged cells or multi-level structure render as HTML tables inside the Markdown payload because standard Markdown tables cannot represent that structure faithfully.
+- This is an intentional fallback: Markdown-first when the structure is representable, HTML when semantic fidelity would otherwise be lost.

@@ -156,6 +156,51 @@ func TestDPDNormalizerKeepsTableCellInlineMarkdownConsistent(t *testing.T) {
 	}
 }
 
+func TestDPDNormalizerPreservesTableSpanMetadata(t *testing.T) {
+	table := normalizeTable(parse.ParsedTable{
+		Headers: []parse.ParsedTableRow{{Cells: []parse.ParsedTableCell{{HTML: "Título", ColSpan: 4}}}},
+		Rows:    []parse.ParsedTableRow{{Cells: []parse.ParsedTableCell{{HTML: "Con tilde", RowSpan: 2}, {HTML: "Caso"}, {HTML: "Ejemplo"}}}},
+	})
+
+	if got := table.Headers[0].Cells[0].ColSpan; got != 4 {
+		t.Fatalf("header colspan = %d, want 4", got)
+	}
+	if got := table.Rows[0].Cells[0].RowSpan; got != 2 {
+		t.Fatalf("row rowspan = %d, want 2", got)
+	}
+}
+
+func TestDPDNormalizerUsesHTMLFallbackForComplexTablesInContentProjection(t *testing.T) {
+	result := parse.Result{Articles: []parse.ParsedArticle{{
+		Dictionary:   "Diccionario panhispánico de dudas",
+		Edition:      "2.ª edición",
+		EntryID:      "tilde",
+		Lemma:        "tilde",
+		CanonicalURL: "https://www.rae.es/dpd/tilde",
+		Sections: []parse.ParsedSection{{
+			Label: "3.2.1",
+			Blocks: []parse.ParsedBlock{{Kind: parse.ParsedBlockKindTable, Table: &parse.ParsedTable{
+				Headers: []parse.ParsedTableRow{{Cells: []parse.ParsedTableCell{{HTML: `<em>qué</em> / que`, ColSpan: 4, Inlines: []model.Inline{{Kind: model.InlineKindEmphasis, Text: "qué"}, {Kind: model.InlineKindText, Text: " / que"}}}}}},
+				Rows:    []parse.ParsedTableRow{{Cells: []parse.ParsedTableCell{{HTML: "Con tilde", RowSpan: 2}, {HTML: "Caso"}, {HTML: "Ejemplo"}}}},
+			}}},
+		}},
+	}}}
+
+	entries, _, err := NewDPDNormalizer().Normalize(context.Background(), model.SourceDescriptor{Name: "dpd"}, result)
+	if err != nil {
+		t.Fatalf("Normalize() error = %v", err)
+	}
+	text := entries[0].Content
+	for _, want := range []string{"<table>", `<th colspan="4"><em>qué</em> / que</th>`, `<td rowspan="2">Con tilde</td>`} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("content missing %q\n%s", want, text)
+		}
+	}
+	if strings.Contains(text, "|---") {
+		t.Fatalf("content = %q, complex table must not degrade to markdown grid", text)
+	}
+}
+
 func TestDPDNormalizerRespectsNestedScaffoldOverrideInMarkdown(t *testing.T) {
 	paragraph := normalizeParagraph(parse.ParsedParagraph{Inlines: []model.Inline{{
 		Kind: model.InlineKindEmphasis,
