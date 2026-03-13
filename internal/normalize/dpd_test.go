@@ -66,7 +66,7 @@ func TestDPDNormalizerPreservesMixedBlockOrderingAndParagraphProjection(t *testi
 		Label: "1.",
 		Blocks: []parse.ParsedBlock{
 			{Kind: parse.ParsedBlockKindParagraph, Paragraph: &parse.ParsedParagraph{HTML: "Antes"}},
-			{Kind: parse.ParsedBlockKindTable, Table: &parse.ParsedTable{Headers: []parse.ParsedTableRow{{Cells: []string{"A", "B"}}}, Rows: []parse.ParsedTableRow{{Cells: []string{"1", "2"}}}}},
+			{Kind: parse.ParsedBlockKindTable, Table: &parse.ParsedTable{Headers: []parse.ParsedTableRow{{Cells: []parse.ParsedTableCell{{HTML: "A"}, {HTML: "B"}}}}, Rows: []parse.ParsedTableRow{{Cells: []parse.ParsedTableCell{{HTML: "1"}, {HTML: "2"}}}}}},
 			{Kind: parse.ParsedBlockKindParagraph, Paragraph: &parse.ParsedParagraph{HTML: "Después"}},
 		},
 	}})
@@ -118,7 +118,7 @@ func TestDPDNormalizerCoheresMixedBlocksIntoFallbackContent(t *testing.T) {
 			Label: "1.",
 			Blocks: []parse.ParsedBlock{
 				{Kind: parse.ParsedBlockKindParagraph, Paragraph: &parse.ParsedParagraph{HTML: "Antes"}},
-				{Kind: parse.ParsedBlockKindTable, Table: &parse.ParsedTable{Headers: []parse.ParsedTableRow{{Cells: []string{"Con tilde", "Sin tilde"}}}, Rows: []parse.ParsedTableRow{{Cells: []string{"solo", "solo"}}}}},
+				{Kind: parse.ParsedBlockKindTable, Table: &parse.ParsedTable{Headers: []parse.ParsedTableRow{{Cells: []parse.ParsedTableCell{{HTML: "Con tilde"}, {HTML: "Sin tilde"}}}}, Rows: []parse.ParsedTableRow{{Cells: []parse.ParsedTableCell{{HTML: "solo"}, {HTML: "solo"}}}}}},
 				{Kind: parse.ParsedBlockKindParagraph, Paragraph: &parse.ParsedParagraph{HTML: "Después"}},
 			},
 		}},
@@ -133,6 +133,84 @@ func TestDPDNormalizerCoheresMixedBlocksIntoFallbackContent(t *testing.T) {
 		if !strings.Contains(text, want) {
 			t.Fatalf("content missing %q\n%s", want, text)
 		}
+	}
+}
+
+func TestDPDNormalizerKeepsTableCellInlineMarkdownConsistent(t *testing.T) {
+	table := normalizeTable(parse.ParsedTable{
+		Headers: []parse.ParsedTableRow{{Cells: []parse.ParsedTableCell{{HTML: `<em><span class="ment">Con</span></em> tilde`, Inlines: []model.Inline{{Kind: model.InlineKindEmphasis, Children: []model.Inline{{Kind: model.InlineKindMention, Text: "Con"}}}, {Kind: model.InlineKindText, Text: " tilde"}}}, {HTML: "Sin tilde"}}}},
+		Rows:    []parse.ParsedTableRow{{Cells: []parse.ParsedTableCell{{HTML: `<em><span class="ment">sólo</span></em>`, Inlines: []model.Inline{{Kind: model.InlineKindEmphasis, Children: []model.Inline{{Kind: model.InlineKindMention, Text: "sólo"}}}}}, {HTML: `solo <a href="tilde#n2">2</a>`, Inlines: []model.Inline{{Kind: model.InlineKindText, Text: "solo "}, {Kind: model.InlineKindReference, Text: "2", Target: "tilde#n2"}}}}}},
+	})
+
+	if got := table.Headers[0].Cells[0].Text; got != "*Con* tilde" {
+		t.Fatalf("header cell = %q", got)
+	}
+	if got := table.Rows[0].Cells[0].Text; got != "*sólo*" {
+		t.Fatalf("first row cell = %q", got)
+	}
+	if got := table.Rows[0].Cells[1].Text; got != "solo → [2](tilde#n2)" {
+		t.Fatalf("second row cell = %q", got)
+	}
+	if len(table.Rows[0].Cells[1].Inlines) == 0 || table.Rows[0].Cells[1].Inlines[1].Kind != model.InlineKindReference {
+		t.Fatalf("second row inline semantics = %#v", table.Rows[0].Cells[1].Inlines)
+	}
+}
+
+func TestDPDNormalizerRespectsNestedScaffoldOverrideInMarkdown(t *testing.T) {
+	paragraph := normalizeParagraph(parse.ParsedParagraph{Inlines: []model.Inline{{
+		Kind: model.InlineKindEmphasis,
+		Children: []model.Inline{{
+			Kind: model.InlineKindMention,
+			Children: []model.Inline{
+				{Kind: model.InlineKindText, Text: "tilde"},
+				{Kind: model.InlineKindScaffold, Text: "2"},
+			},
+		}},
+	}}})
+
+	if paragraph.Markdown != "*tilde* 2" {
+		t.Fatalf("markdown = %q, want italic parent with plain override", paragraph.Markdown)
+	}
+}
+
+func TestDPDNormalizerGluesNestedWordFragmentsAcrossInlineBoundaries(t *testing.T) {
+	tests := []struct {
+		name  string
+		input []model.Inline
+		want  string
+	}{
+		{
+			name: "mention plus scaffold keeps word intact",
+			input: []model.Inline{{
+				Kind: model.InlineKindMention,
+				Children: []model.Inline{
+					{Kind: model.InlineKindText, Text: "gr"},
+					{Kind: model.InlineKindScaffold, Text: "úa"},
+				},
+			}},
+			want: "*gr*úa",
+		},
+		{
+			name: "nested plain and styled suffix stays glued",
+			input: []model.Inline{{
+				Kind: model.InlineKindMention,
+				Children: []model.Inline{
+					{Kind: model.InlineKindText, Text: "anch"},
+					{Kind: model.InlineKindScaffold, Text: "oa"},
+					{Kind: model.InlineKindCorrection, Text: "s"},
+				},
+			}},
+			want: "*anch*oa*s*",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			paragraph := normalizeParagraph(parse.ParsedParagraph{Inlines: tt.input})
+			if paragraph.Markdown != tt.want {
+				t.Fatalf("markdown = %q, want %q", paragraph.Markdown, tt.want)
+			}
+		})
 	}
 }
 

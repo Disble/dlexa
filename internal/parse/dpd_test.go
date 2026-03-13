@@ -122,10 +122,10 @@ func TestDPDArticleParserExtractsMultiEntryTildeWithMixedBlocks(t *testing.T) {
 	if len(table.Headers) != 1 || len(table.Headers[0].Cells) != 2 {
 		t.Fatalf("headers = %#v", table.Headers)
 	}
-	if table.Headers[0].Cells[0] != "Con tilde" || table.Headers[0].Cells[1] != "Sin tilde" {
+	if table.Headers[0].Cells[0].HTML != "Con tilde" || table.Headers[0].Cells[1].HTML != "Sin tilde" {
 		t.Fatalf("header cells = %#v", table.Headers[0].Cells)
 	}
-	if len(table.Rows) != 2 || table.Rows[1].Cells[1] != "solo" {
+	if len(table.Rows) != 2 || table.Rows[1].Cells[1].HTML != "solo" {
 		t.Fatalf("rows = %#v", table.Rows)
 	}
 
@@ -312,6 +312,42 @@ func TestDPDArticleParserPromotesLexicalHeadsIntoTitles(t *testing.T) {
 		if len(section.Paragraphs) > 0 && strings.Contains(section.Paragraphs[0].HTML, tt.want) {
 			t.Fatalf("section %d paragraph leaked lexical title into body: %q", tt.index+1, section.Paragraphs[0].HTML)
 		}
+	}
+}
+
+func TestExtractInlinesKeepsNestedScaffoldAsFormattingOverride(t *testing.T) {
+	inlines := extractInlines(`<em><span class="ment">tilde<span class="nn">2</span></span></em>`)
+	if len(inlines) != 1 {
+		t.Fatalf("inlines = %#v", inlines)
+	}
+	if inlines[0].Kind != model.InlineKindEmphasis {
+		t.Fatalf("root kind = %q, want emphasis", inlines[0].Kind)
+	}
+	if len(inlines[0].Children) != 1 || inlines[0].Children[0].Kind != model.InlineKindMention {
+		t.Fatalf("children = %#v", inlines[0].Children)
+	}
+	mention := inlines[0].Children[0]
+	if len(mention.Children) != 2 {
+		t.Fatalf("mention children = %#v", mention.Children)
+	}
+	if mention.Children[0].Kind != model.InlineKindText || mention.Children[0].Text != "tilde" {
+		t.Fatalf("mention text child = %#v", mention.Children[0])
+	}
+	if mention.Children[1].Kind != model.InlineKindScaffold || mention.Children[1].Text != "2" {
+		t.Fatalf("mention override child = %#v", mention.Children[1])
+	}
+}
+
+func TestDPDArticleParserNormalizesHTMLHeadwordToPlainText(t *testing.T) {
+	articles := collectArticles(`<entry class="tem" id="tilde2"><header class="tem"><span class="vers">tilde<sup>2</sup></span></header><section class="BLOQUEACEPS"><p n="1n"><span class="enum">1.</span> Variante.</p></section></entry>`, "https://www.rae.es/dpd/tilde")
+	if len(articles) != 1 {
+		t.Fatalf("articles = %d, want 1", len(articles))
+	}
+	if articles[0].Lemma != "tilde2" {
+		t.Fatalf("lemma = %q, want plain-text tilde2", articles[0].Lemma)
+	}
+	if strings.Contains(articles[0].Lemma, "<") {
+		t.Fatalf("lemma leaked html = %q", articles[0].Lemma)
 	}
 }
 

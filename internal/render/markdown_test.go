@@ -34,6 +34,20 @@ func tableBlock(headers [][]string, rows [][]string) model.Block {
 	return model.Block{Kind: model.ArticleBlockKindTable, Table: &table}
 }
 
+func inlineTableBlock(headers [][]model.TableCell, rows [][]model.TableCell) model.Block {
+	makeRows := func(raw [][]model.TableCell) []model.TableRow {
+		out := make([]model.TableRow, 0, len(raw))
+		for _, row := range raw {
+			cells := make([]model.TableCell, 0, len(row))
+			cells = append(cells, row...)
+			out = append(out, model.TableRow{Cells: cells})
+		}
+		return out
+	}
+	table := model.Table{Headers: makeRows(headers), Rows: makeRows(rows)}
+	return model.Block{Kind: model.ArticleBlockKindTable, Table: &table}
+}
+
 func sampleBienArticle() *model.Article {
 	sections := []model.Section{
 		{Label: "1.", Blocks: []model.Block{paragraphBlock("Como adverbio de modo significa 'correcta y adecuadamente': *Cierra bien la ventana, por favor*; 'satisfactoriamente': *No he dormido bien esta noche*. El comparativo es *mejor*. No debe usarse *más bien* como comparativo. Este uso incorrecto no debe confundirse con los usos correctos de la locución adverbial *más bien* (→ [6](bien#S1590507271213267522)).", model.Inline{Kind: model.InlineKindText, Text: "Como adverbio de modo significa "}, model.Inline{Kind: model.InlineKindGloss, Text: "'correcta y adecuadamente'"}, model.Inline{Kind: model.InlineKindText, Text: ": "}, model.Inline{Kind: model.InlineKindExample, Text: "Cierra bien la ventana, por favor"}, model.Inline{Kind: model.InlineKindText, Text: "; 'satisfactoriamente': "}, model.Inline{Kind: model.InlineKindExample, Text: "No he dormido bien esta noche"}, model.Inline{Kind: model.InlineKindText, Text: ". El comparativo es "}, model.Inline{Kind: model.InlineKindMention, Text: "mejor"}, model.Inline{Kind: model.InlineKindText, Text: ". No debe usarse "}, model.Inline{Kind: model.InlineKindMention, Text: "más bien"}, model.Inline{Kind: model.InlineKindText, Text: " como comparativo. Este uso incorrecto no debe confundirse con los usos correctos de la locución adverbial "}, model.Inline{Kind: model.InlineKindMention, Text: "más bien"}, model.Inline{Kind: model.InlineKindText, Text: " ("}, model.Inline{Kind: model.InlineKindReference, Text: "6", Target: "bien#S1590507271213267522"}, model.Inline{Kind: model.InlineKindText, Text: ")."})}},
@@ -140,6 +154,124 @@ func TestMarkdownRendererRendersGroupedTildeArticlesAndTables(t *testing.T) {
 	}
 	if got := stripANSITestOutput(string(payload)); got != string(want) {
 		t.Fatalf("Render() mismatch\n--- got ---\n%s\n--- want ---\n%s", payload, want)
+	}
+}
+
+func TestMarkdownRendererKeepsTableCellsMarkdownOnly(t *testing.T) {
+	renderer := NewMarkdownRenderer()
+	payload, err := renderer.Render(context.Background(), model.LookupResult{Entries: []model.Entry{{
+		Headword: "tilde",
+		Article: &model.Article{Sections: []model.Section{{
+			Label: "1.",
+			Blocks: []model.Block{inlineTableBlock(
+				[][]model.TableCell{{
+					{Text: "*Con* tilde", Inlines: []model.Inline{{Kind: model.InlineKindMention, Text: "Con"}, {Kind: model.InlineKindText, Text: " tilde"}}},
+					{Text: "Sin tilde"},
+				}},
+				[][]model.TableCell{{
+					{Text: "*sólo*", Inlines: []model.Inline{{Kind: model.InlineKindMention, Text: "sólo"}}},
+					{Text: "solo → [2](tilde#n2)", Inlines: []model.Inline{{Kind: model.InlineKindText, Text: "solo "}, {Kind: model.InlineKindReference, Text: "2", Target: "tilde#n2"}}},
+				}},
+			)},
+		}}},
+	}}})
+	if err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+	text := string(payload)
+	for _, want := range []string{"| *Con* tilde |", "| *sólo*      | solo → [2](tilde#n2)"} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("payload missing %q\n%s", want, text)
+		}
+	}
+	for _, forbidden := range []string{"<em>", "<span", "<a href"} {
+		if strings.Contains(text, forbidden) {
+			t.Fatalf("payload leaked html %q\n%s", forbidden, text)
+		}
+	}
+}
+
+func TestMarkdownRendererRespectsNestedFormattingOverride(t *testing.T) {
+	renderer := NewMarkdownRenderer()
+	payload, err := renderer.Render(context.Background(), model.LookupResult{Entries: []model.Entry{{
+		Headword: "tilde",
+		Article: &model.Article{Sections: []model.Section{{
+			Label: "1.",
+			Blocks: []model.Block{paragraphBlock("", model.Inline{
+				Kind: model.InlineKindEmphasis,
+				Children: []model.Inline{{
+					Kind: model.InlineKindMention,
+					Children: []model.Inline{
+						{Kind: model.InlineKindText, Text: "tilde"},
+						{Kind: model.InlineKindScaffold, Text: "2"},
+					},
+				}},
+			})},
+		}}},
+	}}})
+	if err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+	text := string(payload)
+	if !strings.Contains(text, "1. *tilde* 2") {
+		t.Fatalf("payload = %q, want italic root with plain nested override", payload)
+	}
+	if strings.Contains(text, "*tilde 2*") {
+		t.Fatalf("payload = %q, nested override leaked parent italic", payload)
+	}
+}
+
+func TestMarkdownRendererGluesNestedWordFragmentsAcrossInlineBoundaries(t *testing.T) {
+	renderer := NewMarkdownRenderer()
+	payload, err := renderer.Render(context.Background(), model.LookupResult{Entries: []model.Entry{{
+		Headword: "grua",
+		Article: &model.Article{Sections: []model.Section{{
+			Label: "1.",
+			Blocks: []model.Block{paragraphBlock("",
+				model.Inline{Kind: model.InlineKindMention, Children: []model.Inline{{Kind: model.InlineKindText, Text: "gr"}, {Kind: model.InlineKindScaffold, Text: "úa"}}},
+				model.Inline{Kind: model.InlineKindText, Text: ". "},
+				model.Inline{Kind: model.InlineKindMention, Children: []model.Inline{{Kind: model.InlineKindText, Text: "anch"}, {Kind: model.InlineKindScaffold, Text: "oa"}, {Kind: model.InlineKindCorrection, Text: "s"}}},
+			)},
+		}}},
+	}}})
+	if err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+	text := string(payload)
+	if !strings.Contains(text, "1. *gr*úa. *anch*oa*s*") {
+		t.Fatalf("payload = %q, want glued lexical fragments across formatting boundaries", payload)
+	}
+	for _, bad := range []string{"*gr* úa", "*anch* oa *s*"} {
+		if strings.Contains(text, bad) {
+			t.Fatalf("payload = %q, contains split lexical fragment %q", payload, bad)
+		}
+	}
+}
+
+func TestMarkdownRendererUsesPlainMarkdownGroupedHeading(t *testing.T) {
+	renderer := NewMarkdownRenderer()
+	payload, err := renderer.Render(context.Background(), model.LookupResult{
+		Request: model.LookupRequest{Query: "tilde", Format: "markdown"},
+		Entries: []model.Entry{{
+			ID:       "dpd:tilde#tilde2",
+			Headword: "tilde2",
+			Article: &model.Article{Lemma: "tilde2", Sections: []model.Section{{
+				Label:  "1.",
+				Blocks: []model.Block{paragraphBlock("Variante")},
+			}}},
+		}},
+	})
+	if err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+	text := string(payload)
+	if !strings.Contains(text, "# tilde2") {
+		t.Fatalf("payload = %q, want markdown-only heading", payload)
+	}
+	for _, forbidden := range []string{"<span", "<sup>"} {
+		if strings.Contains(text, forbidden) {
+			t.Fatalf("payload leaked html heading %q\n%s", forbidden, text)
+		}
 	}
 }
 

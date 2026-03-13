@@ -6,6 +6,7 @@ import (
 	"html"
 	"regexp"
 	"strings"
+	"unicode"
 
 	"github.com/gentleman-programming/dlexa/internal/fetch"
 	"github.com/gentleman-programming/dlexa/internal/model"
@@ -26,8 +27,10 @@ var (
 	reReference      = regexp.MustCompile(`(?is)<a\b[^>]*href="([^"]+)"[^>]*>(.*?)</a>`)
 	reEmphasis       = regexp.MustCompile(`(?is)<em\b[^>]*>(.*?)</em>`)
 	reAnchorClass    = regexp.MustCompile(`(?is)class="([^"]+)"`)
+	reColSpan        = regexp.MustCompile(`(?is)\bcolspan="(\d+)"`)
+	reRowSpan        = regexp.MustCompile(`(?is)\browspan="(\d+)"`)
 	reTableRow       = regexp.MustCompile(`(?is)<tr\b[^>]*>(.*?)</tr>`)
-	reTableCell      = regexp.MustCompile(`(?is)<t[hd]\b[^>]*>(.*?)</t[hd]>`)
+	reTableCell      = regexp.MustCompile(`(?is)<t[hd]\b([^>]*)>(.*?)</t[hd]>`)
 	reTHead          = regexp.MustCompile(`(?is)<thead\b[^>]*>(.*?)</thead>`)
 	reTBody          = regexp.MustCompile(`(?is)<tbody\b[^>]*>(.*?)</tbody>`)
 	reTHeadCell      = regexp.MustCompile(`(?is)<th\b[^>]*>(.*?)</th>`)
@@ -95,9 +98,9 @@ func collectArticles(body, canonicalURL string) []ParsedArticle {
 		}
 
 		entryID := extractAttribute(reEntryID, attrs)
-		header := cleanText(extractFirstText(reHeader, entryHTML))
+		header := normalizeInlinePlainText(extractFirstMatch(reHeader, entryHTML))
 		if header == "" {
-			header = cleanText(extractAttribute(reEntryHeader, attrs))
+			header = normalizeInlinePlainText(extractAttribute(reEntryHeader, attrs))
 		}
 		if header == "" {
 			header = cleanText(entryID)
@@ -233,9 +236,9 @@ func parseTableRows(raw string, headerOnly bool) []ParsedTableRow {
 		if headerOnly && len(reTHeadCell.FindAllStringSubmatch(rowHTML, -1)) == 0 {
 			continue
 		}
-		cells := make([]string, 0, 4)
+		cells := make([]ParsedTableCell, 0, 4)
 		for _, cellMatch := range reTableCell.FindAllStringSubmatch(rowHTML, -1) {
-			cells = append(cells, cleanTableCell(cellMatch[1]))
+			cells = append(cells, cleanTableCell(cellMatch[1], cellMatch[2]))
 		}
 		if len(cells) == 0 {
 			continue
@@ -253,11 +256,39 @@ func tableRowLooksLikeHeader(raw string) bool {
 	return len(reTHeadCell.FindAllStringSubmatch(firstRow, -1)) > 0
 }
 
-func cleanTableCell(raw string) string {
-	raw = strings.ReplaceAll(raw, `<br>`, "\n")
-	raw = strings.ReplaceAll(raw, `<br/>`, "\n")
-	raw = strings.ReplaceAll(raw, `<br />`, "\n")
-	return cleanText(raw)
+func cleanTableCell(attrs string, raw string) ParsedTableCell {
+	raw = normalizeHTMLParagraph(raw)
+	return ParsedTableCell{
+		HTML:    raw,
+		Inlines: extractInlines(raw),
+		ColSpan: positiveSpan(extractAttribute(reColSpan, attrs)),
+		RowSpan: positiveSpan(extractAttribute(reRowSpan, attrs)),
+	}
+}
+
+func positiveSpan(raw string) int {
+	if raw == "" {
+		return 0
+	}
+	if raw == "1" {
+		return 1
+	}
+	for _, ch := range raw {
+		if ch < '0' || ch > '9' {
+			return 0
+		}
+	}
+	if raw == "0" {
+		return 0
+	}
+	value := 0
+	for _, ch := range raw {
+		value = value*10 + int(ch-'0')
+	}
+	if value < 1 {
+		return 0
+	}
+	return value
 }
 
 func extractAttribute(re *regexp.Regexp, attrs string) string {
@@ -481,10 +512,26 @@ func needsInlineTextSpace(current, next string) bool {
 	}
 	last := rune(current[len(current)-1])
 	first := rune(next[0])
+	if (unicode.IsLetter(last) && unicode.IsDigit(first)) || (unicode.IsDigit(last) && unicode.IsLetter(first)) {
+		return false
+	}
 	if strings.ContainsRune("([{«", last) || strings.ContainsRune(")]},.;:!?»", first) {
 		return false
 	}
 	return true
+}
+
+func normalizeInlinePlainText(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	normalized := normalizeHTMLParagraph(raw)
+	inlines := extractInlines(normalized)
+	if len(inlines) > 0 {
+		return cleanText(renderInlineChildrenText(inlines))
+	}
+	return cleanText(reTags.ReplaceAllString(normalized, ""))
 }
 
 func preserveSemanticSpans(raw string) string {
@@ -579,7 +626,7 @@ func lexicalTitle(raw string) (string, bool) {
 		return "", false
 	}
 
-	return cleanText(match[1]), true
+	return normalizeInlinePlainText(match[1]), true
 }
 
 func accessWarning(source string) model.Warning {

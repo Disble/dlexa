@@ -100,7 +100,10 @@ type TableRow struct {
 }
 
 type TableCell struct {
-	Text string `json:"text"`
+	Text    string   `json:"text"`
+	Inlines []Inline `json:"inlines,omitempty"`
+	ColSpan int      `json:"colspan,omitempty"`
+	RowSpan int      `json:"rowspan,omitempty"`
 }
 
 type Paragraph struct {

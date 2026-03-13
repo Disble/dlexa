@@ -6,6 +6,8 @@ import (
 	"html"
 	"regexp"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/gentleman-programming/dlexa/internal/model"
 	"github.com/gentleman-programming/dlexa/internal/parse"
@@ -181,8 +183,15 @@ func normalizeTableRows(input []parse.ParsedTableRow) []model.TableRow {
 		cells := make([]model.TableCell, 0, len(row.Cells))
 		lastNonEmpty := -1
 		for idx, cell := range row.Cells {
-			text := cleanInlineText(cell)
-			cells = append(cells, model.TableCell{Text: text})
+			normalizedInlines := normalizeInlines(cell.Inlines)
+			text := strings.TrimSpace(normalizeParagraphMarkdown(cell.HTML))
+			if len(normalizedInlines) > 0 {
+				text = strings.TrimSpace(renderInlineMarkdown(normalizedInlines))
+			}
+			if !hasSemanticInlines(normalizedInlines) {
+				normalizedInlines = nil
+			}
+			cells = append(cells, model.TableCell{Text: text, Inlines: normalizedInlines, ColSpan: cell.ColSpan, RowSpan: cell.RowSpan})
 			if text != "" {
 				lastNonEmpty = idx
 			}
@@ -276,12 +285,17 @@ func renderInlineMarkdownItem(inline model.Inline) string {
 	case model.InlineKindExample:
 		return "‹" + text + "›"
 	case model.InlineKindMention, model.InlineKindEmphasis, model.InlineKindWorkTitle, model.InlineKindCorrection:
+		if len(inline.Children) > 0 {
+			return renderStyledInlineMarkdown(inline.Children, "*")
+		}
 		return "*" + text + "*"
 	case model.InlineKindReference:
 		if text == "" {
 			return ""
 		}
 		return "→ [" + text + "](" + inline.Target + ")"
+	case model.InlineKindScaffold:
+		return text
 	case model.InlineKindCitationQuote:
 		return "«" + text + "»"
 	default:
@@ -289,19 +303,128 @@ func renderInlineMarkdownItem(inline model.Inline) string {
 	}
 }
 
+func renderStyledInlineMarkdown(children []model.Inline, marker string) string {
+	var builder strings.Builder
+	appendPiece := func(piece string) {
+		if piece == "" {
+			return
+		}
+		if builder.Len() > 0 && !shouldGlueInlineWordBoundary(builder.String(), piece) && needsInlineSpace(builder.String(), piece) {
+			builder.WriteString(" ")
+		}
+		builder.WriteString(piece)
+	}
+	flush := func(buffer []model.Inline) {
+		text := strings.TrimSpace(renderInlineMarkdown(buffer))
+		if text == "" {
+			return
+		}
+		piece := text
+		if shouldWrapStyledBuffer(buffer) {
+			piece = marker + text + marker
+		}
+		appendPiece(piece)
+	}
+
+	buffer := make([]model.Inline, 0, len(children))
+	for _, child := range children {
+		if child.Kind != model.InlineKindScaffold {
+			buffer = append(buffer, child)
+			continue
+		}
+		flush(buffer)
+		buffer = buffer[:0]
+		plain := strings.TrimSpace(renderInlineMarkdown(child.Children))
+		if plain == "" {
+			plain = strings.TrimSpace(child.Text)
+		}
+		if plain == "" {
+			continue
+		}
+		appendPiece(plain)
+	}
+	flush(buffer)
+	return strings.TrimSpace(builder.String())
+}
+
 func needsInlineSpace(current, next string) bool {
 	if current == "" || next == "" {
 		return false
 	}
-	last := rune(current[len(current)-1])
-	first := rune(next[0])
+	last, _ := utf8.DecodeLastRuneInString(current)
+	first, _ := utf8.DecodeRuneInString(next)
 	if strings.ContainsRune(" [{«", first) || strings.ContainsRune(")]}.;,:!?»", first) {
 		return false
 	}
 	if strings.ContainsRune(" ([{«", last) {
 		return false
 	}
+	if unicode.IsSpace(last) || unicode.IsSpace(first) {
+		return false
+	}
 	return true
+}
+
+func shouldGlueInlineWordBoundary(current, next string) bool {
+	last, ok := lastInlineWordRune(current)
+	if !ok {
+		return false
+	}
+	first, ok := firstInlineWordRune(next)
+	if !ok {
+		return false
+	}
+	return unicode.IsLetter(last) && unicode.IsLetter(first)
+}
+
+func shouldWrapStyledBuffer(buffer []model.Inline) bool {
+	if len(buffer) != 1 {
+		return true
+	}
+	switch buffer[0].Kind {
+	case model.InlineKindMention, model.InlineKindEmphasis, model.InlineKindWorkTitle, model.InlineKindCorrection, model.InlineKindExample:
+		return false
+	default:
+		return true
+	}
+}
+
+func lastInlineWordRune(raw string) (rune, bool) {
+	trimmed := strings.TrimRightFunc(raw, unicode.IsSpace)
+	for trimmed != "" {
+		r, size := utf8.DecodeLastRuneInString(trimmed)
+		if r == utf8.RuneError && size == 0 {
+			return 0, false
+		}
+		if strings.ContainsRune("*_`~", r) {
+			trimmed = trimmed[:len(trimmed)-size]
+			continue
+		}
+		if strings.ContainsRune("])}>", r) {
+			return 0, false
+		}
+		return r, true
+	}
+	return 0, false
+}
+
+func firstInlineWordRune(raw string) (rune, bool) {
+	trimmed := strings.TrimLeftFunc(raw, unicode.IsSpace)
+	for trimmed != "" {
+		r, size := utf8.DecodeRuneInString(trimmed)
+		if r == utf8.RuneError && size == 0 {
+			return 0, false
+		}
+		if strings.ContainsRune("*_`~", r) {
+			trimmed = trimmed[size:]
+			continue
+		}
+		if strings.ContainsRune("[(<{→", r) {
+			return 0, false
+		}
+		return r, true
+	}
+	return 0, false
 }
 
 func cleanupReferenceSpacing(inlines []model.Inline) []model.Inline {
@@ -478,6 +601,10 @@ func normalizeSectionBlocks(section model.Section) []model.Block {
 }
 
 func renderTableMarkdown(table model.Table, indent string) string {
+	if !isSimpleMarkdownTable(table) {
+		return renderTableHTML(table, indent)
+	}
+
 	rows := make([][]string, 0, len(table.Headers)+len(table.Rows))
 	for _, row := range table.Headers {
 		rows = append(rows, tableRowTexts(row))
@@ -502,7 +629,11 @@ func renderTableMarkdown(table model.Table, indent string) string {
 func tableRowTexts(row model.TableRow) []string {
 	result := make([]string, 0, len(row.Cells))
 	for _, cell := range row.Cells {
-		result = append(result, cell.Text)
+		text := normalizeMarkdownTableCellText(cell.Text)
+		if len(cell.Inlines) > 0 {
+			text = normalizeMarkdownTableCellText(renderInlineMarkdown(cell.Inlines))
+		}
+		result = append(result, text)
 	}
 	return result
 }
@@ -545,7 +676,155 @@ func formatTableDivider(widths []int) string {
 	for _, width := range widths {
 		parts = append(parts, strings.Repeat("-", width+2))
 	}
-	return "|" + strings.Join(parts, "+") + "|"
+	return "|" + strings.Join(parts, "|") + "|"
+}
+
+func isSimpleMarkdownTable(table model.Table) bool {
+	if len(table.Headers) != 1 {
+		return false
+	}
+	columnCount := len(table.Headers[0].Cells)
+	if columnCount == 0 {
+		return false
+	}
+	for _, row := range table.Headers {
+		if !isSimpleMarkdownRow(row, columnCount) {
+			return false
+		}
+	}
+	for _, row := range table.Rows {
+		if !isSimpleMarkdownRow(row, columnCount) {
+			return false
+		}
+	}
+	return true
+}
+
+func isSimpleMarkdownRow(row model.TableRow, columnCount int) bool {
+	if len(row.Cells) != columnCount {
+		return false
+	}
+	for _, cell := range row.Cells {
+		if cell.ColSpan > 1 || cell.RowSpan > 1 {
+			return false
+		}
+	}
+	return true
+}
+
+func normalizeMarkdownTableCellText(raw string) string {
+	text := strings.TrimSpace(raw)
+	text = strings.ReplaceAll(text, "\r\n", "\n")
+	text = strings.ReplaceAll(text, "\r", "\n")
+	text = strings.ReplaceAll(text, "\n", "<br>")
+	text = strings.ReplaceAll(text, "|", "\\|")
+	return text
+}
+
+func renderTableHTML(table model.Table, indent string) string {
+	var builder strings.Builder
+	write := func(line string) {
+		if builder.Len() > 0 {
+			builder.WriteString("\n")
+		}
+		builder.WriteString(indent)
+		builder.WriteString(line)
+	}
+
+	write("<table>")
+	if len(table.Headers) > 0 {
+		write("  <thead>")
+		for _, row := range table.Headers {
+			write("    <tr>")
+			for _, cell := range row.Cells {
+				write("      " + formatHTMLTableCell("th", cell))
+			}
+			write("    </tr>")
+		}
+		write("  </thead>")
+	}
+	if len(table.Rows) > 0 {
+		write("  <tbody>")
+		for _, row := range table.Rows {
+			write("    <tr>")
+			for _, cell := range row.Cells {
+				write("      " + formatHTMLTableCell("td", cell))
+			}
+			write("    </tr>")
+		}
+		write("  </tbody>")
+	}
+	write("</table>")
+	return builder.String()
+}
+
+func formatHTMLTableCell(tag string, cell model.TableCell) string {
+	attrs := make([]string, 0, 2)
+	if cell.ColSpan > 1 {
+		attrs = append(attrs, fmt.Sprintf(" colspan=\"%d\"", cell.ColSpan))
+	}
+	if cell.RowSpan > 1 {
+		attrs = append(attrs, fmt.Sprintf(" rowspan=\"%d\"", cell.RowSpan))
+	}
+	return fmt.Sprintf("<%s%s>%s</%s>", tag, strings.Join(attrs, ""), renderHTMLTableCellContent(cell), tag)
+}
+
+func renderHTMLTableCellContent(cell model.TableCell) string {
+	text := strings.TrimSpace(cell.Text)
+	if len(cell.Inlines) > 0 {
+		text = strings.TrimSpace(renderInlineMarkdown(cell.Inlines))
+	}
+	return renderHTMLFromMarkdownSubset(text)
+}
+
+func renderHTMLFromMarkdownSubset(raw string) string {
+	raw = strings.ReplaceAll(raw, "\r\n", "\n")
+	raw = strings.ReplaceAll(raw, "\r", "\n")
+	var builder strings.Builder
+	for i := 0; i < len(raw); {
+		if strings.HasPrefix(raw[i:], "→ [") {
+			closeLabel := strings.Index(raw[i+3:], "](")
+			if closeLabel >= 0 {
+				labelEnd := i + 3 + closeLabel
+				closeTarget := strings.Index(raw[labelEnd+2:], ")")
+				if closeTarget >= 0 {
+					targetEnd := labelEnd + 2 + closeTarget
+					label := raw[i+3 : labelEnd]
+					target := raw[labelEnd+2 : targetEnd]
+					builder.WriteString("&rarr; <a href=\"")
+					builder.WriteString(html.EscapeString(target))
+					builder.WriteString("\">")
+					builder.WriteString(html.EscapeString(label))
+					builder.WriteString("</a>")
+					i = targetEnd + 1
+					continue
+				}
+			}
+		}
+		if raw[i] == '*' {
+			close := strings.IndexByte(raw[i+1:], '*')
+			if close >= 0 {
+				content := raw[i+1 : i+1+close]
+				builder.WriteString("<em>")
+				builder.WriteString(html.EscapeString(content))
+				builder.WriteString("</em>")
+				i += close + 2
+				continue
+			}
+		}
+		if raw[i] == '\n' {
+			builder.WriteString("<br>")
+			i++
+			continue
+		}
+		next := i + 1
+		for next < len(raw) && raw[next] != '*' && raw[next] != '\n' && !strings.HasPrefix(raw[next:], "→ [") {
+			next++
+		}
+		builder.WriteString(html.EscapeString(raw[i:next]))
+		i = next
+	}
+	return builder.String()
 }
 
 func slug(raw string) string {

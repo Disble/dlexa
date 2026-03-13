@@ -52,7 +52,14 @@ type ParsedTable struct {
 }
 
 type ParsedTableRow struct {
-	Cells []string
+	Cells []ParsedTableCell
+}
+
+type ParsedTableCell struct {
+	HTML    string
+	Inlines []model.Inline
+	ColSpan int
+	RowSpan int
 }
 
 type ParsedParagraph struct {
