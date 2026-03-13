@@ -16,22 +16,31 @@ import (
 
 // New is the composition root: concrete adapters are chosen here and nowhere else.
 func New(cli platform.CLI) *App {
-	runtimeConfig := config.RuntimeConfig{
-		DefaultFormat:  "markdown",
-		DefaultSources: []string{"demo"},
-		CacheEnabled:   true,
-	}
+	runtimeConfig := config.DefaultRuntimeConfig()
 
 	loader := config.NewStaticLoader(runtimeConfig)
 	doctorService := doctor.NewNoopDoctor()
 	cacheStore := cache.NewMemoryStore()
+
+	dpdSource := source.NewPipelineSource(
+		model.SourceDescriptor{
+			Name:        "dpd",
+			DisplayName: "Diccionario panhispánico de dudas",
+			Kind:        "remote-html",
+			Priority:    1,
+			Cacheable:   true,
+		},
+		fetch.NewDPDFetcher(runtimeConfig.DPD.BaseURL, runtimeConfig.DPD.Timeout, runtimeConfig.DPD.UserAgent),
+		parse.NewDPDArticleParser(),
+		normalize.NewDPDNormalizer(),
+	)
 
 	demoSource := source.NewPipelineSource(
 		model.SourceDescriptor{
 			Name:        "demo",
 			DisplayName: "Demo Source",
 			Kind:        "bootstrap",
-			Priority:    1,
+			Priority:    99,
 			Cacheable:   true,
 		},
 		fetch.NewStaticFetcher("https://example.invalid/dlexa"),
@@ -39,7 +48,7 @@ func New(cli platform.CLI) *App {
 		normalize.NewIdentityNormalizer(),
 	)
 
-	registry := source.NewStaticRegistry(demoSource)
+	registry := source.NewStaticRegistry(dpdSource, demoSource)
 	lookupService := query.NewService(registry, cacheStore)
 	rendererRegistry := render.NewRegistry(
 		render.NewMarkdownRenderer(),

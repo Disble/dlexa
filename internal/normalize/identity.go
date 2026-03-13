@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/gentleman-programming/dlexa/internal/model"
+	"github.com/gentleman-programming/dlexa/internal/parse"
 )
 
 type IdentityNormalizer struct{}
@@ -12,14 +13,30 @@ func NewIdentityNormalizer() *IdentityNormalizer {
 	return &IdentityNormalizer{}
 }
 
-func (n *IdentityNormalizer) Normalize(ctx context.Context, descriptor model.SourceDescriptor, entries []model.Entry) ([]model.Entry, []model.Warning, error) {
-	return n.NormalizeEntries(ctx, descriptor, entries)
+func (n *IdentityNormalizer) Normalize(ctx context.Context, descriptor model.SourceDescriptor, result parse.Result) ([]model.Entry, []model.Warning, error) {
+	return n.NormalizeEntries(ctx, descriptor, result)
 }
 
-func (n *IdentityNormalizer) NormalizeEntries(ctx context.Context, descriptor model.SourceDescriptor, entries []model.Entry) ([]model.Entry, []model.Warning, error) {
+func (n *IdentityNormalizer) NormalizeEntries(ctx context.Context, descriptor model.SourceDescriptor, result parse.Result) ([]model.Entry, []model.Warning, error) {
 	_ = ctx
-	normalized := make([]model.Entry, 0, len(entries))
-	for _, entry := range entries {
+	normalized := make([]model.Entry, 0, len(result.Articles))
+	for _, article := range result.Articles {
+		entry := model.Entry{
+			ID:       descriptor.Name + ":bootstrap",
+			Headword: article.Lemma,
+			Summary:  "Parsed bootstrap entry from markdown content.",
+			Content:  articleText(article),
+			Source:   descriptor.Name,
+			URL:      article.CanonicalURL,
+			Article: &model.Article{
+				Dictionary:   article.Dictionary,
+				Edition:      article.Edition,
+				Lemma:        article.Lemma,
+				CanonicalURL: article.CanonicalURL,
+				Sections:     articleSections(article.Sections),
+			},
+			Metadata: map[string]string{},
+		}
 		entry.Source = descriptor.Name
 		if entry.Metadata == nil {
 			entry.Metadata = map[string]string{}
@@ -35,4 +52,36 @@ func (n *IdentityNormalizer) NormalizeEntries(ctx context.Context, descriptor mo
 	}}
 
 	return normalized, warnings, nil
+}
+
+func articleText(article parse.ParsedArticle) string {
+	if len(article.Sections) == 0 || len(article.Sections[0].Paragraphs) == 0 {
+		return ""
+	}
+
+	return article.Sections[0].Paragraphs[0].HTML
+}
+
+func articleSections(sections []parse.ParsedSection) []model.Section {
+	normalized := make([]model.Section, 0, len(sections))
+	for _, section := range sections {
+		paragraphs := make([]model.Paragraph, 0, len(section.Paragraphs))
+		blocks := make([]model.Block, 0, len(section.Paragraphs))
+		for _, paragraph := range section.Paragraphs {
+			normalized := model.Paragraph{Markdown: paragraph.HTML}
+			paragraphs = append(paragraphs, normalized)
+			paragraphCopy := normalized
+			blocks = append(blocks, model.Block{Kind: model.ArticleBlockKindParagraph, Paragraph: &paragraphCopy})
+		}
+
+		normalized = append(normalized, model.Section{
+			Label:      section.Label,
+			Title:      section.Title,
+			Blocks:     blocks,
+			Paragraphs: paragraphs,
+			Children:   articleSections(section.Children),
+		})
+	}
+
+	return normalized
 }

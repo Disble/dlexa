@@ -15,6 +15,7 @@ type Request struct {
 type Document struct {
 	URL         string
 	ContentType string
+	StatusCode  int
 	Body        []byte
 	RetrievedAt time.Time
 }

@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/gentleman-programming/dlexa/internal/config"
@@ -56,6 +57,50 @@ func TestRunConstructsLookupRequestAndDelegatesToQueryService(t *testing.T) {
 
 	if got := cli.stdout.String(); got != "rendered output\n" {
 		t.Fatalf("stdout = %q, want %q", got, "rendered output\n")
+	}
+}
+
+func TestRunWritesRendererProducedStdoutPayloadForDPDSemantics(t *testing.T) {
+	cli := &fakeCLI{args: []string{"dlexa", "bien"}}
+	lookup := &capturingLookupService{}
+	renderer := &capturingRenderer{
+		format:  "markdown",
+		payload: []byte("1. El comparativo es *mejor*. *Cierra bien la ventana*\n"),
+	}
+	renderers := &capturingRegistry{renderer: renderer}
+
+	application := &App{
+		platform: cli,
+		config: &staticLoader{cfg: config.RuntimeConfig{
+			DefaultFormat:  "markdown",
+			DefaultSources: []string{"dpd"},
+			CacheEnabled:   true,
+		}},
+		lookup:    lookup,
+		renderers: renderers,
+	}
+
+	if err := application.Run(context.Background()); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	stdout := cli.stdout.String()
+	if strings.Contains(stdout, "\x1b[") {
+		t.Fatalf("stdout = %q, final boundary must not add ANSI noise by default", stdout)
+	}
+	if !strings.Contains(stdout, "El comparativo es *mejor*.") {
+		t.Fatalf("stdout = %q, want renderer-produced markdown emphasis at final boundary", stdout)
+	}
+	if !strings.Contains(stdout, "*Cierra bien la ventana*") {
+		t.Fatalf("stdout = %q, want renderer-produced markdown example at final boundary", stdout)
+	}
+	for _, forbidden := range []string{"[ej.:", "ej.:", "‹", "›"} {
+		if strings.Contains(stdout, forbidden) {
+			t.Fatalf("stdout = %q, contains forbidden fallback marker %q", stdout, forbidden)
+		}
+	}
+	if got := renderer.result.Request.Query; got != "bien" {
+		t.Fatalf("renderer query = %q, want %q", got, "bien")
 	}
 }
 

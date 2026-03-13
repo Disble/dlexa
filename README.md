@@ -96,3 +96,4 @@ dlexa --version
 - Source adapters are replaceable because the query layer only depends on interfaces.
 - Renderers are separate so domain structs remain reusable for other outputs later.
 - The project is prepared for a single binary distribution with runtime-selected behavior instead of multiple executables.
+- `dpd-live-lookup-parity` owns DPD fetch/parse/normalize semantic preservation; `dpd-terminal-semantic-rendering` owns the final stdout contract so authored DPD semantics remain visible at the terminal boundary instead of being replaced by renderer-invented wrappers.

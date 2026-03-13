@@ -52,12 +52,12 @@ func (s *PipelineSource) Lookup(ctx context.Context, request model.LookupRequest
 		return result, err
 	}
 
-	parsedEntries, parseWarnings, err := s.parser.Parse(ctx, s.descriptor, document)
+	parsedResult, parseWarnings, err := s.parser.Parse(ctx, s.descriptor, document)
 	if err != nil {
 		return result, err
 	}
 
-	normalizedEntries, normalizeWarnings, err := s.normalizer.Normalize(ctx, s.descriptor, parsedEntries)
+	normalizedEntries, normalizeWarnings, err := s.normalizer.Normalize(ctx, s.descriptor, parsedResult)
 	if err != nil {
 		return result, err
 	}

@@ -4,8 +4,9 @@ import (
 	"context"
 
 	"github.com/gentleman-programming/dlexa/internal/model"
+	"github.com/gentleman-programming/dlexa/internal/parse"
 )
 
 type Normalizer interface {
-	Normalize(ctx context.Context, descriptor model.SourceDescriptor, entries []model.Entry) ([]model.Entry, []model.Warning, error)
+	Normalize(ctx context.Context, descriptor model.SourceDescriptor, result parse.Result) ([]model.Entry, []model.Warning, error)
 }

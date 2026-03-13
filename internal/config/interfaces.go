@@ -1,11 +1,21 @@
 package config
 
-import "context"
+import (
+	"context"
+	"time"
+)
+
+type DPDConfig struct {
+	BaseURL   string
+	Timeout   time.Duration
+	UserAgent string
+}
 
 type RuntimeConfig struct {
 	DefaultFormat  string
 	DefaultSources []string
 	CacheEnabled   bool
+	DPD            DPDConfig
 }
 
 type Loader interface {

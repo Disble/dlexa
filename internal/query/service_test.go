@@ -64,7 +64,12 @@ func TestLookupAggregatesEntriesWarningsProblemsAndSourceResults(t *testing.T) {
 		},
 		&stubSource{
 			descriptor: failingDescriptor,
-			err:        errors.New("fetch failed"),
+			err: model.NewProblemError(model.Problem{
+				Code:     model.ProblemCodeDPDFetchFailed,
+				Message:  "fetch failed",
+				Source:   failingDescriptor.Name,
+				Severity: model.ProblemSeverityError,
+			}, errors.New("upstream timeout")),
 		},
 	}}
 
@@ -96,8 +101,8 @@ func TestLookupAggregatesEntriesWarningsProblemsAndSourceResults(t *testing.T) {
 		t.Fatalf("Lookup() problems = %d, want 2", len(result.Problems))
 	}
 
-	if gotCodes := []string{result.Problems[0].Code, result.Problems[1].Code}; !reflect.DeepEqual(gotCodes, []string{"first-problem", "source_lookup_failed"}) {
-		t.Fatalf("Lookup() problem codes = %#v, want %#v", gotCodes, []string{"first-problem", "source_lookup_failed"})
+	if gotCodes := []string{result.Problems[0].Code, result.Problems[1].Code}; !reflect.DeepEqual(gotCodes, []string{"first-problem", model.ProblemCodeDPDFetchFailed}) {
+		t.Fatalf("Lookup() problem codes = %#v, want %#v", gotCodes, []string{"first-problem", model.ProblemCodeDPDFetchFailed})
 	}
 
 	if result.Problems[1].Source != failingDescriptor.Name {
@@ -106,6 +111,33 @@ func TestLookupAggregatesEntriesWarningsProblemsAndSourceResults(t *testing.T) {
 
 	if result.GeneratedAt.IsZero() {
 		t.Fatal("Lookup() GeneratedAt is zero")
+	}
+}
+
+func TestLookupFallsBackToGenericProblemForUntypedErrors(t *testing.T) {
+	failingDescriptor := model.SourceDescriptor{Name: "broken"}
+	registry := &stubRegistry{sources: []source.Source{
+		&stubSource{descriptor: failingDescriptor, err: errors.New("boom")},
+	}}
+
+	service := NewService(registry, &stubStore{})
+	result, err := service.Lookup(context.Background(), model.LookupRequest{Query: "palabra", Sources: []string{"broken"}, NoCache: true})
+	if err != nil {
+		t.Fatalf("Lookup() error = %v", err)
+	}
+
+	if len(result.Problems) != 1 {
+		t.Fatalf("Lookup() problems = %d, want 1", len(result.Problems))
+	}
+
+	want := model.Problem{
+		Code:     model.ProblemCodeSourceLookupFailed,
+		Message:  "boom",
+		Source:   failingDescriptor.Name,
+		Severity: model.ProblemSeverityError,
+	}
+	if !reflect.DeepEqual(result.Problems[0], want) {
+		t.Fatalf("Lookup() problem = %#v, want %#v", result.Problems[0], want)
 	}
 }
 

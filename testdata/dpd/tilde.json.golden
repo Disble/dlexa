@@ -1,0 +1,172 @@
+{
+  "Request": {
+    "Query": "tilde",
+    "Format": "json",
+    "Sources": null,
+    "NoCache": false
+  },
+  "Entries": [
+    {
+      "ID": "dpd:tilde#tilde",
+      "Headword": "tilde",
+      "Summary": "Diccionario panhispánico de dudas",
+      "Content": "1. La tilde permite distinguir ciertos usos en la escritura actual.\n\n| Con tilde | Sin tilde |\n|-----------+-----------|\n| aún       | aun       |\n| sólo      | solo      |\n\nLa recomendación vigente depende del contexto y de la ambigüedad.",
+      "Source": "dpd",
+      "URL": "https://www.rae.es/dpd/tilde",
+      "Metadata": {
+        "access_profile": "browser-like direct /dpd/<term>",
+        "entry_id": "tilde",
+        "normalized_by": "dpd"
+      },
+      "Article": {
+        "Dictionary": "Diccionario panhispánico de dudas",
+        "Edition": "2.ª edición",
+        "Lemma": "tilde",
+        "CanonicalURL": "https://www.rae.es/dpd/tilde",
+        "Sections": [
+          {
+            "Label": "1.",
+            "Title": "",
+            "Blocks": [
+              {
+                "kind": "paragraph",
+                "paragraph": {
+                  "Markdown": "La tilde permite distinguir ciertos usos en la escritura actual.",
+                  "Inlines": null
+                }
+              },
+              {
+                "kind": "table",
+                "table": {
+                  "headers": [
+                    {
+                      "cells": [
+                        {
+                          "text": "Con tilde"
+                        },
+                        {
+                          "text": "Sin tilde"
+                        }
+                      ]
+                    }
+                  ],
+                  "rows": [
+                    {
+                      "cells": [
+                        {
+                          "text": "aún"
+                        },
+                        {
+                          "text": "aun"
+                        }
+                      ]
+                    },
+                    {
+                      "cells": [
+                        {
+                          "text": "sólo"
+                        },
+                        {
+                          "text": "solo"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "kind": "paragraph",
+                "paragraph": {
+                  "Markdown": "La recomendación vigente depende del contexto y de la ambigüedad.",
+                  "Inlines": null
+                }
+              }
+            ],
+            "Paragraphs": [
+              {
+                "Markdown": "La tilde permite distinguir ciertos usos en la escritura actual.",
+                "Inlines": null
+              },
+              {
+                "Markdown": "La recomendación vigente depende del contexto y de la ambigüedad.",
+                "Inlines": null
+              }
+            ],
+            "Children": null
+          }
+        ],
+        "Citation": {
+          "SourceLabel": "Real Academia Española y Asociación de Academias de la Lengua Española",
+          "CanonicalURL": "https://www.rae.es/dpd/tilde",
+          "Edition": "2.ª edición",
+          "ConsultedAt": "10/03/2026",
+          "Text": "Real Academia Española y Asociación de Academias de la Lengua Española: Diccionario panhispánico de dudas (DPD) [en línea], https://www.rae.es/dpd/tilde, 2.ª edición. [Consulta: 10/03/2026]."
+        }
+      }
+    },
+    {
+      "ID": "dpd:tilde#tilde2",
+      "Headword": "tilde",
+      "Summary": "Diccionario panhispánico de dudas",
+      "Content": "2. En casos enfáticos o diacríticos, la grafía histórica puede mantenerse como referencia.\n\nLa norma vigente prioriza la claridad sin multiplicar tildes innecesarias.",
+      "Source": "dpd",
+      "URL": "https://www.rae.es/dpd/tilde",
+      "Metadata": {
+        "access_profile": "browser-like direct /dpd/<term>",
+        "entry_id": "tilde2",
+        "normalized_by": "dpd"
+      },
+      "Article": {
+        "Dictionary": "Diccionario panhispánico de dudas",
+        "Edition": "2.ª edición",
+        "Lemma": "tilde",
+        "CanonicalURL": "https://www.rae.es/dpd/tilde",
+        "Sections": [
+          {
+            "Label": "2.",
+            "Title": "",
+            "Blocks": [
+              {
+                "kind": "paragraph",
+                "paragraph": {
+                  "Markdown": "En casos enfáticos o diacríticos, la grafía histórica puede mantenerse como referencia.",
+                  "Inlines": null
+                }
+              },
+              {
+                "kind": "paragraph",
+                "paragraph": {
+                  "Markdown": "La norma vigente prioriza la claridad sin multiplicar tildes innecesarias.",
+                  "Inlines": null
+                }
+              }
+            ],
+            "Paragraphs": [
+              {
+                "Markdown": "En casos enfáticos o diacríticos, la grafía histórica puede mantenerse como referencia.",
+                "Inlines": null
+              },
+              {
+                "Markdown": "La norma vigente prioriza la claridad sin multiplicar tildes innecesarias.",
+                "Inlines": null
+              }
+            ],
+            "Children": null
+          }
+        ],
+        "Citation": {
+          "SourceLabel": "Real Academia Española y Asociación de Academias de la Lengua Española",
+          "CanonicalURL": "https://www.rae.es/dpd/tilde",
+          "Edition": "2.ª edición",
+          "ConsultedAt": "10/03/2026",
+          "Text": "Real Academia Española y Asociación de Academias de la Lengua Española: Diccionario panhispánico de dudas (DPD) [en línea], https://www.rae.es/dpd/tilde, 2.ª edición. [Consulta: 10/03/2026]."
+        }
+      }
+    }
+  ],
+  "Warnings": null,
+  "Problems": null,
+  "Sources": null,
+  "CacheHit": false,
+  "GeneratedAt": "0001-01-01T00:00:00Z"
+}

@@ -44,12 +44,19 @@ func (s *LookupService) Lookup(ctx context.Context, request model.LookupRequest)
 	for _, item := range resolvedSources {
 		sourceResult, err := item.Lookup(ctx, request)
 		if err != nil {
-			result.Problems = append(result.Problems, model.Problem{
-				Code:     "source_lookup_failed",
-				Message:  err.Error(),
-				Source:   item.Descriptor().Name,
-				Severity: "error",
-			})
+			problem, ok := model.AsProblem(err)
+			if !ok {
+				problem = model.Problem{
+					Code:     model.ProblemCodeSourceLookupFailed,
+					Message:  err.Error(),
+					Source:   item.Descriptor().Name,
+					Severity: model.ProblemSeverityError,
+				}
+			} else if problem.Source == "" {
+				problem.Source = item.Descriptor().Name
+			}
+
+			result.Problems = append(result.Problems, problem)
 			continue
 		}
 

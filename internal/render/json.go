@@ -1,8 +1,10 @@
 package render
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"strings"
 
 	"github.com/gentleman-programming/dlexa/internal/model"
 )
@@ -23,5 +25,68 @@ func (r *JSONRenderer) Render(ctx context.Context, result model.LookupResult) ([
 
 func (r *JSONRenderer) RenderResult(ctx context.Context, result model.LookupResult) ([]byte, error) {
 	_ = ctx
-	return json.MarshalIndent(result, "", "  ")
+	for idx := range result.Entries {
+		if result.Entries[idx].Article != nil && result.Entries[idx].Content == "" {
+			result.Entries[idx].Content = articleContentProjection(result.Entries[idx].Article)
+		}
+	}
+	return marshalNoEscape(result)
+}
+
+func articleContentProjection(article *model.Article) string {
+	if article == nil {
+		return ""
+	}
+	var parts []string
+	for _, section := range article.Sections {
+		text := strings.TrimSpace(renderJSONSectionProjection(section))
+		if text == "" {
+			continue
+		}
+		parts = append(parts, text)
+	}
+	return strings.TrimSpace(strings.Join(parts, "\n\n"))
+}
+
+func marshalNoEscape(v any) ([]byte, error) {
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(v); err != nil {
+		return nil, err
+	}
+	return bytes.TrimRight(buffer.Bytes(), "\n"), nil
+}
+
+func renderJSONSectionProjection(section model.Section) string {
+	var parts []string
+	heading := strings.TrimSpace(section.Label)
+	if title := strings.TrimSpace(section.Title); title != "" {
+		if heading != "" {
+			heading += " "
+		}
+		heading += title
+	}
+	if heading != "" {
+		parts = append(parts, heading)
+	}
+	for _, block := range sectionBlocks(section) {
+		switch block.Kind {
+		case model.ArticleBlockKindParagraph:
+			if block.Paragraph != nil && strings.TrimSpace(block.Paragraph.Markdown) != "" {
+				parts = append(parts, strings.TrimSpace(block.Paragraph.Markdown))
+			}
+		case model.ArticleBlockKindTable:
+			if block.Table != nil {
+				parts = append(parts, renderTableMarkdown(*block.Table, ""))
+			}
+		}
+	}
+	for _, child := range section.Children {
+		if childText := strings.TrimSpace(renderJSONSectionProjection(child)); childText != "" {
+			parts = append(parts, childText)
+		}
+	}
+	return strings.TrimSpace(strings.Join(parts, "\n\n"))
 }

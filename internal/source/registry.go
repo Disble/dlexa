@@ -2,6 +2,7 @@ package source
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/gentleman-programming/dlexa/internal/model"
 )
@@ -11,7 +12,12 @@ type StaticRegistry struct {
 }
 
 func NewStaticRegistry(sources ...Source) *StaticRegistry {
-	return &StaticRegistry{sources: sources}
+	ordered := append([]Source(nil), sources...)
+	sort.SliceStable(ordered, func(i, j int) bool {
+		return ordered[i].Descriptor().Priority < ordered[j].Descriptor().Priority
+	})
+
+	return &StaticRegistry{sources: ordered}
 }
 
 func (r *StaticRegistry) SourcesFor(request model.LookupRequest) ([]Source, error) {

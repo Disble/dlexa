@@ -1,0 +1,39 @@
+change: dpd-terminal-semantic-rendering
+phase: archive
+artifact_store: hybrid
+artifacts:
+  proposal: true
+  spec: true
+  design: true
+  tasks: true
+  apply_progress: true
+  verify_report: true
+  archive_report: true
+tasks_progress:
+  completed:
+    - 1.1
+    - 1.2
+    - 1.3
+    - 1.4
+    - 1.5
+    - 2.1
+    - 2.2
+    - 2.3
+    - 2.4
+    - 3.1
+    - 3.2
+    - 3.3
+    - 3.4
+    - 4.1
+    - 4.2
+    - 4.3
+    - 4.4
+    - 5.1
+    - 5.2
+    - 5.3
+  pending: []
+notes:
+  contract: "Final DPD output is semantic Markdown driven by typed article semantics; renderer, tests, and bien golden align on Markdown emphasis, Markdown links, and rejection of plain/ANSI-only drift plus synthetic wrappers such as [ej.:], ej.:, and guillemets."
+  archived_to: "openspec/changes/archive/2026-03-13-dpd-terminal-semantic-rendering"
+  follow_up: "Nested emphasis edge cases can be improved later without reopening the archived contract."
+last_updated: 2026-03-13T23:00:00Z

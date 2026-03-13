@@ -37,6 +37,7 @@ func (f *StaticFetcher) FetchDocument(ctx context.Context, request Request) (Doc
 	return Document{
 		URL:         strings.TrimRight(f.BaseURL, "/") + "/" + query,
 		ContentType: f.ContentType,
+		StatusCode:  200,
 		Body:        []byte(body),
 		RetrievedAt: time.Now().UTC(),
 	}, nil

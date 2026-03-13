@@ -8,13 +8,14 @@ import (
 
 	"github.com/gentleman-programming/dlexa/internal/fetch"
 	"github.com/gentleman-programming/dlexa/internal/model"
+	"github.com/gentleman-programming/dlexa/internal/parse"
 )
 
 func TestPipelineSourceFetchesParsesAndNormalizesInOrder(t *testing.T) {
 	descriptor := model.SourceDescriptor{Name: "demo", DisplayName: "Demo"}
 	retrievedAt := time.Date(2026, time.March, 13, 15, 0, 0, 0, time.UTC)
 	callOrder := make([]string, 0, 3)
-	parsedEntries := []model.Entry{{ID: "parsed", Headword: "Parsed"}}
+	parsedResult := parse.Result{Articles: []parse.ParsedArticle{{Lemma: "Parsed"}}}
 	normalizedEntries := []model.Entry{{ID: "normalized", Headword: "Normalized", Source: descriptor.Name}}
 
 	fetcher := &recordingFetcher{
@@ -28,18 +29,18 @@ func TestPipelineSourceFetchesParsesAndNormalizesInOrder(t *testing.T) {
 	}
 	parser := &recordingParser{
 		calls:          &callOrder,
-		entries:        parsedEntries,
+		result:         parsedResult,
 		warnings:       []model.Warning{{Code: "parse-warning", Source: descriptor.Name}},
 		expectedBody:   []byte("raw body"),
 		expectedURL:    "https://example.invalid/demo/palabra",
 		expectedSource: descriptor,
 	}
 	normalizer := &recordingNormalizer{
-		calls:           &callOrder,
-		entries:         normalizedEntries,
-		warnings:        []model.Warning{{Code: "normalize-warning", Source: descriptor.Name}},
-		expectedEntries: parsedEntries,
-		expectedSource:  descriptor,
+		calls:          &callOrder,
+		entries:        normalizedEntries,
+		warnings:       []model.Warning{{Code: "normalize-warning", Source: descriptor.Name}},
+		expectedResult: parsedResult,
+		expectedSource: descriptor,
 	}
 
 	pipeline := NewPipelineSource(descriptor, fetcher, parser, normalizer)
@@ -79,7 +80,7 @@ func (f *recordingFetcher) Fetch(_ context.Context, request fetch.Request) (fetc
 
 type recordingParser struct {
 	calls          *[]string
-	entries        []model.Entry
+	result         parse.Result
 	warnings       []model.Warning
 	expectedBody   []byte
 	expectedURL    string
@@ -88,37 +89,37 @@ type recordingParser struct {
 	descriptor     model.SourceDescriptor
 }
 
-func (p *recordingParser) Parse(_ context.Context, descriptor model.SourceDescriptor, document fetch.Document) ([]model.Entry, []model.Warning, error) {
+func (p *recordingParser) Parse(_ context.Context, descriptor model.SourceDescriptor, document fetch.Document) (parse.Result, []model.Warning, error) {
 	*p.calls = append(*p.calls, "parse")
 	p.descriptor = descriptor
 	p.document = document
 	if !reflect.DeepEqual(descriptor, p.expectedSource) {
-		return nil, nil, &testError{message: "parser received unexpected source descriptor"}
+		return parse.Result{}, nil, &testError{message: "parser received unexpected source descriptor"}
 	}
 	if !reflect.DeepEqual(document.Body, p.expectedBody) || document.URL != p.expectedURL {
-		return nil, nil, &testError{message: "parser received unexpected document"}
+		return parse.Result{}, nil, &testError{message: "parser received unexpected document"}
 	}
-	return p.entries, p.warnings, nil
+	return p.result, p.warnings, nil
 }
 
 type recordingNormalizer struct {
-	calls           *[]string
-	entries         []model.Entry
-	warnings        []model.Warning
-	expectedEntries []model.Entry
-	expectedSource  model.SourceDescriptor
-	inputEntries    []model.Entry
-	descriptor      model.SourceDescriptor
+	calls          *[]string
+	entries        []model.Entry
+	warnings       []model.Warning
+	expectedResult parse.Result
+	expectedSource model.SourceDescriptor
+	inputResult    parse.Result
+	descriptor     model.SourceDescriptor
 }
 
-func (n *recordingNormalizer) Normalize(_ context.Context, descriptor model.SourceDescriptor, entries []model.Entry) ([]model.Entry, []model.Warning, error) {
+func (n *recordingNormalizer) Normalize(_ context.Context, descriptor model.SourceDescriptor, result parse.Result) ([]model.Entry, []model.Warning, error) {
 	*n.calls = append(*n.calls, "normalize")
 	n.descriptor = descriptor
-	n.inputEntries = entries
+	n.inputResult = result
 	if !reflect.DeepEqual(descriptor, n.expectedSource) {
 		return nil, nil, &testError{message: "normalizer received unexpected source descriptor"}
 	}
-	if !reflect.DeepEqual(entries, n.expectedEntries) {
+	if !reflect.DeepEqual(result, n.expectedResult) {
 		return nil, nil, &testError{message: "normalizer received unexpected entries"}
 	}
 	return n.entries, n.warnings, nil
