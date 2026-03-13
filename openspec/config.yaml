@@ -1,0 +1,32 @@
+schema: spec-driven
+
+context: |
+  Tech stack: Go 1.22 CLI single binary
+  Architecture: thin cmd, composition root in internal/app, query-first orchestration, pipeline-based sources
+  Testing: go test with package-level *_test.go coverage in app/query/source/render
+  Style: explicit internal boundaries, no CI/lint config detected, avoid builds during SDD work
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - Identify affected internal packages and CLI surface
+  specs:
+    - Use Given/When/Then format for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Document boundary changes and dependency direction rationale
+    - Include sequence diagrams only for multi-package runtime flows
+  tasks:
+    - Group tasks by infrastructure, implementation, and verification
+    - Keep tasks small enough to complete in one session
+  apply:
+    guidance:
+      - Follow existing query-first and explicit-boundary patterns
+    tdd: false
+    test_command: go test ./...
+  verify:
+    test_command: go test ./...
+    build_command: ""
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas or boundary collapses
