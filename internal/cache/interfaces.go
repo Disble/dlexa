@@ -3,7 +3,7 @@ package cache
 import (
 	"context"
 
-	"github.com/gentleman-programming/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/model"
 )
 
 // Store abstracts cache read/write operations for lookup results.

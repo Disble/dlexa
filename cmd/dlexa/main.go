@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/gentleman-programming/dlexa/internal/app"
-	"github.com/gentleman-programming/dlexa/internal/platform"
+	"github.com/Disble/dlexa/internal/app"
+	"github.com/Disble/dlexa/internal/platform"
 )
 
 func main() {

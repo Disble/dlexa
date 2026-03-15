@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/gentleman-programming/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/model"
 )
 
 func TestRegistryReturnsRendererOrExplicitError(t *testing.T) {

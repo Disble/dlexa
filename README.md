@@ -22,7 +22,7 @@
 ### Build from source (recommended)
 
 ```bash
-git clone https://github.com/gentleman-programming/dlexa.git
+git clone https://github.com/Disble/dlexa.git
 cd dlexa
 go build -o dlexa ./cmd/dlexa
 ```
@@ -30,7 +30,7 @@ go build -o dlexa ./cmd/dlexa
 ### Install with `go install`
 
 ```bash
-go install github.com/gentleman-programming/dlexa/cmd/dlexa@latest
+go install github.com/Disble/dlexa/cmd/dlexa@latest
 ```
 
 ## Quick Start

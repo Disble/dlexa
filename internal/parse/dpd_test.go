@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gentleman-programming/dlexa/internal/fetch"
-	"github.com/gentleman-programming/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/fetch"
+	"github.com/Disble/dlexa/internal/model"
 )
 
 func loadDPDFixtureHTML(t *testing.T, name string) []byte {

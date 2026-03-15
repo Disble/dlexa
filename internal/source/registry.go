@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/gentleman-programming/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/model"
 )
 
 // StaticRegistry holds a fixed, priority-ordered list of sources.

@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/gentleman-programming/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/model"
 )
 
 func TestPlanTerminalParagraphUsesTypedInlinesAsSemanticBoundary(t *testing.T) {

@@ -3,7 +3,7 @@ package render
 import (
 	"context"
 
-	"github.com/gentleman-programming/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/model"
 )
 
 // Renderer converts a LookupResult into a formatted output.

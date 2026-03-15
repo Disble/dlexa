@@ -4,17 +4,17 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/gentleman-programming/dlexa/internal/cache"
-	"github.com/gentleman-programming/dlexa/internal/config"
-	"github.com/gentleman-programming/dlexa/internal/doctor"
-	"github.com/gentleman-programming/dlexa/internal/fetch"
-	"github.com/gentleman-programming/dlexa/internal/model"
-	"github.com/gentleman-programming/dlexa/internal/normalize"
-	"github.com/gentleman-programming/dlexa/internal/parse"
-	"github.com/gentleman-programming/dlexa/internal/platform"
-	"github.com/gentleman-programming/dlexa/internal/query"
-	"github.com/gentleman-programming/dlexa/internal/render"
-	"github.com/gentleman-programming/dlexa/internal/source"
+	"github.com/Disble/dlexa/internal/cache"
+	"github.com/Disble/dlexa/internal/config"
+	"github.com/Disble/dlexa/internal/doctor"
+	"github.com/Disble/dlexa/internal/fetch"
+	"github.com/Disble/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/normalize"
+	"github.com/Disble/dlexa/internal/parse"
+	"github.com/Disble/dlexa/internal/platform"
+	"github.com/Disble/dlexa/internal/query"
+	"github.com/Disble/dlexa/internal/render"
+	"github.com/Disble/dlexa/internal/source"
 )
 
 // New is the composition root: concrete adapters are chosen here and nowhere else.

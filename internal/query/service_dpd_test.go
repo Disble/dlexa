@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/gentleman-programming/dlexa/internal/model"
-	"github.com/gentleman-programming/dlexa/internal/source"
+	"github.com/Disble/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/source"
 )
 
 func TestLookupPreservesDPDExtractFailures(t *testing.T) {

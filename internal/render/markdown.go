@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gentleman-programming/dlexa/internal/model"
-	"github.com/gentleman-programming/dlexa/internal/renderutil"
+	"github.com/Disble/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/renderutil"
 )
 
 // MarkdownRenderer renders lookup results as Markdown text.

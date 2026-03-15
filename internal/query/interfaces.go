@@ -4,7 +4,7 @@ package query
 import (
 	"context"
 
-	"github.com/gentleman-programming/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/model"
 )
 
 // Service defines the contract for performing dictionary lookups.

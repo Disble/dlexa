@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gentleman-programming/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/model"
 )
 
 var reANSITest = regexp.MustCompile(`\x1b\[[0-9;]*m`)

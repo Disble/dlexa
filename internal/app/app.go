@@ -7,13 +7,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gentleman-programming/dlexa/internal/config"
-	"github.com/gentleman-programming/dlexa/internal/doctor"
-	"github.com/gentleman-programming/dlexa/internal/model"
-	"github.com/gentleman-programming/dlexa/internal/platform"
-	"github.com/gentleman-programming/dlexa/internal/query"
-	"github.com/gentleman-programming/dlexa/internal/render"
-	"github.com/gentleman-programming/dlexa/internal/version"
+	"github.com/Disble/dlexa/internal/config"
+	"github.com/Disble/dlexa/internal/doctor"
+	"github.com/Disble/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/platform"
+	"github.com/Disble/dlexa/internal/query"
+	"github.com/Disble/dlexa/internal/render"
+	"github.com/Disble/dlexa/internal/version"
 )
 
 // App wires together configuration, lookup, and rendering to drive the CLI.

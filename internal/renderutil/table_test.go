@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gentleman-programming/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/model"
 )
 
 func TestRenderTableMarkdownSimple(t *testing.T) {

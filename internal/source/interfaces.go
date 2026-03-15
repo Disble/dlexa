@@ -4,7 +4,7 @@ package source
 import (
 	"context"
 
-	"github.com/gentleman-programming/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/model"
 )
 
 // Source represents a dictionary lookup backend that can resolve queries into entries.

@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gentleman-programming/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/model"
 )
 
 func sampleLookupResult(query string) model.LookupResult {

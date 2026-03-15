@@ -314,14 +314,14 @@
 - [x] 4.6 **Update `internal/normalize/dpd.go` to import `renderutil`** [medium]
   - Remove all locally-defined functions that are now in `renderutil`
   - Replace calls to local functions with calls to `renderutil.FunctionName`
-  - Add import for `"github.com/gentleman-programming/dlexa/internal/renderutil"`
+  - Add import for `"github.com/Disble/dlexa/internal/renderutil"`
   - Acceptance: `go build ./internal/normalize/...` succeeds; no import cycles; `go test ./internal/normalize/...` passes with all existing tests including golden tests
   - Dependencies: 4.4, 4.5
 
 - [x] 4.7 **Update `internal/render/markdown.go` to import `renderutil`** [medium]
   - Remove all locally-defined functions that are now in `renderutil`
   - Replace calls to local functions with calls to `renderutil.FunctionName`
-  - Add import for `"github.com/gentleman-programming/dlexa/internal/renderutil"`
+  - Add import for `"github.com/Disble/dlexa/internal/renderutil"`
   - Acceptance: `go build ./internal/render/...` succeeds; no import cycles; `go test ./internal/render/...` passes with all existing tests including golden tests
   - Dependencies: 4.4, 4.5
 

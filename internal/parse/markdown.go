@@ -4,8 +4,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/gentleman-programming/dlexa/internal/fetch"
-	"github.com/gentleman-programming/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/fetch"
+	"github.com/Disble/dlexa/internal/model"
 )
 
 // MarkdownParser is a stub parser that wraps raw markdown body into a single-section article.

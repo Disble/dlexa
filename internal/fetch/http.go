@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gentleman-programming/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/model"
 )
 
 const challengeBodySnippetLimit = 1024

@@ -3,8 +3,8 @@ package normalize
 import (
 	"context"
 
-	"github.com/gentleman-programming/dlexa/internal/model"
-	"github.com/gentleman-programming/dlexa/internal/parse"
+	"github.com/Disble/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/parse"
 )
 
 // IdentityNormalizer preserves parsed fields without transformation.

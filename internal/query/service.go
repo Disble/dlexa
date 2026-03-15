@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gentleman-programming/dlexa/internal/cache"
-	"github.com/gentleman-programming/dlexa/internal/model"
-	"github.com/gentleman-programming/dlexa/internal/source"
+	"github.com/Disble/dlexa/internal/cache"
+	"github.com/Disble/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/source"
 )
 
 // sourceOutcome captures the result of a single source lookup goroutine.

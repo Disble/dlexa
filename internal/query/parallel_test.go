@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gentleman-programming/dlexa/internal/model"
-	"github.com/gentleman-programming/dlexa/internal/source"
+	"github.com/Disble/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/source"
 )
 
 // delayedStubSource is a stub that introduces artificial latency before returning.

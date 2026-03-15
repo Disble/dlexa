@@ -5,7 +5,7 @@ description: >
   Trigger: Load when reading, editing, reviewing, or validating Go code, packages, tests, or CLI behavior in this repo and lint feedback should shape the next change.
 license: Apache-2.0
 metadata:
-  author: gentleman-programming
+  author: Disble
   version: "1.0"
 ---
 

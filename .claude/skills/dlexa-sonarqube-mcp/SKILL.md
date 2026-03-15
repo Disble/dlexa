@@ -5,7 +5,7 @@ description: >
   Trigger: Load when a task uses SonarQube MCP tools, project-key lookup, snippet analysis, or post-edit file analysis in this repo.
 license: Apache-2.0
 metadata:
-  author: gentleman-programming
+  author: Disble
   version: "1.0"
 ---
 

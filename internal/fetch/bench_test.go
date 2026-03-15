@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gentleman-programming/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/model"
 )
 
 // fixtureSmallHTML is a minimal DPD-like article page.

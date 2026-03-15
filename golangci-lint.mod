@@ -1,4 +1,4 @@
-module github.com/gentleman-programming/dlexa/tools/golangci-lint
+module github.com/Disble/dlexa/tools/golangci-lint
 
 go 1.26.1
 

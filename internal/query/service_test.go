@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/gentleman-programming/dlexa/internal/model"
-	"github.com/gentleman-programming/dlexa/internal/source"
+	"github.com/Disble/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/source"
 )
 
 func TestLookupReturnsCachedResultAsCacheHit(t *testing.T) {

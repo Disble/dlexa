@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gentleman-programming/dlexa/internal/fetch"
-	"github.com/gentleman-programming/dlexa/internal/model"
-	"github.com/gentleman-programming/dlexa/internal/parse"
+	"github.com/Disble/dlexa/internal/fetch"
+	"github.com/Disble/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/parse"
 )
 
 func loadBenchFixtureHTML(b *testing.B, name string) []byte {

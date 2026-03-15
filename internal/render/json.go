@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/gentleman-programming/dlexa/internal/model"
-	"github.com/gentleman-programming/dlexa/internal/renderutil"
+	"github.com/Disble/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/renderutil"
 )
 
 // JSONRenderer renders lookup results as indented JSON.

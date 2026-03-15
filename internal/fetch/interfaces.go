@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/gentleman-programming/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/model"
 )
 
 // Request holds the query and source metadata for a fetch operation.

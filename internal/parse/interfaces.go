@@ -4,8 +4,8 @@ package parse
 import (
 	"context"
 
-	"github.com/gentleman-programming/dlexa/internal/fetch"
-	"github.com/gentleman-programming/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/fetch"
+	"github.com/Disble/dlexa/internal/model"
 )
 
 // Parser converts a fetched document into structured parsed articles.

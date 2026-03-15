@@ -27,15 +27,15 @@ go vet ./... — zero issues
 
 **Tests**: PASS — all packages pass
 ```
-ok  github.com/gentleman-programming/dlexa/internal/app
-ok  github.com/gentleman-programming/dlexa/internal/cache
-ok  github.com/gentleman-programming/dlexa/internal/fetch
-ok  github.com/gentleman-programming/dlexa/internal/normalize
-ok  github.com/gentleman-programming/dlexa/internal/parse
-ok  github.com/gentleman-programming/dlexa/internal/query
-ok  github.com/gentleman-programming/dlexa/internal/render
-ok  github.com/gentleman-programming/dlexa/internal/renderutil
-ok  github.com/gentleman-programming/dlexa/internal/source
+ok  github.com/Disble/dlexa/internal/app
+ok  github.com/Disble/dlexa/internal/cache
+ok  github.com/Disble/dlexa/internal/fetch
+ok  github.com/Disble/dlexa/internal/normalize
+ok  github.com/Disble/dlexa/internal/parse
+ok  github.com/Disble/dlexa/internal/query
+ok  github.com/Disble/dlexa/internal/render
+ok  github.com/Disble/dlexa/internal/renderutil
+ok  github.com/Disble/dlexa/internal/source
 ```
 
 **Coverage**:

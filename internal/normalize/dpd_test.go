@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gentleman-programming/dlexa/internal/model"
-	"github.com/gentleman-programming/dlexa/internal/parse"
+	"github.com/Disble/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/parse"
 )
 
 func normalizeSingleParagraph(t *testing.T, raw string) string {

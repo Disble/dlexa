@@ -5,7 +5,7 @@ import (
 	"html"
 	"strings"
 
-	"github.com/gentleman-programming/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/model"
 )
 
 // InlineRenderer is a function that renders a slice of inlines to a markdown string.

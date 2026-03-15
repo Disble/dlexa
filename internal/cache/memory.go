@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/gentleman-programming/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/model"
 )
 
 // MemoryStore is an in-memory cache backed by a sync.RWMutex-protected map.

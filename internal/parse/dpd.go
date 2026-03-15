@@ -8,8 +8,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/gentleman-programming/dlexa/internal/fetch"
-	"github.com/gentleman-programming/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/fetch"
+	"github.com/Disble/dlexa/internal/model"
 )
 
 var (

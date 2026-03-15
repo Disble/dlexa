@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gentleman-programming/dlexa/internal/config"
-	"github.com/gentleman-programming/dlexa/internal/model"
-	"github.com/gentleman-programming/dlexa/internal/render"
+	"github.com/Disble/dlexa/internal/config"
+	"github.com/Disble/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/render"
 )
 
 func TestRunConstructsLookupRequestAndDelegatesToQueryService(t *testing.T) {
