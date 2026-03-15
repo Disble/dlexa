@@ -11,7 +11,7 @@ repos:
         entry: go
         args:
           - tool
-          - -modfile=golangci-lint.mod
+          - --modfile=golangci-lint.mod
           - golangci-lint
           - run
           - --new-from-rev=HEAD

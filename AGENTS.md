@@ -8,4 +8,5 @@
 ## Repo Workflow
 
 - The repo-level lint and pre-commit onboarding flow lives in `CONTRIBUTING.md`.
-- Use the repo-pinned linter entrypoint: `go tool -modfile=golangci-lint.mod golangci-lint`.
+- Full-repo lint uses the repo-pinned command: `go tool --modfile=golangci-lint.mod golangci-lint run ./...`.
+- The pre-commit hook intentionally stays diff-based: `go tool --modfile=golangci-lint.mod golangci-lint run --new-from-rev=HEAD`.

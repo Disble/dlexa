@@ -157,7 +157,7 @@ BenchmarkMarkdownRender/bien          16440 B/op    123 allocs/op
 
 ## Lint Status
 
-**Tool**: golangci-lint v2.11.3 (via `go tool -modfile=golangci-lint.mod`)
+**Tool**: golangci-lint v2.11.3 (via `go tool --modfile=golangci-lint.mod`)
 **Config**: `.golangci.yml` with bodyclose, prealloc, gocritic, gosec, errcheck, staticcheck, revive, govet
 
 **Result**: PASS (for changed files)

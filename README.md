@@ -80,7 +80,7 @@ go test ./...
 ### Run lint (repo-pinned toolchain)
 
 ```bash
-go tool -modfile=golangci-lint.mod golangci-lint run ./...
+go tool --modfile=golangci-lint.mod golangci-lint run ./...
 ```
 
 ### Pre-commit setup
@@ -88,7 +88,10 @@ go tool -modfile=golangci-lint.mod golangci-lint run ./...
 ```bash
 pre-commit install
 pre-commit validate-config
+# still runs the diff-based hook entry
 pre-commit run golangci-lint --all-files
+# canonical full-repo lint command
+go tool --modfile=golangci-lint.mod golangci-lint run ./...
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for onboarding details, tooling requirements, and lint workflow tradeoffs.

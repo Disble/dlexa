@@ -19,7 +19,7 @@ metadata:
 
 ## Critical Patterns
 
-- MUST use the repo-local tool entrypoint, not a globally installed binary: `go tool -modfile=golangci-lint.mod golangci-lint`.
+- MUST use the repo-local tool module, not a globally installed binary. Canonical full-repo lint is `go tool --modfile=golangci-lint.mod golangci-lint run ./...`, and the pre-commit hook stays diff-based with `go tool --modfile=golangci-lint.mod golangci-lint run --new-from-rev=HEAD`.
 - MUST lint after changing relevant Go code before claiming the task is complete.
 - MUST prefer the smallest lint scope that still covers the changed behavior while iterating, then run broader lint when the change crosses packages or touches shared behavior.
 - MUST run full repo lint when the change affects shared packages, exported APIs, cross-package flows, config used by many packages, or multiple packages at once.
@@ -47,11 +47,11 @@ metadata:
 
 | Situation | Command | Why |
 | --- | --- | --- |
-| Editing one package only | `go tool -modfile=golangci-lint.mod golangci-lint run ./internal/query/...` | Fast feedback while iterating in one package boundary |
-| Editing `cmd/dlexa` only | `go tool -modfile=golangci-lint.mod golangci-lint run ./cmd/dlexa/...` | Keeps iteration tight around CLI entrypoint changes |
-| Editing 2-3 known packages | `go tool -modfile=golangci-lint.mod golangci-lint run ./internal/query/... ./internal/source/...` | Covers the touched package set without scanning the whole repo |
-| Editing shared abstractions, exported APIs, or cross-package flows | `go tool -modfile=golangci-lint.mod golangci-lint run ./...` | Catches fallout across package boundaries |
-| Finishing a Go task and ready to report done | `go tool -modfile=golangci-lint.mod golangci-lint run ./...` | Final repo-wide verification before handoff |
+| Editing one package only | `go tool --modfile=golangci-lint.mod golangci-lint run ./internal/query/...` | Fast feedback while iterating in one package boundary |
+| Editing `cmd/dlexa` only | `go tool --modfile=golangci-lint.mod golangci-lint run ./cmd/dlexa/...` | Keeps iteration tight around CLI entrypoint changes |
+| Editing 2-3 known packages | `go tool --modfile=golangci-lint.mod golangci-lint run ./internal/query/... ./internal/source/...` | Covers the touched package set without scanning the whole repo |
+| Editing shared abstractions, exported APIs, or cross-package flows | `go tool --modfile=golangci-lint.mod golangci-lint run ./...` | Catches fallout across package boundaries |
+| Finishing a Go task and ready to report done | `go tool --modfile=golangci-lint.mod golangci-lint run ./...` | Final repo-wide verification before handoff |
 | Fixing lint findings after the first pass | Re-run the same scope first, then widen to `./...` if the change spread | Confirms the fix and catches secondary fallout |
 
 ## Simple Decision Tree
@@ -65,16 +65,16 @@ metadata:
 
 ```bash
 # Full repository lint
-go tool -modfile=golangci-lint.mod golangci-lint run ./...
+go tool --modfile=golangci-lint.mod golangci-lint run ./...
 
 # Lint one package under internal/
-go tool -modfile=golangci-lint.mod golangci-lint run ./internal/query/...
+go tool --modfile=golangci-lint.mod golangci-lint run ./internal/query/...
 
 # Lint multiple known packages
-go tool -modfile=golangci-lint.mod golangci-lint run ./internal/query/... ./internal/source/...
+go tool --modfile=golangci-lint.mod golangci-lint run ./internal/query/... ./internal/source/...
 
 # Lint the CLI entrypoint package
-go tool -modfile=golangci-lint.mod golangci-lint run ./cmd/dlexa/...
+go tool --modfile=golangci-lint.mod golangci-lint run ./cmd/dlexa/...
 ```
 
 ## Operational Workflow
