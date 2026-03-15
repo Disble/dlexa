@@ -9,6 +9,15 @@ import (
 	"github.com/Disble/dlexa/internal/parse"
 )
 
+const (
+	dpdDictionary    = "Diccionario panhispánico de dudas"
+	dpdEdition       = "2.ª edición"
+	dpdNormalizeErr  = "Normalize() error = %v"
+	dpdDespues       = "Después"
+	dpdTildeURL      = "https://www.rae.es/dpd/tilde"
+	dpdConTilde      = "Con tilde"
+)
+
 func normalizeSingleParagraph(t *testing.T, raw string) string {
 	t.Helper()
 	return normalizeParagraphMarkdown(raw)
@@ -17,8 +26,8 @@ func normalizeSingleParagraph(t *testing.T, raw string) string {
 func TestDPDNormalizerBuildsMarkdownReadyArticle(t *testing.T) {
 	normalizer := NewDPDNormalizer()
 	result := parse.Result{Articles: []parse.ParsedArticle{{
-		Dictionary:   "Diccionario panhispánico de dudas",
-		Edition:      "2.ª edición",
+		Dictionary:   dpdDictionary,
+		Edition:      dpdEdition,
 		EntryID:      "bien",
 		Lemma:        "bien",
 		CanonicalURL: "https://www.rae.es/dpd/bien",
@@ -31,7 +40,7 @@ func TestDPDNormalizerBuildsMarkdownReadyArticle(t *testing.T) {
 
 	entries, warnings, err := normalizer.Normalize(context.Background(), model.SourceDescriptor{Name: "dpd"}, result)
 	if err != nil {
-		t.Fatalf("Normalize() error = %v", err)
+		t.Fatalf(dpdNormalizeErr, err)
 	}
 	if len(warnings) == 0 || warnings[0].Code != "dpd_access_profile" {
 		t.Fatalf("warnings = %#v, want access profile warning", warnings)
@@ -67,7 +76,7 @@ func TestDPDNormalizerPreservesMixedBlockOrderingAndParagraphProjection(t *testi
 		Blocks: []parse.ParsedBlock{
 			{Kind: parse.ParsedBlockKindParagraph, Paragraph: &parse.ParsedParagraph{HTML: "Antes"}},
 			{Kind: parse.ParsedBlockKindTable, Table: &parse.ParsedTable{Headers: []parse.ParsedTableRow{{Cells: []parse.ParsedTableCell{{HTML: "A"}, {HTML: "B"}}}}, Rows: []parse.ParsedTableRow{{Cells: []parse.ParsedTableCell{{HTML: "1"}, {HTML: "2"}}}}}},
-			{Kind: parse.ParsedBlockKindParagraph, Paragraph: &parse.ParsedParagraph{HTML: "Después"}},
+			{Kind: parse.ParsedBlockKindParagraph, Paragraph: &parse.ParsedParagraph{HTML: dpdDespues}},
 		},
 	}})
 
@@ -88,13 +97,13 @@ func TestDPDNormalizerPreservesMixedBlockOrderingAndParagraphProjection(t *testi
 
 func TestDPDNormalizerBuildsDistinctIDsForDuplicateLemmas(t *testing.T) {
 	result := parse.Result{Articles: []parse.ParsedArticle{
-		{Dictionary: "Diccionario panhispánico de dudas", Edition: "2.ª edición", EntryID: "tilde", Lemma: "tilde", CanonicalURL: "https://www.rae.es/dpd/tilde", Sections: []parse.ParsedSection{{Label: "1.", Blocks: []parse.ParsedBlock{{Kind: parse.ParsedBlockKindParagraph, Paragraph: &parse.ParsedParagraph{HTML: "Uno"}}}}}},
-		{Dictionary: "Diccionario panhispánico de dudas", Edition: "2.ª edición", EntryID: "tilde2", Lemma: "tilde", CanonicalURL: "https://www.rae.es/dpd/tilde", Sections: []parse.ParsedSection{{Label: "1.", Blocks: []parse.ParsedBlock{{Kind: parse.ParsedBlockKindParagraph, Paragraph: &parse.ParsedParagraph{HTML: "Dos"}}}}}},
+		{Dictionary: dpdDictionary, Edition: dpdEdition, EntryID: "tilde", Lemma: "tilde", CanonicalURL: dpdTildeURL, Sections: []parse.ParsedSection{{Label: "1.", Blocks: []parse.ParsedBlock{{Kind: parse.ParsedBlockKindParagraph, Paragraph: &parse.ParsedParagraph{HTML: "Uno"}}}}}},
+		{Dictionary: dpdDictionary, Edition: dpdEdition, EntryID: "tilde2", Lemma: "tilde", CanonicalURL: dpdTildeURL, Sections: []parse.ParsedSection{{Label: "1.", Blocks: []parse.ParsedBlock{{Kind: parse.ParsedBlockKindParagraph, Paragraph: &parse.ParsedParagraph{HTML: "Dos"}}}}}},
 	}}
 
 	entries, _, err := NewDPDNormalizer().Normalize(context.Background(), model.SourceDescriptor{Name: "dpd"}, result)
 	if err != nil {
-		t.Fatalf("Normalize() error = %v", err)
+		t.Fatalf(dpdNormalizeErr, err)
 	}
 	if len(entries) != 2 {
 		t.Fatalf("entries = %d, want 2", len(entries))
@@ -109,27 +118,27 @@ func TestDPDNormalizerBuildsDistinctIDsForDuplicateLemmas(t *testing.T) {
 
 func TestDPDNormalizerCoheresMixedBlocksIntoFallbackContent(t *testing.T) {
 	result := parse.Result{Articles: []parse.ParsedArticle{{
-		Dictionary:   "Diccionario panhispánico de dudas",
-		Edition:      "2.ª edición",
+		Dictionary:   dpdDictionary,
+		Edition:      dpdEdition,
 		EntryID:      "tilde",
 		Lemma:        "tilde",
-		CanonicalURL: "https://www.rae.es/dpd/tilde",
+		CanonicalURL: dpdTildeURL,
 		Sections: []parse.ParsedSection{{
 			Label: "1.",
 			Blocks: []parse.ParsedBlock{
 				{Kind: parse.ParsedBlockKindParagraph, Paragraph: &parse.ParsedParagraph{HTML: "Antes"}},
-				{Kind: parse.ParsedBlockKindTable, Table: &parse.ParsedTable{Headers: []parse.ParsedTableRow{{Cells: []parse.ParsedTableCell{{HTML: "Con tilde"}, {HTML: "Sin tilde"}}}}, Rows: []parse.ParsedTableRow{{Cells: []parse.ParsedTableCell{{HTML: "solo"}, {HTML: "solo"}}}}}},
-				{Kind: parse.ParsedBlockKindParagraph, Paragraph: &parse.ParsedParagraph{HTML: "Después"}},
+				{Kind: parse.ParsedBlockKindTable, Table: &parse.ParsedTable{Headers: []parse.ParsedTableRow{{Cells: []parse.ParsedTableCell{{HTML: dpdConTilde}, {HTML: "Sin tilde"}}}}, Rows: []parse.ParsedTableRow{{Cells: []parse.ParsedTableCell{{HTML: "solo"}, {HTML: "solo"}}}}}},
+				{Kind: parse.ParsedBlockKindParagraph, Paragraph: &parse.ParsedParagraph{HTML: dpdDespues}},
 			},
 		}},
 	}}}
 
 	entries, _, err := NewDPDNormalizer().Normalize(context.Background(), model.SourceDescriptor{Name: "dpd"}, result)
 	if err != nil {
-		t.Fatalf("Normalize() error = %v", err)
+		t.Fatalf(dpdNormalizeErr, err)
 	}
 	text := entries[0].Content
-	for _, want := range []string{"1.", "Antes", "| Con tilde | Sin tilde |", "| solo      | solo      |", "Después"} {
+	for _, want := range []string{"1.", "Antes", "| Con tilde | Sin tilde |", "| solo      | solo      |", dpdDespues} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("content missing %q\n%s", want, text)
 		}
@@ -159,7 +168,7 @@ func TestDPDNormalizerKeepsTableCellInlineMarkdownConsistent(t *testing.T) {
 func TestDPDNormalizerPreservesTableSpanMetadata(t *testing.T) {
 	table := normalizeTable(parse.ParsedTable{
 		Headers: []parse.ParsedTableRow{{Cells: []parse.ParsedTableCell{{HTML: "Título", ColSpan: 4}}}},
-		Rows:    []parse.ParsedTableRow{{Cells: []parse.ParsedTableCell{{HTML: "Con tilde", RowSpan: 2}, {HTML: "Caso"}, {HTML: "Ejemplo"}}}},
+		Rows:    []parse.ParsedTableRow{{Cells: []parse.ParsedTableCell{{HTML: dpdConTilde, RowSpan: 2}, {HTML: "Caso"}, {HTML: "Ejemplo"}}}},
 	})
 
 	if got := table.Headers[0].Cells[0].ColSpan; got != 4 {
@@ -172,23 +181,23 @@ func TestDPDNormalizerPreservesTableSpanMetadata(t *testing.T) {
 
 func TestDPDNormalizerUsesHTMLFallbackForComplexTablesInContentProjection(t *testing.T) {
 	result := parse.Result{Articles: []parse.ParsedArticle{{
-		Dictionary:   "Diccionario panhispánico de dudas",
-		Edition:      "2.ª edición",
+		Dictionary:   dpdDictionary,
+		Edition:      dpdEdition,
 		EntryID:      "tilde",
 		Lemma:        "tilde",
-		CanonicalURL: "https://www.rae.es/dpd/tilde",
+		CanonicalURL: dpdTildeURL,
 		Sections: []parse.ParsedSection{{
 			Label: "3.2.1",
 			Blocks: []parse.ParsedBlock{{Kind: parse.ParsedBlockKindTable, Table: &parse.ParsedTable{
 				Headers: []parse.ParsedTableRow{{Cells: []parse.ParsedTableCell{{HTML: `<em>qué</em> / que`, ColSpan: 4, Inlines: []model.Inline{{Kind: model.InlineKindEmphasis, Text: "qué"}, {Kind: model.InlineKindText, Text: " / que"}}}}}},
-				Rows:    []parse.ParsedTableRow{{Cells: []parse.ParsedTableCell{{HTML: "Con tilde", RowSpan: 2}, {HTML: "Caso"}, {HTML: "Ejemplo"}}}},
+				Rows:    []parse.ParsedTableRow{{Cells: []parse.ParsedTableCell{{HTML: dpdConTilde, RowSpan: 2}, {HTML: "Caso"}, {HTML: "Ejemplo"}}}},
 			}}},
 		}},
 	}}}
 
 	entries, _, err := NewDPDNormalizer().Normalize(context.Background(), model.SourceDescriptor{Name: "dpd"}, result)
 	if err != nil {
-		t.Fatalf("Normalize() error = %v", err)
+		t.Fatalf(dpdNormalizeErr, err)
 	}
 	text := entries[0].Content
 	for _, want := range []string{"<table>", `<th colspan="4"><em>qué</em> / que</th>`, `<td rowspan="2">Con tilde</td>`} {
@@ -339,8 +348,8 @@ func TestDPDNormalizerKeepsIntegratedHeadingSemantics(t *testing.T) {
 
 func TestDPDNormalizerSeparatesCitationFieldsFromProse(t *testing.T) {
 	citation := normalizeCitation(parse.ParsedArticle{
-		Dictionary: "Diccionario panhispánico de dudas",
-		Edition:    "2.ª edición",
+		Dictionary: dpdDictionary,
+		Edition:    dpdEdition,
 		Citation:   parse.ParsedCitation{Text: "Real Academia Española y Asociación de Academias de la Lengua Española: Diccionario panhispánico de dudas (DPD) [en línea], https://www.rae.es/dpd/bien, 2.ª edición. [Consulta: 10/03/2026]."},
 	})
 
