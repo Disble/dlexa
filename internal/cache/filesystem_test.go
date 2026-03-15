@@ -402,50 +402,6 @@ func TestFilesystemStoreEnvelopeFormat(t *testing.T) {
 	}
 }
 
-func runFilesystemWriter(t *testing.T, store *FilesystemStore, id, iterations int, wg *sync.WaitGroup) {
-	t.Helper()
-	defer wg.Done()
-	ctx := context.Background()
-	for i := 0; i < iterations; i++ {
-		sharedResult := model.LookupResult{
-			Request: model.LookupRequest{Query: "shared"},
-			Entries: []model.Entry{{ID: fmt.Sprintf("writer-%d-iter-%d", id, i)}},
-		}
-		if err := store.Set(ctx, keyShared, sharedResult); err != nil {
-			t.Errorf("Set(shared) error = %v", err)
-			return
-		}
-
-		uniqueKey := fmt.Sprintf("key-%d-%d", id, i)
-		uniqueResult := model.LookupResult{
-			Request: model.LookupRequest{Query: uniqueKey},
-			Entries: []model.Entry{{ID: uniqueKey}},
-		}
-		if err := store.Set(ctx, uniqueKey, uniqueResult); err != nil {
-			t.Errorf("Set(unique) error = %v", err)
-			return
-		}
-	}
-}
-
-func runFilesystemReader(t *testing.T, store *FilesystemStore, id, iterations, writers int, wg *sync.WaitGroup) {
-	t.Helper()
-	defer wg.Done()
-	ctx := context.Background()
-	for i := 0; i < iterations; i++ {
-		if _, _, err := store.Get(ctx, keyShared); err != nil {
-			t.Errorf("Get(shared) error = %v", err)
-			return
-		}
-
-		otherKey := fmt.Sprintf("key-%d-%d", id%writers, i)
-		if _, _, err := store.Get(ctx, otherKey); err != nil {
-			t.Errorf("Get(other) error = %v", err)
-			return
-		}
-	}
-}
-
 // Task 1.2: Concurrent read/write race-detector test.
 func TestFilesystemStoreConcurrentReadWrite(t *testing.T) {
 	dir := t.TempDir()
@@ -461,12 +417,12 @@ func TestFilesystemStoreConcurrentReadWrite(t *testing.T) {
 
 	// Writer goroutines: each writes to shared and unique keys.
 	for w := 0; w < writers; w++ {
-		go runFilesystemWriter(t, store, w, iterations, &wg)
+		go runConcurrentWriter(t, store, w, iterations, &wg)
 	}
 
 	// Reader goroutines: each reads from shared key and random unique keys.
 	for r := 0; r < readers; r++ {
-		go runFilesystemReader(t, store, r, iterations, writers, &wg)
+		go runConcurrentReader(t, store, r, iterations, writers, &wg)
 	}
 
 	wg.Wait()
