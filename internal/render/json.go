@@ -7,22 +7,28 @@ import (
 	"strings"
 
 	"github.com/gentleman-programming/dlexa/internal/model"
+	"github.com/gentleman-programming/dlexa/internal/renderutil"
 )
 
+// JSONRenderer renders lookup results as indented JSON.
 type JSONRenderer struct{}
 
+// NewJSONRenderer creates a JSONRenderer.
 func NewJSONRenderer() *JSONRenderer {
 	return &JSONRenderer{}
 }
 
+// Format returns "json".
 func (r *JSONRenderer) Format() string {
 	return "json"
 }
 
+// Render serializes the result as JSON.
 func (r *JSONRenderer) Render(ctx context.Context, result model.LookupResult) ([]byte, error) {
 	return r.RenderResult(ctx, result)
 }
 
+// RenderResult serializes the result as JSON, projecting article content when needed.
 func (r *JSONRenderer) RenderResult(ctx context.Context, result model.LookupResult) ([]byte, error) {
 	_ = ctx
 	for idx := range result.Entries {
@@ -79,7 +85,7 @@ func renderJSONSectionProjection(section model.Section) string {
 			}
 		case model.ArticleBlockKindTable:
 			if block.Table != nil {
-				parts = append(parts, renderTableMarkdown(*block.Table, ""))
+				parts = append(parts, renderutil.RenderTableMarkdown(*block.Table, ""))
 			}
 		}
 	}

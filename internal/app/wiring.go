@@ -1,6 +1,9 @@
 package app
 
 import (
+	"os"
+	"path/filepath"
+
 	"github.com/gentleman-programming/dlexa/internal/cache"
 	"github.com/gentleman-programming/dlexa/internal/config"
 	"github.com/gentleman-programming/dlexa/internal/doctor"
@@ -20,7 +23,17 @@ func New(cli platform.CLI) *App {
 
 	loader := config.NewStaticLoader(runtimeConfig)
 	doctorService := doctor.NewNoopDoctor()
-	cacheStore := cache.NewMemoryStore()
+
+	var cacheStore cache.Store
+	cacheDir, err := os.UserCacheDir()
+	if err != nil {
+		cacheStore = cache.NewMemoryStore() // fallback: no persistent cache
+	} else {
+		cacheStore = cache.NewFilesystemStore(
+			filepath.Join(cacheDir, "dlexa"),
+			runtimeConfig.CacheTTL,
+		)
+	}
 
 	dpdSource := source.NewPipelineSource(
 		model.SourceDescriptor{

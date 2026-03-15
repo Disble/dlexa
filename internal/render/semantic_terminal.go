@@ -4,34 +4,42 @@ import (
 	"strings"
 
 	"github.com/gentleman-programming/dlexa/internal/model"
+	"github.com/gentleman-programming/dlexa/internal/renderutil"
 )
 
+// TerminalBlockKind classifies a terminal output block.
 type TerminalBlockKind string
 
+// Terminal block kinds.
 const (
 	TerminalBlockKindProse   TerminalBlockKind = "prose"
 	TerminalBlockKindExample TerminalBlockKind = "example"
 	TerminalBlockKindTable   TerminalBlockKind = "table"
 )
 
+// TerminalRunRole classifies the semantic role of a text run.
 type TerminalRunRole string
 
+// Terminal run roles.
 const (
 	TerminalRunRoleProse     TerminalRunRole = "prose"
 	TerminalRunRoleEmphasis  TerminalRunRole = "emphasis"
 	TerminalRunRoleReference TerminalRunRole = "reference"
 )
 
+// TerminalParagraph is a sequence of terminal blocks produced from a model paragraph.
 type TerminalParagraph struct {
 	Blocks []TerminalBlock
 }
 
+// TerminalBlock is a single output block with a kind, optional runs, and optional lines.
 type TerminalBlock struct {
 	Kind  TerminalBlockKind
 	Runs  []TerminalRun
 	Lines []string
 }
 
+// TerminalRun is a span of text with a semantic role and optional link target.
 type TerminalRun struct {
 	Role   TerminalRunRole
 	Text   string
@@ -72,7 +80,7 @@ func planTerminalBlocks(blocks []model.Block) []TerminalBlock {
 			if block.Table == nil {
 				continue
 			}
-			text := renderTableMarkdown(*block.Table, "")
+			text := renderutil.RenderTableMarkdown(*block.Table, "")
 			if strings.TrimSpace(text) == "" {
 				continue
 			}

@@ -42,12 +42,15 @@ var dpdArticleClasses = map[string]bool{
 	"tem": true,
 }
 
+// DPDArticleParser extracts structured articles from DPD HTML pages.
 type DPDArticleParser struct{}
 
+// NewDPDArticleParser returns a ready-to-use DPD HTML parser.
 func NewDPDArticleParser() *DPDArticleParser {
 	return &DPDArticleParser{}
 }
 
+// Parse extracts articles from a fetched DPD document, returning structured results and warnings.
 func (p *DPDArticleParser) Parse(ctx context.Context, descriptor model.SourceDescriptor, document fetch.Document) (Result, []model.Warning, error) {
 	_ = ctx
 	body := string(document.Body)
@@ -299,8 +302,14 @@ func extractAttribute(re *regexp.Regexp, attrs string) string {
 	return html.UnescapeString(strings.TrimSpace(match[1]))
 }
 
+const challengePageSnippetLimit = 1024
+
 func isChallengePage(body string) bool {
-	lower := strings.ToLower(body)
+	snippet := body
+	if len(snippet) > challengePageSnippetLimit {
+		snippet = snippet[:challengePageSnippetLimit]
+	}
+	lower := strings.ToLower(snippet)
 	return strings.Contains(lower, "cloudflare") && strings.Contains(lower, "challenge")
 }
 
@@ -534,53 +543,86 @@ func normalizeInlinePlainText(raw string) string {
 	return cleanText(reTags.ReplaceAllString(normalized, ""))
 }
 
+var semanticSpanAllowed = map[string]bool{
+	"<dfn>":                       true,
+	"</dfn>":                      true,
+	"<em>":                        true,
+	"</em>":                       true,
+	"<i>":                         true,
+	"</i>":                        true,
+	"<span class=\"ejemplo\">":    true,
+	"<span class=\"ment\">":       true,
+	"<span class=\"bib\">":        true,
+	"<span class=\"vers\">":       true,
+	"<span class=\"yy\">":         true,
+	"<span class=\"bolaspa\">":    true,
+	"<span class=\"nn\">":         true,
+	"<span class=\"nc\">":         true,
+	"<span class=\"pattern\">":    true,
+	"<span class=\"correction\">": true,
+	"</span>":                     true,
+}
+
+func isSemanticSkipPrefix(lower string) bool {
+	return strings.HasPrefix(lower, `<a `) || strings.HasPrefix(lower, `</a`) ||
+		strings.HasPrefix(lower, `<table`) || strings.HasPrefix(lower, `</table`) ||
+		strings.HasPrefix(lower, `<tr`) || strings.HasPrefix(lower, `</tr`) ||
+		strings.HasPrefix(lower, `<td`) || strings.HasPrefix(lower, `</td`) ||
+		strings.HasPrefix(lower, `<th`) || strings.HasPrefix(lower, `</th`) ||
+		strings.HasPrefix(lower, `<thead`) || strings.HasPrefix(lower, `</thead`) ||
+		strings.HasPrefix(lower, `<tbody`) || strings.HasPrefix(lower, `</tbody`)
+}
+
+func isAllowedTag(lower string) bool {
+	return semanticSpanAllowed[lower] ||
+		strings.HasPrefix(lower, `<span class="cita"`) ||
+		strings.HasPrefix(lower, `<span class="cbil"`)
+}
+
 func preserveSemanticSpans(raw string) string {
-	parts := reTags.FindAllString(raw, -1)
-	if len(parts) == 0 {
+	// Fast path: no tags at all.
+	if !strings.Contains(raw, "<") {
 		return raw
 	}
 
-	allowed := map[string]bool{
-		"<dfn>":                       true,
-		"</dfn>":                      true,
-		"<em>":                        true,
-		"</em>":                       true,
-		"<i>":                         true,
-		"</i>":                        true,
-		"<span class=\"ejemplo\">":    true,
-		"<span class=\"ment\">":       true,
-		"<span class=\"bib\">":        true,
-		"<span class=\"vers\">":       true,
-		"<span class=\"yy\">":         true,
-		"<span class=\"bolaspa\">":    true,
-		"<span class=\"nn\">":         true,
-		"<span class=\"nc\">":         true,
-		"<span class=\"pattern\">":    true,
-		"<span class=\"correction\">": true,
-		"</span>":                     true,
-	}
+	var builder strings.Builder
+	builder.Grow(len(raw))
+	pos := 0
 
-	for _, tag := range parts {
+	for pos < len(raw) {
+		nextTag := strings.Index(raw[pos:], "<")
+		if nextTag == -1 {
+			builder.WriteString(raw[pos:])
+			break
+		}
+		// Copy text before the tag.
+		builder.WriteString(raw[pos : pos+nextTag])
+		tagStart := pos + nextTag
+
+		endTag := strings.Index(raw[tagStart:], ">")
+		if endTag == -1 {
+			// Malformed: no closing '>'. Copy the rest as-is.
+			builder.WriteString(raw[tagStart:])
+			break
+		}
+		tag := raw[tagStart : tagStart+endTag+1]
 		lower := strings.ToLower(tag)
-		if strings.HasPrefix(lower, `<a `) || strings.HasPrefix(lower, `</a`) {
-			continue
+
+		if isSemanticSkipPrefix(lower) || isAllowedTag(lower) {
+			builder.WriteString(tag)
 		}
-		if strings.HasPrefix(lower, `<table`) || strings.HasPrefix(lower, `</table`) || strings.HasPrefix(lower, `<tr`) || strings.HasPrefix(lower, `</tr`) || strings.HasPrefix(lower, `<td`) || strings.HasPrefix(lower, `</td`) || strings.HasPrefix(lower, `<th`) || strings.HasPrefix(lower, `</th`) || strings.HasPrefix(lower, `<thead`) || strings.HasPrefix(lower, `</thead`) || strings.HasPrefix(lower, `<tbody`) || strings.HasPrefix(lower, `</tbody`) {
-			continue
-		}
-		if allowed[lower] || strings.HasPrefix(lower, `<span class="cita"`) || strings.HasPrefix(lower, `<span class="cbil"`) {
-			continue
-		}
-		raw = strings.ReplaceAll(raw, tag, "")
+		// else: drop the tag (disallowed)
+
+		pos = tagStart + endTag + 1
 	}
 
-	return raw
+	return builder.String()
 }
 
 func cleanText(raw string) string {
 	text := html.UnescapeString(raw)
 	text = strings.ReplaceAll(text, "\u200d", "")
-	text = strings.ReplaceAll(text, "⊗", "⊗")
+	text = strings.ReplaceAll(text, "\u2297", "\u2297") //nolint:gocritic // dupArg: intentional normalization of ⊗ variants from HTML entities
 	text = strings.Join(strings.Fields(text), " ")
 	return strings.TrimSpace(text)
 }
@@ -588,7 +630,7 @@ func cleanText(raw string) string {
 func cleanInlineSegment(raw string) string {
 	text := html.UnescapeString(reTags.ReplaceAllString(raw, ""))
 	text = strings.ReplaceAll(text, "\u200d", "")
-	text = strings.ReplaceAll(text, "⊗", "⊗")
+	text = strings.ReplaceAll(text, "\u2297", "\u2297") //nolint:gocritic // dupArg: intentional normalization of ⊗ variants from HTML entities
 	leading := strings.HasPrefix(text, " ") || strings.HasPrefix(text, "\n") || strings.HasPrefix(text, "\t")
 	trailing := strings.HasSuffix(text, " ") || strings.HasSuffix(text, "\n") || strings.HasSuffix(text, "\t")
 	text = strings.Join(strings.Fields(text), " ")
@@ -599,7 +641,7 @@ func cleanInlineSegment(raw string) string {
 		text = " " + text
 	}
 	if trailing {
-		text = text + " "
+		text += " "
 	}
 	return text
 }

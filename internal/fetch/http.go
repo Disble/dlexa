@@ -14,10 +14,12 @@ import (
 
 const challengeBodySnippetLimit = 1024
 
+// HTTPClient abstracts the HTTP transport for testability.
 type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
+// DPDFetcher retrieves dictionary entries from the DPD website.
 type DPDFetcher struct {
 	BaseURL   string
 	UserAgent string
@@ -25,6 +27,7 @@ type DPDFetcher struct {
 	now       func() time.Time
 }
 
+// NewDPDFetcher creates a DPDFetcher with the given base URL, timeout, and user agent.
 func NewDPDFetcher(baseURL string, timeout time.Duration, userAgent string) *DPDFetcher {
 	if timeout <= 0 {
 		timeout = 10 * time.Second
@@ -42,6 +45,7 @@ func NewDPDFetcher(baseURL string, timeout time.Duration, userAgent string) *DPD
 	}
 }
 
+// Fetch retrieves a DPD document for the given request query.
 func (f *DPDFetcher) Fetch(ctx context.Context, request Request) (Document, error) {
 	if f == nil {
 		return Document{}, model.NewProblemError(model.Problem{
@@ -102,7 +106,7 @@ func (f *DPDFetcher) Fetch(ctx context.Context, request Request) (Document, erro
 			Severity: model.ProblemSeverityError,
 		}, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -161,11 +165,11 @@ func (f *DPDFetcher) Fetch(ctx context.Context, request Request) (Document, erro
 }
 
 func isChallengeBody(body []byte) bool {
-	snippet := strings.ToLower(string(body))
-	if len(snippet) > challengeBodySnippetLimit {
-		snippet = snippet[:challengeBodySnippetLimit]
+	limit := len(body)
+	if limit > challengeBodySnippetLimit {
+		limit = challengeBodySnippetLimit
 	}
-
+	snippet := strings.ToLower(string(body[:limit]))
 	return strings.Contains(snippet, "cloudflare") && strings.Contains(snippet, "challenge")
 }
 

@@ -61,7 +61,7 @@ func TestDPDFetcherClassifiesTransportOutcomesAndCapturesDocuments(t *testing.T)
 		},
 		{
 			name: "timeout failure becomes fetch problem",
-			client: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			client: roundTripFunc(func(_ *http.Request) (*http.Response, error) {
 				return nil, context.DeadlineExceeded
 			}),
 			wantProblem: &model.Problem{
@@ -76,7 +76,7 @@ func TestDPDFetcherClassifiesTransportOutcomesAndCapturesDocuments(t *testing.T)
 		},
 		{
 			name: "network failure becomes fetch problem",
-			client: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			client: roundTripFunc(func(_ *http.Request) (*http.Response, error) {
 				return nil, errors.New("dial tcp connection refused")
 			}),
 			wantProblem: &model.Problem{
@@ -181,6 +181,100 @@ func TestDPDFetcherClassifiesTransportOutcomesAndCapturesDocuments(t *testing.T)
 
 			if !reflect.DeepEqual(document, tt.wantDocument) {
 				t.Fatalf("Fetch() document = %#v, want %#v", document, tt.wantDocument)
+			}
+		})
+	}
+}
+
+func TestIsChallengeBodyEdgeCases(t *testing.T) {
+	// Helpers
+	padBytes := func(prefix []byte, total int) []byte {
+		body := make([]byte, total)
+		copy(body, prefix)
+		for i := len(prefix); i < total; i++ {
+			body[i] = 'x'
+		}
+		return body
+	}
+
+	challengeMarkers := []byte("Cloudflare challenge page detected")
+	nonChallengeContent := []byte("normal html content without any markers")
+
+	tests := []struct {
+		name string
+		body []byte
+		want bool
+	}{
+		{
+			name: "empty body",
+			body: []byte{},
+			want: false,
+		},
+		{
+			name: "short body with challenge markers",
+			body: []byte("<html>Cloudflare challenge</html>"),
+			want: true,
+		},
+		{
+			name: "short body without challenge markers",
+			body: nonChallengeContent,
+			want: false,
+		},
+		{
+			name: "body exactly 1024 bytes with challenge markers at start",
+			body: padBytes(challengeMarkers, 1024),
+			want: true,
+		},
+		{
+			name: "large body 500KB with challenge markers in first 1024 bytes",
+			body: padBytes(challengeMarkers, 500*1024),
+			want: true,
+		},
+		{
+			name: "large body 500KB with challenge markers AFTER 1024 bytes",
+			body: func() []byte {
+				body := make([]byte, 500*1024)
+				for i := 0; i < len(body); i++ {
+					body[i] = 'x'
+				}
+				// Place markers well beyond 1024 bytes
+				copy(body[2000:], challengeMarkers)
+				return body
+			}(),
+			want: false, // After truncation fix, markers beyond 1024 are not seen
+		},
+		{
+			name: "body with only cloudflare no challenge",
+			body: []byte("Cloudflare is a CDN provider"),
+			want: false,
+		},
+		{
+			name: "body with only challenge no cloudflare",
+			body: []byte("This is a challenge page"),
+			want: false,
+		},
+		{
+			name: "body with markers in mixed case",
+			body: []byte("<html>CLOUDFLARE CHALLENGE</html>"),
+			want: true,
+		},
+		{
+			name: "non-ASCII UTF-8 body without markers",
+			body: []byte("contenido en español con acentos: áéíóú ñ ¿¡ «»"),
+			want: false,
+		},
+		{
+			name: "non-ASCII UTF-8 body with markers among unicode",
+			body: []byte("página de Cloudflare — verificación challenge activa «»"),
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isChallengeBody(tt.body)
+			if got != tt.want {
+				t.Fatalf("isChallengeBody() = %v, want %v", got, tt.want)
 			}
 		})
 	}

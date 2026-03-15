@@ -17,7 +17,7 @@ import (
 
 func parseNormalizeDPD(t *testing.T, term string) []model.Entry {
 	t.Helper()
-	body, err := os.ReadFile(filepath.Join("..", "..", "testdata", "dpd", term+".html"))
+	body, err := os.ReadFile(filepath.Join("..", "..", "testdata", "dpd", term+".html")) //nolint:gosec // G304: test fixture path from controlled input
 	if err != nil {
 		t.Fatalf("ReadFile() error = %v", err)
 	}

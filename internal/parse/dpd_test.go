@@ -13,7 +13,7 @@ import (
 
 func loadDPDFixtureHTML(t *testing.T, name string) []byte {
 	t.Helper()
-	body, err := os.ReadFile(filepath.Join("..", "..", "testdata", "dpd", name+".html"))
+	body, err := os.ReadFile(filepath.Join("..", "..", "testdata", "dpd", name+".html")) //nolint:gosec // G304: test fixture, path not from user input
 	if err != nil {
 		t.Fatalf("ReadFile() error = %v", err)
 	}
@@ -382,6 +382,173 @@ func TestDPDArticleParserIsolatesCitationFromBodyText(t *testing.T) {
 				t.Fatalf("section paragraph leaked citation prose: %q", paragraph.HTML)
 			}
 		}
+	}
+}
+
+func TestPreserveSemanticSpansEdgeCases(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "empty input",
+			input: "",
+			want:  "",
+		},
+		{
+			name:  "input with no HTML tags",
+			input: "plain text without any tags at all",
+			want:  "plain text without any tags at all",
+		},
+		{
+			name:  "only allowed tags preserved",
+			input: `<dfn>definition</dfn> and <em>emphasis</em> and <i>italic</i>`,
+			want:  `<dfn>definition</dfn> and <em>emphasis</em> and <i>italic</i>`,
+		},
+		{
+			name:  "allowed span classes preserved",
+			input: `<span class="ejemplo">example</span> <span class="ment">mention</span>`,
+			want:  `<span class="ejemplo">example</span> <span class="ment">mention</span>`,
+		},
+		{
+			name:  "disallowed tags removed text preserved",
+			input: `<div>content inside div</div> <p>paragraph</p>`,
+			want:  `content inside div paragraph`,
+		},
+		{
+			name:  "mixed allowed and disallowed tags",
+			input: `<div>before</div> <em>emphasized</em> <span class="unknown">removed</span> <dfn>kept</dfn>`,
+			want:  `before <em>emphasized</em> removed</span> <dfn>kept</dfn>`,
+		},
+		{
+			name:  "nested tags some allowed some not",
+			input: `<div><em>nested emphasis</em></div>`,
+			want:  `<em>nested emphasis</em>`,
+		},
+		{
+			name:  "anchor tags preserved as skip prefix",
+			input: `text <a href="http://example.com">link</a> more`,
+			want:  `text <a href="http://example.com">link</a> more`,
+		},
+		{
+			name:  "table tags preserved as skip prefix",
+			input: `<table><tr><td>cell</td></tr></table>`,
+			want:  `<table><tr><td>cell</td></tr></table>`,
+		},
+		{
+			name:  "malformed tag no closing angle bracket preserved as-is",
+			input: `text <broken tag content`,
+			want:  `text <broken tag content`,
+		},
+		{
+			name:  "tags with attributes embf stripped random stripped closing spans kept",
+			input: `<span class="embf">bold</span> <span class="random-class">gone</span>`,
+			want:  `bold</span> gone</span>`,
+		},
+		{
+			name:  "cita and cbil span prefixes preserved",
+			input: `<span class="cita" n="c">citation</span> <span class="cbil" title="mx">mx</span>`,
+			want:  `<span class="cita" n="c">citation</span> <span class="cbil" title="mx">mx</span>`,
+		},
+		{
+			name:  "closing span always preserved",
+			input: `<span class="ejemplo">text</span>`,
+			want:  `<span class="ejemplo">text</span>`,
+		},
+		{
+			name:  "large input with many tags",
+			input: strings.Repeat(`<div>text</div> <em>em</em> `, 100),
+			want:  strings.Repeat(`text <em>em</em> `, 100),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := preserveSemanticSpans(tt.input)
+			if got != tt.want {
+				t.Fatalf("preserveSemanticSpans()\n  got:  %q\n  want: %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIsChallengePageEdgeCases(t *testing.T) {
+	padString := func(prefix string, total int) string {
+		if len(prefix) >= total {
+			return prefix[:total]
+		}
+		return prefix + strings.Repeat("x", total-len(prefix))
+	}
+
+	tests := []struct {
+		name string
+		body string
+		want bool
+	}{
+		{
+			name: "empty string",
+			body: "",
+			want: false,
+		},
+		{
+			name: "short content with challenge markers",
+			body: "<html>Cloudflare challenge detected</html>",
+			want: true,
+		},
+		{
+			name: "short content without challenge markers",
+			body: "<html><body>Normal DPD article content</body></html>",
+			want: false,
+		},
+		{
+			name: "challenge markers in first 1024 chars",
+			body: padString("<html>Cloudflare challenge</html>", 500*1024),
+			want: true,
+		},
+		{
+			name: "challenge markers only beyond 1024 chars",
+			body: func() string {
+				body := strings.Repeat("x", 500*1024)
+				// Place markers well beyond 1024 chars
+				return body[:2000] + "Cloudflare challenge" + body[2020:]
+			}(),
+			want: false, // After truncation fix, markers beyond 1024 are not seen
+		},
+		{
+			name: "only cloudflare without challenge",
+			body: "Cloudflare CDN network",
+			want: false,
+		},
+		{
+			name: "only challenge without cloudflare",
+			body: "This is a challenge page",
+			want: false,
+		},
+		{
+			name: "markers in mixed case",
+			body: "CLOUDFLARE CHALLENGE",
+			want: true,
+		},
+		{
+			name: "body exactly 1024 chars with markers",
+			body: padString("Cloudflare challenge", 1024),
+			want: true,
+		},
+		{
+			name: "non-ASCII content without markers",
+			body: "contenido en español: áéíóú ñ ¿¡ «»",
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isChallengePage(tt.body)
+			if got != tt.want {
+				t.Fatalf("isChallengePage() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 
