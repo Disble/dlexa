@@ -1,12 +1,103 @@
 # dlexa
 
+[![Go Version](https://img.shields.io/badge/go-1.22%2B-00ADD8?logo=go)](go.mod)
+[![Status](https://img.shields.io/badge/status-alpha-orange)](#project-status)
+
 `dlexa` is a query-first Go CLI designed as a single binary with explicit architectural boundaries.
 
-## Intent
+## Project Status
 
-The repository starts with a real base for a dictionary/lookup style CLI where the user asks a query and the system orchestrates the rest.
+> ⚠️ **Alpha / Bootstrap**
+>
+> The project is functional and tested as a foundation, but still evolving. Core architecture and lookup flow are in place; external-source behavior and terminal semantics are still being iterated.
 
-Key principles already encoded in the structure:
+## Prerequisites
+
+- Go `1.22+`
+- `git`
+- Optional (contributors): `pre-commit` `4.x`
+
+## Installation
+
+### Build from source (recommended)
+
+```bash
+git clone https://github.com/gentleman-programming/dlexa.git
+cd dlexa
+go build -o dlexa ./cmd/dlexa
+```
+
+### Install with `go install`
+
+```bash
+go install github.com/gentleman-programming/dlexa/cmd/dlexa@latest
+```
+
+## Quick Start
+
+```bash
+# default format: markdown, default source: dpd
+dlexa palabra
+
+# explicit output format
+dlexa --format json palabra
+
+# force source selection
+dlexa --source dpd palabra
+
+# skip cache reads/writes for this request
+dlexa --no-cache palabra
+
+# health and version
+dlexa --doctor
+dlexa --version
+```
+
+## CLI Options
+
+| Flag | Description |
+| --- | --- |
+| `--format` | Output format: `markdown` or `json` |
+| `--source` | Comma-separated source names (for example: `dpd,demo`) |
+| `--no-cache` | Skip cache reads and writes for the request |
+| `--doctor` | Run environment checks |
+| `--version` | Print binary version |
+
+Usage:
+
+```text
+dlexa [--format markdown|json] [--source name1,name2] [--no-cache] <query>
+```
+
+## Development
+
+### Run tests
+
+```bash
+go test ./...
+```
+
+### Run lint (repo-pinned toolchain)
+
+```bash
+go tool -modfile=golangci-lint.mod golangci-lint run ./...
+```
+
+### Pre-commit setup
+
+```bash
+pre-commit install
+pre-commit validate-config
+pre-commit run golangci-lint --all-files
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for onboarding details, tooling requirements, and lint workflow tradeoffs.
+
+## Architecture
+
+The repository starts with a real base for a dictionary/lookup CLI where the user asks a query and the system orchestrates the rest.
+
+Key principles encoded in the structure:
 
 - `cmd` is thin and only boots the application.
 - `internal/app` is the composition root where concrete adapters are wired.
@@ -14,9 +105,9 @@ Key principles already encoded in the structure:
 - `internal/model` holds the shared domain language.
 - `internal/source` composes `fetch -> parse -> normalize` for each source.
 - `internal/render` stays outside the domain so output concerns do not leak inward.
-- `internal/cache` is explicit cache-aside, owned by the query orchestration.
+- `internal/cache` is explicit cache-aside, owned by query orchestration.
 - `internal/fetch` and `internal/parse` are separate on purpose.
-- `internal/version` and `internal/platform` keep the binary concerns isolated.
+- `internal/version` and `internal/platform` isolate binary/runtime concerns.
 
 ## Directory Layout
 
@@ -38,7 +129,7 @@ dlexa/
   internal/version       # build metadata
 ```
 
-## Flow
+## Runtime Flow
 
 1. `cmd/dlexa` creates the platform adapter and calls `app.New(...).Run(...)`.
 2. `internal/app` parses CLI flags, loads runtime config, and builds a `LookupRequest`.
@@ -57,7 +148,7 @@ dlexa/
 
 ## Shared Model
 
-The shared domain language is centered on these types:
+The shared domain language is centered on:
 
 - `LookupRequest`
 - `LookupResult`
@@ -67,44 +158,23 @@ The shared domain language is centered on these types:
 - `Warning`
 - `Problem`
 
-That gives every package a stable vocabulary without coupling the domain to transport or presentation.
+This gives every package a stable vocabulary without coupling domain behavior to transport or presentation.
 
-## Current State
+## Current Limitations
 
-This bootstrap is intentionally minimal but not fake:
+- The project is in alpha and still refining source fidelity and terminal rendering behavior.
+- A full production source ecosystem is not complete yet; active work is tracked in OpenSpec changes.
+- Cache is local (filesystem with in-memory fallback), with no distributed backend.
+- `--doctor` currently reports baseline health checks and is intentionally lightweight.
 
-- the binary wiring exists
-- the packages contain real interfaces and starter implementations
-- the default source runs through `fetch -> parse -> normalize`
-- markdown and json output are both wired
-- cache-aside behavior is explicit in the query service
+## Roadmap
 
-The implementation is still a foundation repo. Real external sources, richer parsing rules, persistence-backed cache, and doctor checks can be added without changing the architectural direction.
+Planning and implementation are tracked in [openspec/changes](openspec/changes).
 
-## Example Usage
+- In progress: [openspec/changes/dpd-live-lookup-parity](openspec/changes/dpd-live-lookup-parity)
+- Archived/completed changes: [openspec/changes/archive](openspec/changes/archive)
 
-```bash
-dlexa --format markdown palabra
-dlexa --format json --source demo cache
-dlexa --doctor
-dlexa --version
-```
-
-## Development Checks
-
-This repository ships a versioned `pre-commit` setup for Go linting.
-
-- Install local hooks once per clone with `pre-commit install`.
-- Run the repo-pinned linter manually with `go tool -modfile=golangci-lint.mod golangci-lint run ./...`.
-- See `CONTRIBUTING.md` for onboarding steps, prerequisites, and hook limitations.
-
-## Architectural Notes
-
-- Query-first means the core use case starts from `LookupRequest`, not from source adapters.
-- Source adapters are replaceable because the query layer only depends on interfaces.
-- Renderers are separate so domain structs remain reusable for other outputs later.
-- The project is prepared for a single binary distribution with runtime-selected behavior instead of multiple executables.
-- `dpd-live-lookup-parity` owns DPD fetch/parse/normalize semantic preservation; `dpd-terminal-semantic-rendering` owns the final stdout contract so authored DPD semantics remain visible at the terminal boundary instead of being replaced by renderer-invented wrappers.
+> Roadmap entries are implementation artifacts and may evolve until verification is complete.
 
 ## DPD Table Rendering Strategy
 
@@ -112,3 +182,7 @@ This repository ships a versioned `pre-commit` setup for Go linting.
 - Simple rectangular tables with exactly one header row and no spanning cells render as pipe-table Markdown so common live previews can render them directly.
 - Complex DPD tables that rely on merged cells or multi-level structure render as HTML tables inside the Markdown payload because standard Markdown tables cannot represent that structure faithfully.
 - This is an intentional fallback: Markdown-first when the structure is representable, HTML when semantic fidelity would otherwise be lost.
+
+## Contributing
+
+Contributions are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md) for setup and workflow.
