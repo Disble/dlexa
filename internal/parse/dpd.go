@@ -136,27 +136,68 @@ func isRelevantArticleEntry(attrs string) bool {
 	return false
 }
 
+// sectionBlockAttrs unpacks a reSectionBlock submatch into tag name, attrs, and inner HTML.
+// Returns ("", "", "") when the match group is empty or the inner HTML is blank.
+func sectionBlockAttrs(match []string) (tag, attrs, innerHTML string) {
+	if match[4] != "" {
+		innerHTML = strings.TrimSpace(match[6])
+		if innerHTML == "" {
+			return "", "", ""
+		}
+		return "table", match[5], innerHTML
+	}
+	innerHTML = strings.TrimSpace(match[3])
+	if innerHTML == "" {
+		return "", "", ""
+	}
+	return "p", match[2], innerHTML
+}
+
+// buildLabeledSection constructs a ParsedSection from a labeled paragraph match.
+func buildLabeledSection(label, cleanedHTML string) ParsedSection {
+	section := ParsedSection{Label: html.UnescapeString(strings.TrimSpace(label))}
+	if title, ok := lexicalTitle(cleanedHTML); ok {
+		section.Title = title
+		return section
+	}
+	paragraph := newParsedParagraph(cleanedHTML)
+	if paragraph.HTML != "" {
+		section.Blocks = []ParsedBlock{{Kind: ParsedBlockKindParagraph, Paragraph: &paragraph}}
+		section.Paragraphs = []ParsedParagraph{paragraph}
+	}
+	return section
+}
+
+// routeSection inserts section into the right slot (nested child or new top-level).
+// Returns false when a nested section is encountered with no parent, which signals a parse failure.
+func routeSection(section ParsedSection, attrs string, parsedSections *[]ParsedSection, currentTop, currentNested **ParsedSection) bool {
+	if strings.Contains(attrs, `n="2l"`) || isNestedLabel(section.Label) {
+		if *currentTop == nil {
+			return false
+		}
+		(*currentTop).Children = append((*currentTop).Children, section)
+		*currentNested = &(*currentTop).Children[len((*currentTop).Children)-1]
+		return true
+	}
+	*parsedSections = append(*parsedSections, section)
+	*currentTop = &(*parsedSections)[len(*parsedSections)-1]
+	*currentNested = nil
+	return true
+}
+
 func parseArticleSections(articleHTML string) []ParsedSection {
 	parsedSections := make([]ParsedSection, 0, 8)
 	var currentTop *ParsedSection
 	var currentNested *ParsedSection
 
 	for _, match := range reSectionBlock.FindAllStringSubmatch(articleHTML, -1) {
-		tag := "p"
-		attrs := match[2]
-		innerHTML := strings.TrimSpace(match[3])
-		if match[4] != "" {
-			tag = "table"
-			attrs = match[5]
-			innerHTML = strings.TrimSpace(match[6])
-		}
+		tag, attrs, innerHTML := sectionBlockAttrs(match)
 		if innerHTML == "" {
 			continue
 		}
 
 		if tag == "table" {
-			block := ParsedBlock{Kind: ParsedBlockKindTable, Table: parseTable(innerHTML)}
-			appendBlock(&currentTop, &currentNested, block)
+			appendBlock(&currentTop, &currentNested, ParsedBlock{Kind: ParsedBlockKindTable, Table: parseTable(innerHTML)})
 			continue
 		}
 
@@ -171,29 +212,10 @@ func parseArticleSections(articleHTML string) []ParsedSection {
 			continue
 		}
 
-		section := ParsedSection{Label: html.UnescapeString(strings.TrimSpace(label))}
-		if title, ok := lexicalTitle(cleanedHTML); ok {
-			section.Title = title
-		} else {
-			paragraph := newParsedParagraph(cleanedHTML)
-			if paragraph.HTML != "" {
-				section.Blocks = []ParsedBlock{{Kind: ParsedBlockKindParagraph, Paragraph: &paragraph}}
-				section.Paragraphs = []ParsedParagraph{paragraph}
-			}
+		section := buildLabeledSection(label, cleanedHTML)
+		if !routeSection(section, attrs, &parsedSections, &currentTop, &currentNested) {
+			return nil
 		}
-
-		if strings.Contains(attrs, `n="2l"`) || isNestedLabel(section.Label) {
-			if currentTop == nil {
-				return nil
-			}
-			currentTop.Children = append(currentTop.Children, section)
-			currentNested = &currentTop.Children[len(currentTop.Children)-1]
-			continue
-		}
-
-		parsedSections = append(parsedSections, section)
-		currentTop = &parsedSections[len(parsedSections)-1]
-		currentNested = nil
 	}
 
 	return parsedSections
@@ -259,7 +281,7 @@ func tableRowLooksLikeHeader(raw string) bool {
 	return len(reTHeadCell.FindAllStringSubmatch(firstRow, -1)) > 0
 }
 
-func cleanTableCell(attrs string, raw string) ParsedTableCell {
+func cleanTableCell(attrs, raw string) ParsedTableCell {
 	raw = normalizeHTMLParagraph(raw)
 	return ParsedTableCell{
 		HTML:    raw,
@@ -302,7 +324,10 @@ func extractAttribute(re *regexp.Regexp, attrs string) string {
 	return html.UnescapeString(strings.TrimSpace(match[1]))
 }
 
-const challengePageSnippetLimit = 1024
+const (
+	challengePageSnippetLimit = 1024
+	exclusionGlyph            = "\u2297" // ⊗
+)
 
 func isChallengePage(body string) bool {
 	snippet := body
@@ -335,48 +360,97 @@ func newParsedParagraph(raw string) ParsedParagraph {
 	}
 }
 
+// inlineFrame is a parse-stack entry for a currently-open inline element.
+type inlineFrame struct {
+	tag    string
+	inline model.Inline
+}
+
+// inlineParser holds the mutable state threaded through extractInlines.
+type inlineParser struct {
+	root  []model.Inline
+	stack []inlineFrame
+}
+
+// appendNode adds a completed inline to the innermost open frame, or to the root list.
+func (p *inlineParser) appendNode(inline model.Inline) {
+	if len(p.stack) == 0 {
+		p.root = append(p.root, inline)
+		return
+	}
+	p.stack[len(p.stack)-1].inline.Children = append(p.stack[len(p.stack)-1].inline.Children, inline)
+}
+
+// resolveFrameText fills the Text field of a completed frame according to its kind.
+func resolveFrameText(frame *inlineFrame) {
+	if len(frame.inline.Children) > 0 && frame.inline.Kind == model.InlineKindReference {
+		frame.inline.Text = cleanText(renderInlineChildrenText(frame.inline.Children))
+	}
+	if frame.inline.Kind != model.InlineKindReference && frame.inline.Kind != model.InlineKindExclusion {
+		frame.inline.Text = cleanText(renderInlineChildrenText(frame.inline.Children))
+	}
+}
+
+// drainUntil pops frames off the stack until the frame matching closeTag is emitted.
+// When closeTag is empty it drains the entire stack (used for end-of-input cleanup).
+func (p *inlineParser) drainUntil(closeTag string) {
+	for len(p.stack) > 0 {
+		frame := p.stack[len(p.stack)-1]
+		p.stack = p.stack[:len(p.stack)-1]
+		resolveFrameText(&frame)
+		p.appendNode(frame.inline)
+		if closeTag != "" && frame.tag == closeTag {
+			break
+		}
+	}
+}
+
+// handleCloseTag processes a closing-tag token from the input stream.
+func (p *inlineParser) handleCloseTag(lower string) {
+	closeTag := strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(lower, "</"), ">"))
+	p.drainUntil(closeTag)
+}
+
+// advanceTextBefore emits a text node for any plain content before the next '<' and
+// returns the slice of raw starting at that '<'. When there is no '<', it emits the
+// whole remaining string, appends it, and returns "".
+func (p *inlineParser) advanceTextBefore(raw string) string {
+	nextTag := strings.Index(raw, "<")
+	if nextTag == -1 {
+		if text := cleanInlineSegment(raw); text != "" {
+			p.appendNode(model.Inline{Kind: model.InlineKindText, Text: text})
+		}
+		return ""
+	}
+	if nextTag > 0 {
+		if text := cleanInlineSegment(raw[:nextTag]); text != "" {
+			p.appendNode(model.Inline{Kind: model.InlineKindText, Text: text})
+		}
+		return raw[nextTag:]
+	}
+	return raw
+}
+
 func extractInlines(raw string) []model.Inline {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return nil
 	}
 
-	type inlineFrame struct {
-		tag    string
-		inline model.Inline
-	}
-
-	var root []model.Inline
-	var stack []inlineFrame
-
-	appendNode := func(inline model.Inline) {
-		if len(stack) == 0 {
-			root = append(root, inline)
-			return
-		}
-		stack[len(stack)-1].inline.Children = append(stack[len(stack)-1].inline.Children, inline)
-	}
+	p := &inlineParser{}
 
 	for len(raw) > 0 {
-		nextTag := strings.Index(raw, "<")
-		if nextTag == -1 {
-			if text := cleanInlineSegment(raw); text != "" {
-				appendNode(model.Inline{Kind: model.InlineKindText, Text: text})
-			}
-			break
-		}
-		if nextTag > 0 {
-			if text := cleanInlineSegment(raw[:nextTag]); text != "" {
-				appendNode(model.Inline{Kind: model.InlineKindText, Text: text})
-			}
-			raw = raw[nextTag:]
+		// Emit any text before the next '<', or consume no-tag trailing text.
+		if !strings.HasPrefix(raw, "<") {
+			raw = p.advanceTextBefore(raw)
 			continue
 		}
 
 		end := strings.Index(raw, ">")
 		if end == -1 {
+			// Malformed: tag opened but never closed — treat remainder as text.
 			if text := cleanInlineSegment(raw); text != "" {
-				appendNode(model.Inline{Kind: model.InlineKindText, Text: text})
+				p.appendNode(model.Inline{Kind: model.InlineKindText, Text: text})
 			}
 			break
 		}
@@ -384,43 +458,21 @@ func extractInlines(raw string) []model.Inline {
 		tagToken := raw[:end+1]
 		raw = raw[end+1:]
 		lower := strings.ToLower(tagToken)
+
 		if strings.HasPrefix(lower, "</") {
-			closeTag := strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(lower, "</"), ">"))
-			for len(stack) > 0 {
-				frame := stack[len(stack)-1]
-				stack = stack[:len(stack)-1]
-				if len(frame.inline.Children) > 0 && frame.inline.Kind == model.InlineKindReference {
-					frame.inline.Text = cleanText(renderInlineChildrenText(frame.inline.Children))
-				}
-				if frame.inline.Kind != model.InlineKindReference && frame.inline.Kind != model.InlineKindExclusion {
-					frame.inline.Text = cleanText(renderInlineChildrenText(frame.inline.Children))
-				}
-				appendNode(frame.inline)
-				if frame.tag == closeTag {
-					break
-				}
-			}
+			p.handleCloseTag(lower)
 			continue
 		}
 
 		if inline, closeTag, ok := parseSupportedOpenTag(tagToken); ok {
-			stack = append(stack, inlineFrame{tag: closeTag, inline: inline})
+			p.stack = append(p.stack, inlineFrame{tag: closeTag, inline: inline})
 		}
 	}
 
-	for len(stack) > 0 {
-		frame := stack[len(stack)-1]
-		stack = stack[:len(stack)-1]
-		if len(frame.inline.Children) > 0 && frame.inline.Kind == model.InlineKindReference {
-			frame.inline.Text = cleanText(renderInlineChildrenText(frame.inline.Children))
-		}
-		if frame.inline.Kind != model.InlineKindReference && frame.inline.Kind != model.InlineKindExclusion {
-			frame.inline.Text = cleanText(renderInlineChildrenText(frame.inline.Children))
-		}
-		appendNode(frame.inline)
-	}
+	// Flush any frames that were never closed by a matching close tag.
+	p.drainUntil("")
 
-	return mergeTextInlines(root)
+	return mergeTextInlines(p.root)
 }
 
 func mergeTextInlines(inlines []model.Inline) []model.Inline {
@@ -622,7 +674,7 @@ func preserveSemanticSpans(raw string) string {
 func cleanText(raw string) string {
 	text := html.UnescapeString(raw)
 	text = strings.ReplaceAll(text, "\u200d", "")
-	text = strings.ReplaceAll(text, "\u2297", "\u2297") //nolint:gocritic // dupArg: intentional normalization of ⊗ variants from HTML entities
+	text = strings.ReplaceAll(text, exclusionGlyph, exclusionGlyph) //nolint:gocritic // dupArg: intentional normalization of ⊗ variants from HTML entities
 	text = strings.Join(strings.Fields(text), " ")
 	return strings.TrimSpace(text)
 }
@@ -630,7 +682,7 @@ func cleanText(raw string) string {
 func cleanInlineSegment(raw string) string {
 	text := html.UnescapeString(reTags.ReplaceAllString(raw, ""))
 	text = strings.ReplaceAll(text, "\u200d", "")
-	text = strings.ReplaceAll(text, "\u2297", "\u2297") //nolint:gocritic // dupArg: intentional normalization of ⊗ variants from HTML entities
+	text = strings.ReplaceAll(text, exclusionGlyph, exclusionGlyph) //nolint:gocritic // dupArg: intentional normalization of ⊗ variants from HTML entities
 	leading := strings.HasPrefix(text, " ") || strings.HasPrefix(text, "\n") || strings.HasPrefix(text, "\t")
 	trailing := strings.HasSuffix(text, " ") || strings.HasSuffix(text, "\n") || strings.HasSuffix(text, "\t")
 	text = strings.Join(strings.Fields(text), " ")

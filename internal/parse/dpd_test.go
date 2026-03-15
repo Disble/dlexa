@@ -35,26 +35,8 @@ func parseFixture(t *testing.T, name string) []ParsedArticle {
 	return result.Articles
 }
 
-func TestDPDArticleParserExtractsBienArticleAndSkipsChrome(t *testing.T) {
-	parser := NewDPDArticleParser()
-	result, warnings, err := parser.Parse(context.Background(), model.SourceDescriptor{Name: "dpd", DisplayName: "bien"}, fetch.Document{
-		URL:         "https://www.rae.es/dpd/bien",
-		ContentType: "text/html; charset=utf-8",
-		StatusCode:  200,
-		Body:        loadDPDFixtureHTML(t, "bien"),
-	})
-	if err != nil {
-		t.Fatalf("Parse() error = %v", err)
-	}
-
-	if len(warnings) == 0 || warnings[0].Code != "dpd_access_profile" {
-		t.Fatalf("Parse() warnings = %#v, want access profile warning", warnings)
-	}
-	if len(result.Articles) != 1 {
-		t.Fatalf("Parse() articles = %d, want 1", len(result.Articles))
-	}
-
-	article := result.Articles[0]
+func assertBienArticleMetadata(t *testing.T, article ParsedArticle) {
+	t.Helper()
 	if article.EntryID != "bien" {
 		t.Fatalf("EntryID = %q", article.EntryID)
 	}
@@ -67,13 +49,23 @@ func TestDPDArticleParserExtractsBienArticleAndSkipsChrome(t *testing.T) {
 	if article.Lemma != "bien" {
 		t.Fatalf("Lemma = %q", article.Lemma)
 	}
+}
+
+func assertBienArticleSections(t *testing.T, article ParsedArticle) {
+	t.Helper()
 	if len(article.Sections) != 7 {
 		t.Fatalf("top-level sections = %d, want 7", len(article.Sections))
 	}
 	if len(article.Sections[5].Children) != 3 {
 		t.Fatalf("section 6 children = %d, want 3", len(article.Sections[5].Children))
 	}
+	if article.Sections[4].Title != "bien que." || article.Sections[5].Title != "más bien." || article.Sections[6].Title != "si bien." {
+		t.Fatalf("lexical titles = [%q %q %q], want bien que./más bien./si bien.", article.Sections[4].Title, article.Sections[5].Title, article.Sections[6].Title)
+	}
+}
 
+func assertBienFirstParagraph(t *testing.T, article ParsedArticle) {
+	t.Helper()
 	joined := article.Sections[0].Paragraphs[0].HTML
 	if strings.Contains(joined, "La institución") || strings.Contains(joined, "Boletín de novedades") || strings.Contains(joined, "Qué contiene") {
 		t.Fatalf("article paragraph leaked chrome: %q", joined)
@@ -84,11 +76,64 @@ func TestDPDArticleParserExtractsBienArticleAndSkipsChrome(t *testing.T) {
 	if !strings.Contains(joined, "(→ <a href=\"bien#S1590507271213267522\"") {
 		t.Fatalf("article paragraph missing source reference semantics: %q", joined)
 	}
-	if article.Sections[4].Title != "bien que." || article.Sections[5].Title != "más bien." || article.Sections[6].Title != "si bien." {
-		t.Fatalf("lexical titles = [%q %q %q], want bien que./más bien./si bien.", article.Sections[4].Title, article.Sections[5].Title, article.Sections[6].Title)
+}
+
+func TestDPDArticleParserExtractsBienArticleAndSkipsChrome(t *testing.T) {
+	parser := NewDPDArticleParser()
+	result, warnings, err := parser.Parse(context.Background(), model.SourceDescriptor{Name: "dpd", DisplayName: "bien"}, fetch.Document{
+		URL:         "https://www.rae.es/dpd/bien",
+		ContentType: "text/html; charset=utf-8",
+		StatusCode:  200,
+		Body:        loadDPDFixtureHTML(t, "bien"),
+	})
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
 	}
+	if len(warnings) == 0 || warnings[0].Code != "dpd_access_profile" {
+		t.Fatalf("Parse() warnings = %#v, want access profile warning", warnings)
+	}
+	if len(result.Articles) != 1 {
+		t.Fatalf("Parse() articles = %d, want 1", len(result.Articles))
+	}
+
+	article := result.Articles[0]
+	assertBienArticleMetadata(t, article)
+	assertBienArticleSections(t, article)
+	assertBienFirstParagraph(t, article)
 	if !strings.Contains(article.Citation.Text, "Diccionario panhispánico de dudas") {
 		t.Fatalf("citation text = %q", article.Citation.Text)
+	}
+}
+
+func assertTildeFirstSection(t *testing.T, first ParsedSection) {
+	t.Helper()
+	if len(first.Blocks) != 3 {
+		t.Fatalf("first section blocks = %d, want 3", len(first.Blocks))
+	}
+	if first.Blocks[0].Kind != ParsedBlockKindParagraph || first.Blocks[1].Kind != ParsedBlockKindTable || first.Blocks[2].Kind != ParsedBlockKindParagraph {
+		t.Fatalf("first section block kinds = %#v", first.Blocks)
+	}
+	if len(first.Paragraphs) != 2 {
+		t.Fatalf("paragraph projection = %d, want 2", len(first.Paragraphs))
+	}
+}
+
+func assertTildeTable(t *testing.T, table *ParsedTable) {
+	t.Helper()
+	if table == nil {
+		t.Fatal("table block = nil")
+	}
+	if len(table.Headers) != 1 || len(table.Headers[0].Cells) != 2 {
+		t.Fatalf("headers = %#v", table.Headers)
+	}
+	if table.Headers[0].Cells[0].HTML != "Con tilde" || table.Headers[0].Cells[1].HTML != "Sin tilde" {
+		t.Fatalf("header cells = %#v", table.Headers[0].Cells)
+	}
+	if len(table.Rows) != 2 || table.Rows[1].Cells[1].HTML != "solo" {
+		t.Fatalf("rows = %#v", table.Rows)
+	}
+	if table.Headers[0].Cells[0].ColSpan != 0 || table.Rows[0].Cells[0].RowSpan != 0 {
+		t.Fatalf("simple table should not invent spans: %#v %#v", table.Headers[0].Cells[0], table.Rows[0].Cells[0])
 	}
 }
 
@@ -105,32 +150,8 @@ func TestDPDArticleParserExtractsMultiEntryTildeWithMixedBlocks(t *testing.T) {
 	}
 
 	first := articles[0].Sections[0]
-	if len(first.Blocks) != 3 {
-		t.Fatalf("first section blocks = %d, want 3", len(first.Blocks))
-	}
-	if first.Blocks[0].Kind != ParsedBlockKindParagraph || first.Blocks[1].Kind != ParsedBlockKindTable || first.Blocks[2].Kind != ParsedBlockKindParagraph {
-		t.Fatalf("first section block kinds = %#v", first.Blocks)
-	}
-	if len(first.Paragraphs) != 2 {
-		t.Fatalf("paragraph projection = %d, want 2", len(first.Paragraphs))
-	}
-
-	table := first.Blocks[1].Table
-	if table == nil {
-		t.Fatal("table block = nil")
-	}
-	if len(table.Headers) != 1 || len(table.Headers[0].Cells) != 2 {
-		t.Fatalf("headers = %#v", table.Headers)
-	}
-	if table.Headers[0].Cells[0].HTML != "Con tilde" || table.Headers[0].Cells[1].HTML != "Sin tilde" {
-		t.Fatalf("header cells = %#v", table.Headers[0].Cells)
-	}
-	if len(table.Rows) != 2 || table.Rows[1].Cells[1].HTML != "solo" {
-		t.Fatalf("rows = %#v", table.Rows)
-	}
-	if table.Headers[0].Cells[0].ColSpan != 0 || table.Rows[0].Cells[0].RowSpan != 0 {
-		t.Fatalf("simple table should not invent spans: %#v %#v", table.Headers[0].Cells[0], table.Rows[0].Cells[0])
-	}
+	assertTildeFirstSection(t, first)
+	assertTildeTable(t, first.Blocks[1].Table)
 
 	second := articles[1].Sections[0]
 	if len(second.Blocks) != 2 || second.Blocks[0].Kind != ParsedBlockKindParagraph || second.Blocks[1].Kind != ParsedBlockKindParagraph {
@@ -184,116 +205,126 @@ func TestDPDArticleParserKeepsExamplesSeparateFromProse(t *testing.T) {
 	}
 }
 
+func checkBienInline(inline model.Inline, sawExample, sawMention, sawGloss, sawReference *bool) {
+	switch inline.Kind {
+	case model.InlineKindExample:
+		if inline.Text == "Cierra bien la ventana, por favor" || inline.Text == "No he dormido bien esta noche" {
+			*sawExample = true
+		}
+	case model.InlineKindEmphasis:
+		for _, child := range inline.Children {
+			if child.Kind == model.InlineKindMention && (strings.Contains(child.Text, "mejor") || strings.Contains(child.Text, "más bien")) {
+				*sawMention = true
+			}
+		}
+	case model.InlineKindGloss:
+		if strings.Contains(inline.Text, "correcta y adecuadamente") {
+			*sawGloss = true
+		}
+	case model.InlineKindReference:
+		if inline.Text == "6" && inline.Target == "bien#S1590507271213267522" {
+			*sawReference = true
+		}
+	}
+}
+
 func TestDPDArticleParserExtractsSemanticInlineKindsFromBien(t *testing.T) {
 	article := parseFixture(t, "bien")[0]
 	inlines := article.Sections[0].Paragraphs[0].Inlines
 
 	var sawExample, sawMention, sawGloss, sawReference bool
 	for _, inline := range inlines {
-		switch inline.Kind {
-		case model.InlineKindExample:
-			if inline.Text == "Cierra bien la ventana, por favor" || inline.Text == "No he dormido bien esta noche" {
-				sawExample = true
-			}
-		case model.InlineKindEmphasis:
-			for _, child := range inline.Children {
-				if child.Kind == model.InlineKindMention && (strings.Contains(child.Text, "mejor") || strings.Contains(child.Text, "más bien")) {
-					sawMention = true
-				}
-			}
-		case model.InlineKindGloss:
-			if strings.Contains(inline.Text, "correcta y adecuadamente") {
-				sawGloss = true
-			}
-		case model.InlineKindReference:
-			if inline.Text == "6" && inline.Target == "bien#S1590507271213267522" {
-				sawReference = true
-			}
-		}
+		checkBienInline(inline, &sawExample, &sawMention, &sawGloss, &sawReference)
 	}
 	if !sawExample || !sawMention || !sawGloss || !sawReference {
 		t.Fatalf("semantic inline extraction incomplete: %#v", inlines)
 	}
 }
 
-func TestExtractInlinesSupportsVerifiedSemanticMarkersFromVerAndDar(t *testing.T) {
-	tests := []struct {
-		name  string
-		html  string
-		check func(t *testing.T, inlines []model.Inline)
-	}{
-		{
-			name: "ver citation bibliography and exclusion markers",
-			html: `<span class="cita" n="c"><span class="bolaspa">⊗</span>«Desde atrás vide...» <span class="bib">(González <i>Dios</i> <span class="cbil" title="México">mx</span> 1999)</span></span>`,
-			check: func(t *testing.T, inlines []model.Inline) {
-				t.Helper()
-				if len(inlines) == 0 || inlines[0].Kind != model.InlineKindCitationQuote {
-					t.Fatalf("inlines = %#v, want citation quote root", inlines)
-				}
-				children := inlines[0].Children
-				var sawExclusion, sawBib, sawWorkTitle, sawSmallCaps bool
-				for _, child := range children {
-					switch child.Kind {
-					case model.InlineKindExclusion:
-						sawExclusion = true
-					case model.InlineKindBibliography:
-						sawBib = true
-						for _, grandchild := range child.Children {
-							if grandchild.Kind == model.InlineKindWorkTitle {
-								sawWorkTitle = true
-							}
-							if grandchild.Kind == model.InlineKindSmallCaps {
-								sawSmallCaps = true
-							}
-						}
-					}
-				}
-				if !sawExclusion || !sawBib || !sawWorkTitle || !sawSmallCaps {
-					t.Fatalf("children = %#v", children)
-				}
-			},
-		},
-		{
-			name: "dar pattern correction and editorial markers",
-			html: `<span class="pattern">«<em><span class="ment">dar</span></em> + gerundio»</span> <span class="cita" n="w">«Las empresas <span class="yy">[…]</span> solo se estaban haciendo cargo» <span class="bib">(<i>Comercio</i><sup>@</sup> <span class="cbil" title="Ecuador">ec</span> 7.10.2016)</span></span> <em><span class="correction">se dio cuenta <span class="vers">de</span> que…</span></em>`,
-			check: func(t *testing.T, inlines []model.Inline) {
-				t.Helper()
-				var sawPattern, sawEditorial, sawCorrection, sawVers bool
-				for _, inline := range inlines {
-					switch inline.Kind {
-					case model.InlineKindPattern:
-						sawPattern = true
-					case model.InlineKindCitationQuote:
-						for _, child := range inline.Children {
-							if child.Kind == model.InlineKindEditorial {
-								sawEditorial = true
-							}
-						}
-					case model.InlineKindEmphasis:
-						for _, child := range inline.Children {
-							if child.Kind == model.InlineKindCorrection {
-								sawCorrection = true
-								for _, grandchild := range child.Children {
-									if grandchild.Kind == model.InlineKindSmallCaps {
-										sawVers = true
-									}
-								}
-							}
-						}
-					}
-				}
-				if !sawPattern || !sawEditorial || !sawCorrection || !sawVers {
-					t.Fatalf("inlines = %#v", inlines)
-				}
-			},
-		},
+func assertVerCitationMarkers(t *testing.T, inlines []model.Inline) {
+	t.Helper()
+	if len(inlines) == 0 || inlines[0].Kind != model.InlineKindCitationQuote {
+		t.Fatalf("inlines = %#v, want citation quote root", inlines)
 	}
+	children := inlines[0].Children
+	var sawExclusion, sawBib, sawWorkTitle, sawSmallCaps bool
+	for _, child := range children {
+		switch child.Kind {
+		case model.InlineKindExclusion:
+			sawExclusion = true
+		case model.InlineKindBibliography:
+			sawBib = true
+			sawWorkTitle, sawSmallCaps = checkBibChildren(child.Children, sawWorkTitle, sawSmallCaps)
+		}
+	}
+	if !sawExclusion || !sawBib || !sawWorkTitle || !sawSmallCaps {
+		t.Fatalf("children = %#v", children)
+	}
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.check(t, extractInlines(tt.html))
-		})
+func checkBibChildren(grandchildren []model.Inline, sawWorkTitle, sawSmallCaps bool) (bool, bool) {
+	for _, gc := range grandchildren {
+		if gc.Kind == model.InlineKindWorkTitle {
+			sawWorkTitle = true
+		}
+		if gc.Kind == model.InlineKindSmallCaps {
+			sawSmallCaps = true
+		}
 	}
+	return sawWorkTitle, sawSmallCaps
+}
+
+func assertDarPatternMarkers(t *testing.T, inlines []model.Inline) {
+	t.Helper()
+	var sawPattern, sawEditorial, sawCorrection, sawVers bool
+	for _, inline := range inlines {
+		switch inline.Kind {
+		case model.InlineKindPattern:
+			sawPattern = true
+		case model.InlineKindCitationQuote:
+			sawEditorial = checkForEditorial(inline.Children, sawEditorial)
+		case model.InlineKindEmphasis:
+			sawCorrection, sawVers = checkForCorrectionAndVers(inline.Children, sawCorrection, sawVers)
+		}
+	}
+	if !sawPattern || !sawEditorial || !sawCorrection || !sawVers {
+		t.Fatalf("inlines = %#v", inlines)
+	}
+}
+
+func checkForEditorial(children []model.Inline, sawEditorial bool) bool {
+	for _, child := range children {
+		if child.Kind == model.InlineKindEditorial {
+			sawEditorial = true
+		}
+	}
+	return sawEditorial
+}
+
+func checkForCorrectionAndVers(children []model.Inline, sawCorrection, sawVers bool) (bool, bool) {
+	for _, child := range children {
+		if child.Kind == model.InlineKindCorrection {
+			sawCorrection = true
+			for _, gc := range child.Children {
+				if gc.Kind == model.InlineKindSmallCaps {
+					sawVers = true
+				}
+			}
+		}
+	}
+	return sawCorrection, sawVers
+}
+
+func TestExtractInlinesSupportsVerifiedSemanticMarkersFromVerAndDar(t *testing.T) {
+	t.Run("ver citation bibliography and exclusion markers", func(t *testing.T) {
+		html := `<span class="cita" n="c"><span class="bolaspa">⊗</span>«Desde atrás vide...» <span class="bib">(González <i>Dios</i> <span class="cbil" title="México">mx</span> 1999)</span></span>`
+		assertVerCitationMarkers(t, extractInlines(html))
+	})
+
+	t.Run("dar pattern correction and editorial markers", func(t *testing.T) {
+		html := `<span class="pattern">«<em><span class="ment">dar</span></em> + gerundio»</span> <span class="cita" n="w">«Las empresas <span class="yy">[…]</span> solo se estaban haciendo cargo» <span class="bib">(<i>Comercio</i><sup>@</sup> <span class="cbil" title="Ecuador">ec</span> 7.10.2016)</span></span> <em><span class="correction">se dio cuenta <span class="vers">de</span> que…</span></em>`
+		assertDarPatternMarkers(t, extractInlines(html))
+	})
 }
 
 func TestDPDArticleParserExtractsNumericReferenceWithoutDuplication(t *testing.T) {
