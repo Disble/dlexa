@@ -15,6 +15,8 @@ import (
 	"github.com/Disble/dlexa/internal/parse"
 )
 
+const renderErrFmt = "Render() error = %v"
+
 func parseNormalizeDPD(t *testing.T, term string) []model.Entry {
 	t.Helper()
 	body, err := os.ReadFile(filepath.Join("..", "..", "testdata", "dpd", term+".html")) //nolint:gosec // G304: test fixture path from controlled input
@@ -49,7 +51,7 @@ func TestDPDParseNormalizeRenderMatchesBienGolden(t *testing.T) {
 		Entries: entries,
 	})
 	if err != nil {
-		t.Fatalf("Render() error = %v", err)
+		t.Fatalf(renderErrFmt, err)
 	}
 
 	want, err := os.ReadFile(filepath.Join("..", "..", "testdata", "dpd", "bien.md.golden"))
@@ -74,7 +76,7 @@ func TestDPDParseNormalizeRenderMatchesTildeGoldenAndJSONContract(t *testing.T) 
 		Entries: entries,
 	})
 	if err != nil {
-		t.Fatalf("Render() error = %v", err)
+		t.Fatalf(renderErrFmt, err)
 	}
 	want, err := os.ReadFile(filepath.Join("..", "..", "testdata", "dpd", "tilde.md.golden"))
 	if err != nil {
@@ -117,7 +119,7 @@ func TestDPDParseNormalizeRenderProducesSemanticMarkdownOutput(t *testing.T) {
 		Entries: entries,
 	})
 	if err != nil {
-		t.Fatalf("Render() error = %v", err)
+		t.Fatalf(renderErrFmt, err)
 	}
 
 	text := string(payload)

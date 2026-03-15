@@ -11,6 +11,17 @@ import (
 	"github.com/Disble/dlexa/internal/model"
 )
 
+const (
+	testDictionary    = "Diccionario panhispánico de dudas"
+	testEdition       = "2.ª edición"
+	testSourceLabel   = "Real Academia Española y Asociación de Academias de la Lengua Española"
+	testConsultedAt   = "10/03/2026"
+	testColSinTilde   = "Sin tilde"
+	testColConTilde   = "Con tilde"
+	testErrRender     = "Render() error = %v"
+	testPayloadMissing = "payload missing %q\n%s"
+)
+
 var reANSITest = regexp.MustCompile(`\x1b\[[0-9;]*m`)
 
 func paragraphBlock(markdown string, inlines ...model.Inline) model.Block {
@@ -18,7 +29,7 @@ func paragraphBlock(markdown string, inlines ...model.Inline) model.Block {
 	return model.Block{Kind: model.ArticleBlockKindParagraph, Paragraph: &paragraph}
 }
 
-func tableBlock(headers [][]string, rows [][]string) model.Block {
+func tableBlock(headers, rows [][]string) model.Block {
 	makeRows := func(raw [][]string) []model.TableRow {
 		out := make([]model.TableRow, 0, len(raw))
 		for _, row := range raw {
@@ -34,7 +45,7 @@ func tableBlock(headers [][]string, rows [][]string) model.Block {
 	return model.Block{Kind: model.ArticleBlockKindTable, Table: &table}
 }
 
-func inlineTableBlock(headers [][]model.TableCell, rows [][]model.TableCell) model.Block {
+func inlineTableBlock(headers, rows [][]model.TableCell) model.Block {
 	makeRows := func(raw [][]model.TableCell) []model.TableRow {
 		out := make([]model.TableRow, 0, len(raw))
 		for _, row := range raw {
@@ -48,7 +59,7 @@ func inlineTableBlock(headers [][]model.TableCell, rows [][]model.TableCell) mod
 	return model.Block{Kind: model.ArticleBlockKindTable, Table: &table}
 }
 
-func spanningTableBlock(headers [][]model.TableCell, rows [][]model.TableCell) model.Block {
+func spanningTableBlock(headers, rows [][]model.TableCell) model.Block {
 	return inlineTableBlock(headers, rows)
 }
 
@@ -66,42 +77,42 @@ func sampleBienArticle() *model.Article {
 		sections[i].Paragraphs = paragraphsFromBlocks(sections[i].Blocks)
 	}
 	return &model.Article{
-		Dictionary: "Diccionario panhispánico de dudas",
-		Edition:    "2.ª edición",
+		Dictionary: testDictionary,
+		Edition:    testEdition,
 		Sections:   sections,
 		Citation: model.Citation{
-			SourceLabel:  "Real Academia Española y Asociación de Academias de la Lengua Española",
+			SourceLabel:  testSourceLabel,
 			CanonicalURL: "https://www.rae.es/dpd/bien",
-			Edition:      "2.ª edición",
-			ConsultedAt:  "10/03/2026",
+			Edition:      testEdition,
+			ConsultedAt:  testConsultedAt,
 		},
 	}
 }
 
 func sampleTildeEntries() []model.Entry {
 	first := model.Article{
-		Dictionary: "Diccionario panhispánico de dudas",
-		Edition:    "2.ª edición",
+		Dictionary: testDictionary,
+		Edition:    testEdition,
 		Lemma:      "tilde",
 		Sections: []model.Section{{
 			Label: "1.",
 			Blocks: []model.Block{
 				paragraphBlock("La tilde permite distinguir ciertos usos en la escritura actual."),
-				tableBlock([][]string{{"Con tilde", "Sin tilde"}}, [][]string{{"aún", "aun"}, {"sólo", "solo"}}),
+				tableBlock([][]string{{testColConTilde, testColSinTilde}}, [][]string{{"aún", "aun"}, {"sólo", "solo"}}),
 				paragraphBlock("La recomendación vigente depende del contexto y de la ambigüedad."),
 			},
 		}},
-		Citation: model.Citation{SourceLabel: "Real Academia Española y Asociación de Academias de la Lengua Española", CanonicalURL: "https://www.rae.es/dpd/tilde", Edition: "2.ª edición", ConsultedAt: "10/03/2026"},
+		Citation: model.Citation{SourceLabel: testSourceLabel, CanonicalURL: "https://www.rae.es/dpd/tilde", Edition: testEdition, ConsultedAt: testConsultedAt},
 	}
 	second := model.Article{
-		Dictionary: "Diccionario panhispánico de dudas",
-		Edition:    "2.ª edición",
+		Dictionary: testDictionary,
+		Edition:    testEdition,
 		Lemma:      "tilde",
 		Sections: []model.Section{{
 			Label:  "2.",
 			Blocks: []model.Block{paragraphBlock("En casos enfáticos o diacríticos, la grafía histórica puede mantenerse como referencia."), paragraphBlock("La norma vigente prioriza la claridad sin multiplicar tildes innecesarias.")},
 		}},
-		Citation: model.Citation{SourceLabel: "Real Academia Española y Asociación de Academias de la Lengua Española", CanonicalURL: "https://www.rae.es/dpd/tilde", Edition: "2.ª edición", ConsultedAt: "10/03/2026"},
+		Citation: model.Citation{SourceLabel: testSourceLabel, CanonicalURL: "https://www.rae.es/dpd/tilde", Edition: testEdition, ConsultedAt: testConsultedAt},
 	}
 	for i := range first.Sections {
 		first.Sections[i].Paragraphs = paragraphsFromBlocks(first.Sections[i].Blocks)
@@ -129,7 +140,7 @@ func TestMarkdownRendererRendersDPDArticleGolden(t *testing.T) {
 		Entries: []model.Entry{{Headword: "bien", Article: sampleBienArticle()}},
 	})
 	if err != nil {
-		t.Fatalf("Render() error = %v", err)
+		t.Fatalf(testErrRender, err)
 	}
 
 	want, err := os.ReadFile(filepath.Join("..", "..", "testdata", "dpd", "bien.md.golden"))
@@ -149,7 +160,7 @@ func TestMarkdownRendererRendersGroupedTildeArticlesAndTables(t *testing.T) {
 		Entries: sampleTildeEntries(),
 	})
 	if err != nil {
-		t.Fatalf("Render() error = %v", err)
+		t.Fatalf(testErrRender, err)
 	}
 
 	want, err := os.ReadFile(filepath.Join("..", "..", "testdata", "dpd", "tilde.md.golden"))
@@ -170,7 +181,7 @@ func TestMarkdownRendererKeepsTableCellsMarkdownOnly(t *testing.T) {
 			Blocks: []model.Block{inlineTableBlock(
 				[][]model.TableCell{{
 					{Text: "*Con* tilde", Inlines: []model.Inline{{Kind: model.InlineKindMention, Text: "Con"}, {Kind: model.InlineKindText, Text: " tilde"}}},
-					{Text: "Sin tilde"},
+					{Text: testColSinTilde},
 				}},
 				[][]model.TableCell{{
 					{Text: "*sólo*", Inlines: []model.Inline{{Kind: model.InlineKindMention, Text: "sólo"}}},
@@ -180,12 +191,12 @@ func TestMarkdownRendererKeepsTableCellsMarkdownOnly(t *testing.T) {
 		}}},
 	}}})
 	if err != nil {
-		t.Fatalf("Render() error = %v", err)
+		t.Fatalf(testErrRender, err)
 	}
 	text := string(payload)
 	for _, want := range []string{"| *Con* tilde |", "| *sólo*      | solo → [2](tilde#n2)"} {
 		if !strings.Contains(text, want) {
-			t.Fatalf("payload missing %q\n%s", want, text)
+			t.Fatalf(testPayloadMissing, want, text)
 		}
 	}
 	for _, forbidden := range []string{"<em>", "<span", "<a href"} {
@@ -201,11 +212,11 @@ func TestMarkdownRendererUsesValidMarkdownDividerForSimpleTables(t *testing.T) {
 		Headword: "tilde",
 		Article: &model.Article{Sections: []model.Section{{
 			Label:  "1.",
-			Blocks: []model.Block{tableBlock([][]string{{"Con tilde", "Sin tilde"}}, [][]string{{"aún", "aun"}})},
+			Blocks: []model.Block{tableBlock([][]string{{testColConTilde, testColSinTilde}}, [][]string{{"aún", "aun"}})},
 		}}},
 	}}})
 	if err != nil {
-		t.Fatalf("Render() error = %v", err)
+		t.Fatalf(testErrRender, err)
 	}
 	text := string(payload)
 	if !strings.Contains(text, "|-----------|-----------|") {
@@ -227,19 +238,19 @@ func TestMarkdownRendererFallsBackToHTMLForComplexTables(t *testing.T) {
 					{Text: "Tilde diacrítica en *qué* / que", ColSpan: 4},
 				}},
 				[][]model.TableCell{
-					{{Text: "Con tilde", RowSpan: 2}, {Text: "Con valor interrogativo o exclamativo", RowSpan: 2}, {Text: "Encabezando estructuras"}, {Text: "*¿Qué* calor!"}},
+					{{Text: testColConTilde, RowSpan: 2}, {Text: "Con valor interrogativo o exclamativo", RowSpan: 2}, {Text: "Encabezando estructuras"}, {Text: "*¿Qué* calor!"}},
 					{{Text: "Sustantivados"}, {Text: "el *cuándo*"}},
 				},
 			)},
 		}}},
 	}}})
 	if err != nil {
-		t.Fatalf("Render() error = %v", err)
+		t.Fatalf(testErrRender, err)
 	}
 	text := string(payload)
 	for _, want := range []string{"<table>", "<th colspan=\"4\">Tilde diacrítica en <em>qué</em> / que</th>", "<td rowspan=\"2\">Con tilde</td>", "<td><em>¿Qué</em> calor!</td>"} {
 		if !strings.Contains(text, want) {
-			t.Fatalf("payload missing %q\n%s", want, text)
+			t.Fatalf(testPayloadMissing, want, text)
 		}
 	}
 	if strings.Contains(text, "|-----------|") {
@@ -266,7 +277,7 @@ func TestMarkdownRendererRespectsNestedFormattingOverride(t *testing.T) {
 		}}},
 	}}})
 	if err != nil {
-		t.Fatalf("Render() error = %v", err)
+		t.Fatalf(testErrRender, err)
 	}
 	text := string(payload)
 	if !strings.Contains(text, "1. *tilde* 2") {
@@ -291,7 +302,7 @@ func TestMarkdownRendererGluesNestedWordFragmentsAcrossInlineBoundaries(t *testi
 		}}},
 	}}})
 	if err != nil {
-		t.Fatalf("Render() error = %v", err)
+		t.Fatalf(testErrRender, err)
 	}
 	text := string(payload)
 	if !strings.Contains(text, "1. *gr*úa. *anch*oa*s*") {
@@ -318,7 +329,7 @@ func TestMarkdownRendererUsesPlainMarkdownGroupedHeading(t *testing.T) {
 		}},
 	})
 	if err != nil {
-		t.Fatalf("Render() error = %v", err)
+		t.Fatalf(testErrRender, err)
 	}
 	text := string(payload)
 	if !strings.Contains(text, "# tilde2") {
@@ -342,7 +353,7 @@ func TestMarkdownRendererRendersPreservedQuotes(t *testing.T) {
 		}}},
 	}}})
 	if err != nil {
-		t.Fatalf("Render() error = %v", err)
+		t.Fatalf(testErrRender, err)
 	}
 	if !strings.Contains(string(payload), "'correcta y adecuadamente'") {
 		t.Fatalf("payload = %q, want authored quotes", payload)
@@ -366,7 +377,7 @@ func TestMarkdownRendererRendersSemanticMarkdownOutput(t *testing.T) {
 		}}},
 	}}})
 	if err != nil {
-		t.Fatalf("Render() error = %v", err)
+		t.Fatalf(testErrRender, err)
 	}
 	text := string(payload)
 	if strings.Contains(text, "\x1b[") {
@@ -388,7 +399,7 @@ func TestMarkdownRendererKeepsRealBienExampleRecoverableInMarkdownOutput(t *test
 	renderer := NewMarkdownRenderer()
 	payload, err := renderer.Render(context.Background(), model.LookupResult{Entries: []model.Entry{{Headword: "bien", Article: sampleBienArticle()}}})
 	if err != nil {
-		t.Fatalf("Render() error = %v", err)
+		t.Fatalf(testErrRender, err)
 	}
 
 	text := string(payload)
@@ -441,7 +452,7 @@ func TestMarkdownRendererRendersSingleArrowCrossReferences(t *testing.T) {
 		}}},
 	}}})
 	if err != nil {
-		t.Fatalf("Render() error = %v", err)
+		t.Fatalf(testErrRender, err)
 	}
 	text := string(payload)
 	if strings.Contains(text, "[→ 6]") || strings.Contains(text, "(→ [→ 6]") {
@@ -463,7 +474,7 @@ func TestMarkdownRendererRendersIntegratedLexicalHeads(t *testing.T) {
 		}}},
 	}}})
 	if err != nil {
-		t.Fatalf("Render() error = %v", err)
+		t.Fatalf(testErrRender, err)
 	}
 	text := string(payload)
 	if !strings.Contains(text, "5. bien que. Locución conjuntiva concesiva.") {
@@ -475,7 +486,7 @@ func TestMarkdownRendererKeepsSectionAndSubitemLayoutCoherent(t *testing.T) {
 	renderer := NewMarkdownRenderer()
 	payload, err := renderer.Render(context.Background(), model.LookupResult{Entries: []model.Entry{{Headword: "bien", Article: sampleBienArticle()}}})
 	if err != nil {
-		t.Fatalf("Render() error = %v", err)
+		t.Fatalf(testErrRender, err)
 	}
 
 	text := string(payload)
@@ -496,22 +507,22 @@ func TestMarkdownRendererRendersStructuredCitation(t *testing.T) {
 	payload, err := renderer.Render(context.Background(), model.LookupResult{Entries: []model.Entry{{
 		Headword: "bien",
 		Article: &model.Article{
-			Dictionary: "Diccionario panhispánico de dudas",
+			Dictionary: testDictionary,
 			Citation: model.Citation{
-				SourceLabel:  "Real Academia Española y Asociación de Academias de la Lengua Española",
-				Edition:      "2.ª edición",
+				SourceLabel:  testSourceLabel,
+				Edition:      testEdition,
 				CanonicalURL: "https://www.rae.es/dpd/bien",
-				ConsultedAt:  "10/03/2026",
+				ConsultedAt:  testConsultedAt,
 			},
 		},
 	}}})
 	if err != nil {
-		t.Fatalf("Render() error = %v", err)
+		t.Fatalf(testErrRender, err)
 	}
 	text := string(payload)
 	for _, want := range []string{"Source: Real Academia Española y Asociación de Academias de la Lengua Española", "Dictionary: Diccionario panhispánico de dudas", "Edition: 2.ª edición", "URL: https://www.rae.es/dpd/bien", "Consulted: 10/03/2026"} {
 		if !strings.Contains(text, want) {
-			t.Fatalf("payload missing %q\n%s", want, text)
+			t.Fatalf(testPayloadMissing, want, text)
 		}
 	}
 }

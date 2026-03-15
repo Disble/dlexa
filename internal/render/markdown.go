@@ -9,6 +9,11 @@ import (
 	"github.com/Disble/dlexa/internal/renderutil"
 )
 
+const (
+	mdFmtH1    = "# %s\n\n"
+	mdFmtBlock = "%s\n\n"
+)
+
 // MarkdownRenderer renders lookup results as Markdown text.
 type MarkdownRenderer struct {
 	profile TerminalProfile
@@ -43,7 +48,7 @@ func (r *MarkdownRenderer) RenderResult(ctx context.Context, result model.Lookup
 		return r.renderArticleGroupMarkdown(result), nil
 	}
 
-	fmt.Fprintf(&builder, "# %s\n\n", result.Request.Query)
+	fmt.Fprintf(&builder, mdFmtH1, result.Request.Query)
 	fmt.Fprintf(&builder, "- format: `%s`\n", result.Request.Format)
 	fmt.Fprintf(&builder, "- cache_hit: `%t`\n", result.CacheHit)
 	fmt.Fprintf(&builder, "- sources: `%d`\n\n", len(result.Sources))
@@ -51,9 +56,9 @@ func (r *MarkdownRenderer) RenderResult(ctx context.Context, result model.Lookup
 	for _, entry := range result.Entries {
 		fmt.Fprintf(&builder, "## %s\n\n", entry.Headword)
 		if entry.Summary != "" {
-			fmt.Fprintf(&builder, "%s\n\n", entry.Summary)
+			fmt.Fprintf(&builder, mdFmtBlock, entry.Summary)
 		}
-		fmt.Fprintf(&builder, "%s\n\n", entry.Content)
+		fmt.Fprintf(&builder, mdFmtBlock, entry.Content)
 	}
 
 	if len(result.Warnings) > 0 {
@@ -94,7 +99,7 @@ func (r *MarkdownRenderer) renderArticleGroupMarkdown(result model.LookupResult)
 	}
 	multiple := len(result.Entries) > 1
 	if multiple {
-		fmt.Fprintf(&builder, "# %s\n\n", heading)
+		fmt.Fprintf(&builder, mdFmtH1, heading)
 	}
 
 	for idx, entry := range result.Entries {
@@ -123,13 +128,13 @@ func (r *MarkdownRenderer) renderEntryArticleMarkdown(entry model.Entry, grouped
 		}
 		fmt.Fprintf(&builder, "## %s\n\n", heading)
 	} else {
-		fmt.Fprintf(&builder, "# %s\n\n", entry.Headword)
+		fmt.Fprintf(&builder, mdFmtH1, entry.Headword)
 	}
 	if article.Dictionary != "" {
-		fmt.Fprintf(&builder, "%s\n\n", article.Dictionary)
+		fmt.Fprintf(&builder, mdFmtBlock, article.Dictionary)
 	}
 	if article.Edition != "" {
-		fmt.Fprintf(&builder, "%s\n\n", article.Edition)
+		fmt.Fprintf(&builder, mdFmtBlock, article.Edition)
 	}
 	for idx, section := range article.Sections {
 		sectionText := strings.TrimSpace(r.renderMarkdownSection(section, ""))
@@ -150,54 +155,16 @@ func (r *MarkdownRenderer) renderEntryArticleMarkdown(entry model.Entry, grouped
 
 func (r *MarkdownRenderer) renderMarkdownSection(section model.Section, indent string) string {
 	var builder strings.Builder
-	heading := strings.TrimSpace(section.Label)
-	if title := strings.TrimSpace(section.Title); title != "" {
-		if heading != "" {
-			heading += " "
-		}
-		heading += title
-	}
+	heading := buildSectionHeading(section)
 
-	blocks := sectionBlocks(section)
 	if heading != "" {
 		builder.WriteString(indent)
 		builder.WriteString(heading)
 	}
 
 	firstParagraphInline := false
-	for _, block := range blocks {
-		switch block.Kind {
-		case model.ArticleBlockKindParagraph:
-			if block.Paragraph == nil {
-				continue
-			}
-			text := strings.TrimSpace(r.renderMarkdownParagraph(*block.Paragraph))
-			if text == "" {
-				continue
-			}
-			if heading != "" && !firstParagraphInline {
-				builder.WriteString(" ")
-				builder.WriteString(text)
-				firstParagraphInline = true
-				continue
-			}
-			if builder.Len() > 0 {
-				builder.WriteString("\n\n")
-			}
-			builder.WriteString(indentLines(text, indent))
-		case model.ArticleBlockKindTable:
-			if block.Table == nil {
-				continue
-			}
-			tableText := renderutil.RenderTableMarkdown(*block.Table, indent)
-			if tableText == "" {
-				continue
-			}
-			if builder.Len() > 0 {
-				builder.WriteString("\n\n")
-			}
-			builder.WriteString(tableText)
-		}
+	for _, block := range sectionBlocks(section) {
+		r.appendMarkdownBlock(&builder, block, heading, indent, &firstParagraphInline)
 	}
 
 	for _, child := range section.Children {
@@ -211,6 +178,73 @@ func (r *MarkdownRenderer) renderMarkdownSection(section model.Section, indent s
 		builder.WriteString(childText)
 	}
 	return strings.TrimRight(builder.String(), "\n")
+}
+
+// buildSectionHeading assembles the display heading for a section from its Label and Title fields.
+func buildSectionHeading(section model.Section) string {
+	heading := strings.TrimSpace(section.Label)
+	if title := strings.TrimSpace(section.Title); title != "" {
+		if heading != "" {
+			heading += " "
+		}
+		heading += title
+	}
+	return heading
+}
+
+// appendMarkdownBlock writes a single block's rendered text into builder.
+// heading and firstParagraphInline control whether the first paragraph is inlined after the heading.
+func (r *MarkdownRenderer) appendMarkdownBlock(
+	builder *strings.Builder,
+	block model.Block,
+	heading, indent string,
+	firstParagraphInline *bool,
+) {
+	switch block.Kind {
+	case model.ArticleBlockKindParagraph:
+		r.appendMarkdownParagraphBlock(builder, block, heading, indent, firstParagraphInline)
+	case model.ArticleBlockKindTable:
+		appendMarkdownTableBlock(builder, block, indent)
+	}
+}
+
+func (r *MarkdownRenderer) appendMarkdownParagraphBlock(
+	builder *strings.Builder,
+	block model.Block,
+	heading, indent string,
+	firstParagraphInline *bool,
+) {
+	if block.Paragraph == nil {
+		return
+	}
+	text := strings.TrimSpace(r.renderMarkdownParagraph(*block.Paragraph))
+	if text == "" {
+		return
+	}
+	if heading != "" && !*firstParagraphInline {
+		builder.WriteString(" ")
+		builder.WriteString(text)
+		*firstParagraphInline = true
+		return
+	}
+	if builder.Len() > 0 {
+		builder.WriteString("\n\n")
+	}
+	builder.WriteString(indentLines(text, indent))
+}
+
+func appendMarkdownTableBlock(builder *strings.Builder, block model.Block, indent string) {
+	if block.Table == nil {
+		return
+	}
+	tableText := renderutil.RenderTableMarkdown(*block.Table, indent)
+	if tableText == "" {
+		return
+	}
+	if builder.Len() > 0 {
+		builder.WriteString("\n\n")
+	}
+	builder.WriteString(tableText)
 }
 
 func sectionBlocks(section model.Section) []model.Block {
@@ -246,7 +280,7 @@ func cleanTerminalProjection(raw string) string {
 	return normalizeLegacyMarkdownProjection(raw)
 }
 
-func indentLines(text string, indent string) string {
+func indentLines(text, indent string) string {
 	if indent == "" || strings.TrimSpace(text) == "" {
 		return text
 	}

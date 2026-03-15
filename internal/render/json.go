@@ -67,26 +67,12 @@ func marshalNoEscape(v any) ([]byte, error) {
 
 func renderJSONSectionProjection(section model.Section) string {
 	var parts []string
-	heading := strings.TrimSpace(section.Label)
-	if title := strings.TrimSpace(section.Title); title != "" {
-		if heading != "" {
-			heading += " "
-		}
-		heading += title
-	}
-	if heading != "" {
+	if heading := buildSectionHeading(section); heading != "" {
 		parts = append(parts, heading)
 	}
 	for _, block := range sectionBlocks(section) {
-		switch block.Kind {
-		case model.ArticleBlockKindParagraph:
-			if block.Paragraph != nil && strings.TrimSpace(block.Paragraph.Markdown) != "" {
-				parts = append(parts, strings.TrimSpace(block.Paragraph.Markdown))
-			}
-		case model.ArticleBlockKindTable:
-			if block.Table != nil {
-				parts = append(parts, renderutil.RenderTableMarkdown(*block.Table, ""))
-			}
+		if text := renderJSONBlockProjection(block); text != "" {
+			parts = append(parts, text)
 		}
 	}
 	for _, child := range section.Children {
@@ -95,4 +81,21 @@ func renderJSONSectionProjection(section model.Section) string {
 		}
 	}
 	return strings.TrimSpace(strings.Join(parts, "\n\n"))
+}
+
+func renderJSONBlockProjection(block model.Block) string {
+	switch block.Kind {
+	case model.ArticleBlockKindParagraph:
+		if block.Paragraph == nil {
+			return ""
+		}
+		return strings.TrimSpace(block.Paragraph.Markdown)
+	case model.ArticleBlockKindTable:
+		if block.Table == nil {
+			return ""
+		}
+		return renderutil.RenderTableMarkdown(*block.Table, "")
+	default:
+		return ""
+	}
 }

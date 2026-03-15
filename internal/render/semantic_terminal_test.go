@@ -7,6 +7,8 @@ import (
 	"github.com/Disble/dlexa/internal/model"
 )
 
+const testExampleText = "ejemplo real"
+
 func TestPlanTerminalParagraphUsesTypedInlinesAsSemanticBoundary(t *testing.T) {
 	paragraph := model.Paragraph{
 		Markdown: "[ej.: roto] ‹todavia peor› *colapsado*",
@@ -14,7 +16,7 @@ func TestPlanTerminalParagraphUsesTypedInlinesAsSemanticBoundary(t *testing.T) {
 			{Kind: model.InlineKindText, Text: "Arranca con "},
 			{Kind: model.InlineKindMention, Text: "foco"},
 			{Kind: model.InlineKindText, Text: ": "},
-			{Kind: model.InlineKindExample, Text: "ejemplo real"},
+			{Kind: model.InlineKindExample, Text: testExampleText},
 		},
 	}
 
@@ -26,8 +28,8 @@ func TestPlanTerminalParagraphUsesTypedInlinesAsSemanticBoundary(t *testing.T) {
 	if got, want := runRoles(plan.Blocks[0]), []TerminalRunRole{TerminalRunRoleProse, TerminalRunRoleEmphasis, TerminalRunRoleProse}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("runRoles(first prose block) = %v, want %v", got, want)
 	}
-	if got := compactTerminalWhitespace(plan.Blocks[1].Runs[0].Text); got != "ejemplo real" {
-		t.Fatalf("example text = %q, want %q", got, "ejemplo real")
+	if got := compactTerminalWhitespace(plan.Blocks[1].Runs[0].Text); got != testExampleText {
+		t.Fatalf("example text = %q, want %q", got, testExampleText)
 	}
 	if got := compactTerminalWhitespace(plan.Blocks[0].Runs[0].Text + plan.Blocks[0].Runs[1].Text + plan.Blocks[0].Runs[2].Text); got == compactTerminalWhitespace(paragraph.Markdown) {
 		t.Fatal("planner fell back to markdown projection instead of typed inlines")
