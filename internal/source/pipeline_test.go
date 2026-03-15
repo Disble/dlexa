@@ -11,6 +11,11 @@ import (
 	"github.com/Disble/dlexa/internal/parse"
 )
 
+const (
+	parseWarningCode     = "parse-warning"
+	normalizeWarningCode = "normalize-warning"
+)
+
 func TestPipelineSourceFetchesParsesAndNormalizesInOrder(t *testing.T) {
 	descriptor := model.SourceDescriptor{Name: "demo", DisplayName: "Demo"}
 	retrievedAt := time.Date(2026, time.March, 13, 15, 0, 0, 0, time.UTC)
@@ -30,7 +35,7 @@ func TestPipelineSourceFetchesParsesAndNormalizesInOrder(t *testing.T) {
 	parser := &recordingParser{
 		calls:          &callOrder,
 		result:         parsedResult,
-		warnings:       []model.Warning{{Code: "parse-warning", Source: descriptor.Name}},
+		warnings:       []model.Warning{{Code: parseWarningCode, Source: descriptor.Name}},
 		expectedBody:   []byte("raw body"),
 		expectedURL:    "https://example.invalid/demo/palabra",
 		expectedSource: descriptor,
@@ -38,7 +43,7 @@ func TestPipelineSourceFetchesParsesAndNormalizesInOrder(t *testing.T) {
 	normalizer := &recordingNormalizer{
 		calls:          &callOrder,
 		entries:        normalizedEntries,
-		warnings:       []model.Warning{{Code: "normalize-warning", Source: descriptor.Name}},
+		warnings:       []model.Warning{{Code: normalizeWarningCode, Source: descriptor.Name}},
 		expectedResult: parsedResult,
 		expectedSource: descriptor,
 	}
@@ -57,8 +62,8 @@ func TestPipelineSourceFetchesParsesAndNormalizesInOrder(t *testing.T) {
 		t.Fatalf("Lookup() entries = %#v, want %#v", result.Entries, normalizedEntries)
 	}
 
-	if gotCodes := []string{result.Warnings[0].Code, result.Warnings[1].Code}; !reflect.DeepEqual(gotCodes, []string{"parse-warning", "normalize-warning"}) {
-		t.Fatalf("Lookup() warning codes = %#v, want %#v", gotCodes, []string{"parse-warning", "normalize-warning"})
+	if gotCodes := []string{result.Warnings[0].Code, result.Warnings[1].Code}; !reflect.DeepEqual(gotCodes, []string{parseWarningCode, normalizeWarningCode}) {
+		t.Fatalf("Lookup() warning codes = %#v, want %#v", gotCodes, []string{parseWarningCode, normalizeWarningCode})
 	}
 
 	if !result.FetchedAt.Equal(retrievedAt) {
