@@ -1,0 +1,28 @@
+change: performance-improvement
+phase: archive
+status: archived
+archived_at: "2026-03-14"
+completed_phases:
+  - phase0-benchmark-suite
+  - phase1-filesystem-cache
+  - phase2-parallel-fanout
+  - phase3-allocation-fixes
+  - phase4-renderutil-deduplication
+  - apply
+  - verify
+  - archive
+artifacts:
+  explore: openspec/changes/archive/2026-03-14-performance-improvement/exploration.md
+  proposal: openspec/changes/archive/2026-03-14-performance-improvement/proposal.md
+  spec: openspec/changes/archive/2026-03-14-performance-improvement/spec.md
+  design: openspec/changes/archive/2026-03-14-performance-improvement/design.md
+  tasks: openspec/changes/archive/2026-03-14-performance-improvement/tasks.md
+  verify-report: openspec/changes/archive/2026-03-14-performance-improvement/verify-report.md
+  archive-report: openspec/changes/archive/2026-03-14-performance-improvement/archive-report.md
+next: none
+notes: |
+  SDD cycle complete. Change archived on 2026-03-14.
+  39/39 tasks complete. 40/40 spec scenarios compliant.
+  No delta specs to sync — performance optimizations only, no behavioral contract changes.
+  Key improvements: filesystem cache, parallel fan-out, allocation fixes, renderutil extraction.
+  All stdlib-only, zero external dependencies.
