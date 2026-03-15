@@ -250,20 +250,10 @@ func renderStyledMarkdownInline(children []model.Inline, marker string) string {
 		if piece == "" {
 			piece = strings.TrimSpace(child.Text)
 		}
-		appendMarkdownPiece(&builder, piece)
+		appendInlinePiece(&builder, piece)
 	}
 	flushStyledMarkdownBuffer(&builder, buffer, marker)
 	return strings.TrimSpace(builder.String())
-}
-
-func appendMarkdownPiece(builder *strings.Builder, piece string) {
-	if piece == "" {
-		return
-	}
-	if builder.Len() > 0 && !ShouldGlueInlineWordBoundary(builder.String(), piece) && NeedsInlineSpace(builder.String(), piece) {
-		builder.WriteString(" ")
-	}
-	builder.WriteString(piece)
 }
 
 func flushStyledMarkdownBuffer(builder *strings.Builder, buffer []model.Inline, marker string) []model.Inline {
@@ -277,7 +267,7 @@ func flushStyledMarkdownBuffer(builder *strings.Builder, buffer []model.Inline, 
 		if ShouldWrapStyledBuffer(snapshot) {
 			piece = marker + text + marker
 		}
-		appendMarkdownPiece(builder, piece)
+		appendInlinePiece(builder, piece)
 	}
 	return buffer[:0]
 }

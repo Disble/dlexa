@@ -53,7 +53,7 @@ func (s *FilesystemStore) Get(ctx context.Context, key string) (model.LookupResu
 	}
 
 	var envelope cacheEnvelope
-	if err := json.Unmarshal(data, &envelope); err != nil {
+	if json.Unmarshal(data, &envelope) != nil {
 		// Corrupted file: remove it silently.
 		_ = os.Remove(path)
 		return zero, false, nil
@@ -74,7 +74,7 @@ func (s *FilesystemStore) Set(ctx context.Context, key string, result model.Look
 	_ = ctx
 
 	// Ensure directory exists.
-	if err := os.MkdirAll(s.dir, 0750); err != nil {
+	if os.MkdirAll(s.dir, 0750) != nil {
 		return nil // graceful degradation: silent failure
 	}
 
@@ -105,12 +105,12 @@ func (s *FilesystemStore) Set(ctx context.Context, key string, result model.Look
 		return nil // graceful degradation
 	}
 
-	if err := tmpFile.Close(); err != nil {
+	if tmpFile.Close() != nil {
 		_ = os.Remove(tmpPath)
 		return nil // graceful degradation
 	}
 
-	if err := os.Rename(tmpPath, path); err != nil {
+	if os.Rename(tmpPath, path) != nil {
 		_ = os.Remove(tmpPath)
 		return nil // graceful degradation
 	}

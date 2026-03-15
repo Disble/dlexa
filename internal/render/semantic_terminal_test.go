@@ -31,7 +31,7 @@ func TestPlanTerminalParagraphUsesTypedInlinesAsSemanticBoundary(t *testing.T) {
 	if got := compactTerminalWhitespace(plan.Blocks[1].Runs[0].Text); got != testExampleText {
 		t.Fatalf("example text = %q, want %q", got, testExampleText)
 	}
-	if got := compactTerminalWhitespace(plan.Blocks[0].Runs[0].Text + plan.Blocks[0].Runs[1].Text + plan.Blocks[0].Runs[2].Text); got == compactTerminalWhitespace(paragraph.Markdown) {
+	if compactTerminalWhitespace(plan.Blocks[0].Runs[0].Text+plan.Blocks[0].Runs[1].Text+plan.Blocks[0].Runs[2].Text) == compactTerminalWhitespace(paragraph.Markdown) {
 		t.Fatal("planner fell back to markdown projection instead of typed inlines")
 	}
 }

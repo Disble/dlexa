@@ -148,7 +148,7 @@ func TestMarkdownRendererRendersDPDArticleGolden(t *testing.T) {
 		t.Fatalf("ReadFile() error = %v", err)
 	}
 
-	if got := stripANSITestOutput(string(payload)); got != string(want) {
+	if stripANSITestOutput(string(payload)) != string(want) {
 		t.Fatalf("Render() mismatch\n--- got ---\n%s\n--- want ---\n%s", payload, want)
 	}
 }
@@ -167,7 +167,7 @@ func TestMarkdownRendererRendersGroupedTildeArticlesAndTables(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadFile() error = %v", err)
 	}
-	if got := stripANSITestOutput(string(payload)); got != string(want) {
+	if stripANSITestOutput(string(payload)) != string(want) {
 		t.Fatalf("Render() mismatch\n--- got ---\n%s\n--- want ---\n%s", payload, want)
 	}
 }

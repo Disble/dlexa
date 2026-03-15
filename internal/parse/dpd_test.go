@@ -222,7 +222,8 @@ func checkBienInline(inline model.Inline, sawExample, sawMention, sawGloss, sawR
 			*sawGloss = true
 		}
 	case model.InlineKindReference:
-		if inline.Text == "6" && inline.Target == "bien#S1590507271213267522" {
+		isTargetRef := inline.Text == "6" && inline.Target == "bien#S1590507271213267522"
+		if isTargetRef {
 			*sawReference = true
 		}
 	}
