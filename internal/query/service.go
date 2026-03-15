@@ -29,31 +29,24 @@ func NewService(registry source.Registry, store cache.Store) *LookupService {
 	return &LookupService{registry: registry, cache: store}
 }
 
-// Lookup fans out to all matching sources in parallel and merges results.
-func (s *LookupService) Lookup(ctx context.Context, request model.LookupRequest) (model.LookupResult, error) {
-	cacheKey := cache.BuildKey(request)
-	if s.cache != nil && !request.NoCache {
-		cached, ok, err := s.cache.Get(ctx, cacheKey)
-		if err != nil {
-			return model.LookupResult{}, err
-		}
-		if ok {
-			cached.CacheHit = true
-			return cached, nil
-		}
+func (s *LookupService) lookupCachedResult(ctx context.Context, cacheKey string, request model.LookupRequest) (model.LookupResult, bool, error) {
+	if s.cache == nil || request.NoCache {
+		return model.LookupResult{}, false, nil
 	}
 
-	resolvedSources, err := s.registry.SourcesFor(request)
+	cached, ok, err := s.cache.Get(ctx, cacheKey)
 	if err != nil {
-		return model.LookupResult{}, err
+		return model.LookupResult{}, false, err
+	}
+	if !ok {
+		return model.LookupResult{}, false, nil
 	}
 
-	result := model.LookupResult{
-		Request:     request,
-		GeneratedAt: time.Now().UTC(),
-	}
+	cached.CacheHit = true
+	return cached, true, nil
+}
 
-	// Fan-out: launch one goroutine per source.
+func collectOutcomes(ctx context.Context, request model.LookupRequest, resolvedSources []source.Source) []sourceOutcome {
 	outcomes := make(chan sourceOutcome, len(resolvedSources))
 	var wg sync.WaitGroup
 
@@ -66,52 +59,92 @@ func (s *LookupService) Lookup(ctx context.Context, request model.LookupRequest)
 		}(item)
 	}
 
-	// Close channel after all goroutines complete.
 	go func() {
 		wg.Wait()
 		close(outcomes)
 	}()
 
-	// Fan-in: collect all outcomes from the channel.
-	var collected []sourceOutcome
+	collected := make([]sourceOutcome, 0, len(resolvedSources))
 	for outcome := range outcomes {
 		collected = append(collected, outcome)
 	}
 
-	// Sort outcomes by source priority (ascending) for deterministic ordering.
+	return collected
+}
+
+func sortOutcomesByPriority(collected []sourceOutcome) {
 	sort.SliceStable(collected, func(i, j int) bool {
 		return collected[i].source.Descriptor().Priority < collected[j].source.Descriptor().Priority
 	})
+}
 
-	// Aggregate results in priority order.
-	for _, outcome := range collected {
-		if outcome.err != nil {
-			problem, ok := model.AsProblem(outcome.err)
-			if !ok {
-				problem = model.Problem{
-					Code:     model.ProblemCodeSourceLookupFailed,
-					Message:  outcome.err.Error(),
-					Source:   outcome.source.Descriptor().Name,
-					Severity: model.ProblemSeverityError,
-				}
-			} else if problem.Source == "" {
-				problem.Source = outcome.source.Descriptor().Name
-			}
-
-			result.Problems = append(result.Problems, problem)
-			continue
+func problemFromOutcome(outcome sourceOutcome) model.Problem {
+	problem, ok := model.AsProblem(outcome.err)
+	if !ok {
+		return model.Problem{
+			Code:     model.ProblemCodeSourceLookupFailed,
+			Message:  outcome.err.Error(),
+			Source:   outcome.source.Descriptor().Name,
+			Severity: model.ProblemSeverityError,
 		}
-
-		result.Sources = append(result.Sources, outcome.result)
-		result.Entries = append(result.Entries, outcome.result.Entries...)
-		result.Warnings = append(result.Warnings, outcome.result.Warnings...)
-		result.Problems = append(result.Problems, outcome.result.Problems...)
+	}
+	if problem.Source == "" {
+		problem.Source = outcome.source.Descriptor().Name
 	}
 
-	if s.cache != nil && !request.NoCache {
-		if err := s.cache.Set(ctx, cacheKey, result); err != nil {
-			return model.LookupResult{}, err
-		}
+	return problem
+}
+
+func appendOutcome(result *model.LookupResult, outcome sourceOutcome) {
+	if outcome.err != nil {
+		result.Problems = append(result.Problems, problemFromOutcome(outcome))
+		return
+	}
+
+	result.Sources = append(result.Sources, outcome.result)
+	result.Entries = append(result.Entries, outcome.result.Entries...)
+	result.Warnings = append(result.Warnings, outcome.result.Warnings...)
+	result.Problems = append(result.Problems, outcome.result.Problems...)
+}
+
+func (s *LookupService) cacheResult(ctx context.Context, cacheKey string, request model.LookupRequest, result model.LookupResult) error {
+	if s.cache == nil || request.NoCache {
+		return nil
+	}
+
+	return s.cache.Set(ctx, cacheKey, result)
+}
+
+// Lookup fans out to all matching sources in parallel and merges results.
+func (s *LookupService) Lookup(ctx context.Context, request model.LookupRequest) (model.LookupResult, error) {
+	cacheKey := cache.BuildKey(request)
+	cached, ok, err := s.lookupCachedResult(ctx, cacheKey, request)
+	if err != nil {
+		return model.LookupResult{}, err
+	}
+	if ok {
+		return cached, nil
+	}
+
+	resolvedSources, err := s.registry.SourcesFor(request)
+	if err != nil {
+		return model.LookupResult{}, err
+	}
+
+	result := model.LookupResult{
+		Request:     request,
+		GeneratedAt: time.Now().UTC(),
+	}
+
+	collected := collectOutcomes(ctx, request, resolvedSources)
+	sortOutcomesByPriority(collected)
+
+	for _, outcome := range collected {
+		appendOutcome(&result, outcome)
+	}
+
+	if err := s.cacheResult(ctx, cacheKey, request, result); err != nil {
+		return model.LookupResult{}, err
 	}
 
 	return result, nil
