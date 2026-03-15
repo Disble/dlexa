@@ -90,6 +90,14 @@ dlexa --doctor
 dlexa --version
 ```
 
+## Development Checks
+
+This repository ships a versioned `pre-commit` setup for Go linting.
+
+- Install local hooks once per clone with `pre-commit install`.
+- Run the repo-pinned linter manually with `go tool -modfile=golangci-lint.mod golangci-lint run ./...`.
+- See `CONTRIBUTING.md` for onboarding steps, prerequisites, and hook limitations.
+
 ## Architectural Notes
 
 - Query-first means the core use case starts from `LookupRequest`, not from source adapters.

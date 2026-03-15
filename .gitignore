@@ -1,0 +1,45 @@
+# Binaries
+dlexa
+dlexa.exe
+cmd/dlexa/dlexa
+cmd/dlexa/dlexa.exe
+dist/
+build/
+
+# Go test & coverage artifacts
+*.test
+*.out
+coverage.html
+cpu.prof
+mem.prof
+trace.out
+
+# Go workspace
+go.work
+go.work.sum
+
+# Vendor (if not committed)
+vendor/
+
+# golangci-lint cache
+.golangci-lint-cache/
+
+# IDE — JetBrains
+.idea/
+
+# IDE — VS Code (keep settings & extensions if desired)
+.vscode/launch.json
+.vscode/*.code-snippets
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Secrets / local config
+.env
+.env.local
+*.secret
+
+# MCP local config
+.mcp.json

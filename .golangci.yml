@@ -1,0 +1,13 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - bodyclose
+    - prealloc
+    - gocritic
+    - gosec
+    - errcheck
+    - staticcheck
+    - revive
+    - govet
