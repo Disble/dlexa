@@ -100,49 +100,73 @@ func RenderHTMLFromMarkdownSubset(raw string) string {
 	raw = strings.ReplaceAll(raw, "\r", "\n")
 	var builder strings.Builder
 	for i := 0; i < len(raw); {
-		if strings.HasPrefix(raw[i:], "→ [") {
-			closeLabel := strings.Index(raw[i+3:], "](")
-			if closeLabel >= 0 {
-				labelEnd := i + 3 + closeLabel
-				closeTarget := strings.Index(raw[labelEnd+2:], ")")
-				if closeTarget >= 0 {
-					targetEnd := labelEnd + 2 + closeTarget
-					label := raw[i+3 : labelEnd]
-					target := raw[labelEnd+2 : targetEnd]
-					builder.WriteString("&rarr; <a href=\"")
-					builder.WriteString(html.EscapeString(target))
-					builder.WriteString("\">")
-					builder.WriteString(html.EscapeString(label))
-					builder.WriteString("</a>")
-					i = targetEnd + 1
-					continue
-				}
-			}
+		if out, advance, ok := matchHTMLReference(raw, i); ok {
+			builder.WriteString(out)
+			i += advance
+			continue
 		}
-		if raw[i] == '*' {
-			closeIdx := strings.IndexByte(raw[i+1:], '*')
-			if closeIdx >= 0 {
-				content := raw[i+1 : i+1+closeIdx]
-				builder.WriteString("<em>")
-				builder.WriteString(html.EscapeString(content))
-				builder.WriteString("</em>")
-				i += closeIdx + 2
-				continue
-			}
+		if out, advance, ok := matchHTMLEmphasis(raw, i); ok {
+			builder.WriteString(out)
+			i += advance
+			continue
 		}
 		if raw[i] == '\n' {
 			builder.WriteString("<br>")
 			i++
 			continue
 		}
-		next := i + 1
-		for next < len(raw) && raw[next] != '*' && raw[next] != '\n' && !strings.HasPrefix(raw[next:], "→ [") {
-			next++
-		}
+		next := scanHTMLLiteral(raw, i)
 		builder.WriteString(html.EscapeString(raw[i:next]))
 		i = next
 	}
 	return builder.String()
+}
+
+// matchHTMLReference attempts to match a markdown reference "→ [label](target)" at position i.
+// Returns the HTML output, the number of bytes consumed, and whether a match was found.
+func matchHTMLReference(raw string, i int) (string, int, bool) {
+	if !strings.HasPrefix(raw[i:], "→ [") {
+		return "", 0, false
+	}
+	closeLabel := strings.Index(raw[i+3:], "](")
+	if closeLabel < 0 {
+		return "", 0, false
+	}
+	labelEnd := i + 3 + closeLabel
+	closeTarget := strings.Index(raw[labelEnd+2:], ")")
+	if closeTarget < 0 {
+		return "", 0, false
+	}
+	targetEnd := labelEnd + 2 + closeTarget
+	label := raw[i+3 : labelEnd]
+	target := raw[labelEnd+2 : targetEnd]
+	out := "&rarr; <a href=\"" + html.EscapeString(target) + "\">" + html.EscapeString(label) + "</a>"
+	return out, targetEnd + 1 - i, true
+}
+
+// matchHTMLEmphasis attempts to match a markdown emphasis "*content*" at position i.
+// Returns the HTML output, the number of bytes consumed, and whether a match was found.
+func matchHTMLEmphasis(raw string, i int) (string, int, bool) {
+	if raw[i] != '*' {
+		return "", 0, false
+	}
+	closeIdx := strings.IndexByte(raw[i+1:], '*')
+	if closeIdx < 0 {
+		return "", 0, false
+	}
+	content := raw[i+1 : i+1+closeIdx]
+	out := "<em>" + html.EscapeString(content) + "</em>"
+	return out, closeIdx + 2, true
+}
+
+// scanHTMLLiteral returns the index of the next special character after i,
+// used to delimit a plain-text run to be HTML-escaped.
+func scanHTMLLiteral(raw string, i int) int {
+	next := i + 1
+	for next < len(raw) && raw[next] != '*' && raw[next] != '\n' && !strings.HasPrefix(raw[next:], "→ [") {
+		next++
+	}
+	return next
 }
 
 // NormalizeMarkdownTableCellText normalizes text for markdown table cells:

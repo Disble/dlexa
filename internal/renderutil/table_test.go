@@ -7,9 +7,15 @@ import (
 	"github.com/Disble/dlexa/internal/model"
 )
 
+const (
+	testConTilde  = "Con tilde"
+	testTableOpen = "<table>"
+	testABrB      = "a<br>b"
+)
+
 func TestRenderTableMarkdownSimple(t *testing.T) {
 	table := model.Table{
-		Headers: []model.TableRow{{Cells: []model.TableCell{{Text: "Con tilde"}, {Text: "Sin tilde"}}}},
+		Headers: []model.TableRow{{Cells: []model.TableCell{{Text: testConTilde}, {Text: "Sin tilde"}}}},
 		Rows:    []model.TableRow{{Cells: []model.TableCell{{Text: "aún"}, {Text: "aun"}}}, {Cells: []model.TableCell{{Text: "sólo"}, {Text: "solo"}}}},
 	}
 
@@ -46,7 +52,7 @@ func TestRenderTableMarkdownEmpty(t *testing.T) {
 	// because isSimpleMarkdownTable returns false (needs exactly 1 header row).
 	table := model.Table{}
 	got := RenderTableMarkdown(table, "")
-	if !strings.Contains(got, "<table>") {
+	if !strings.Contains(got, testTableOpen) {
 		t.Fatalf("RenderTableMarkdown(empty) = %q, want HTML fallback", got)
 	}
 }
@@ -54,11 +60,11 @@ func TestRenderTableMarkdownEmpty(t *testing.T) {
 func TestRenderTableMarkdownFallsBackToHTMLForComplexTable(t *testing.T) {
 	table := model.Table{
 		Headers: []model.TableRow{{Cells: []model.TableCell{{Text: "Título", ColSpan: 4}}}},
-		Rows:    []model.TableRow{{Cells: []model.TableCell{{Text: "Con tilde", RowSpan: 2}, {Text: "Caso"}, {Text: "Ejemplo"}}}},
+		Rows:    []model.TableRow{{Cells: []model.TableCell{{Text: testConTilde, RowSpan: 2}, {Text: "Caso"}, {Text: "Ejemplo"}}}},
 	}
 
 	got := RenderTableMarkdown(table, "")
-	if !strings.Contains(got, "<table>") {
+	if !strings.Contains(got, testTableOpen) {
 		t.Fatalf("RenderTableMarkdown(complex) should fall back to HTML\n%s", got)
 	}
 	if strings.Contains(got, "|---") {
@@ -74,7 +80,7 @@ func TestRenderTableHTML(t *testing.T) {
 
 	got := RenderTableHTML(table, "")
 	for _, want := range []string{
-		"<table>",
+		testTableOpen,
 		"<thead>",
 		"<th>A</th>",
 		"<th>B</th>",
@@ -94,7 +100,7 @@ func TestRenderTableHTML(t *testing.T) {
 func TestRenderTableHTMLWithSpans(t *testing.T) {
 	table := model.Table{
 		Headers: []model.TableRow{{Cells: []model.TableCell{{Text: "Título", ColSpan: 4}}}},
-		Rows:    []model.TableRow{{Cells: []model.TableCell{{Text: "Con tilde", RowSpan: 2}}}},
+		Rows:    []model.TableRow{{Cells: []model.TableCell{{Text: testConTilde, RowSpan: 2}}}},
 	}
 
 	got := RenderTableHTML(table, "")
@@ -176,8 +182,8 @@ func TestRenderHTMLFromMarkdownSubset(t *testing.T) {
 		{"emphasis", "*bold*", "<em>bold</em>"},
 		{"newline", "line1\nline2", "line1<br>line2"},
 		{"html escaping", "a < b & c > d", "a &lt; b &amp; c &gt; d"},
-		{"carriage return normalization", "a\r\nb", "a<br>b"},
-		{"bare carriage return", "a\rb", "a<br>b"},
+		{"carriage return normalization", "a\r\nb", testABrB},
+		{"bare carriage return", "a\rb", testABrB},
 		{"unclosed emphasis", "*incomplete", "*incomplete"},
 		{"multiple emphasis", "*one* and *two*", "<em>one</em> and <em>two</em>"},
 		{"emphasis with special chars", "*café*", "<em>café</em>"},
@@ -207,8 +213,8 @@ func TestNormalizeMarkdownTableCellText(t *testing.T) {
 		{"simple text", "hello", "hello"},
 		{"with newlines", "line1\nline2", "line1<br>line2"},
 		{"with pipes", "a|b", "a\\|b"},
-		{"with crlf", "a\r\nb", "a<br>b"},
-		{"with cr", "a\rb", "a<br>b"},
+		{"with crlf", "a\r\nb", testABrB},
+		{"with cr", "a\rb", testABrB},
 		{"with surrounding spaces", "  hello  ", "hello"},
 		{"empty", "", ""},
 	}

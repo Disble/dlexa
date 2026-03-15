@@ -6,6 +6,11 @@ import (
 	"github.com/Disble/dlexa/internal/model"
 )
 
+const (
+	testSingleText = "single text"
+	testBienRef1   = "bien#ref1"
+)
+
 func TestNeedsInlineSpace(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -87,7 +92,7 @@ func TestShouldWrapStyledBuffer(t *testing.T) {
 	}{
 		{"empty buffer", nil, true},
 		{"multiple items", []model.Inline{{Kind: model.InlineKindText}, {Kind: model.InlineKindText}}, true},
-		{"single text", []model.Inline{{Kind: model.InlineKindText}}, true},
+		{testSingleText, []model.Inline{{Kind: model.InlineKindText}}, true},
 		{"single mention", []model.Inline{{Kind: model.InlineKindMention}}, false},
 		{"single emphasis", []model.Inline{{Kind: model.InlineKindEmphasis}}, false},
 		{"single work title", []model.Inline{{Kind: model.InlineKindWorkTitle}}, false},
@@ -316,7 +321,7 @@ func TestRenderInlineMarkdown(t *testing.T) {
 	}{
 		{"nil inlines", nil, ""},
 		{"empty inlines", []model.Inline{}, ""},
-		{"single text", []model.Inline{{Kind: model.InlineKindText, Text: "hello"}}, "hello"},
+		{testSingleText, []model.Inline{{Kind: model.InlineKindText, Text: "hello"}}, "hello"},
 		{"text with spaces", []model.Inline{{Kind: model.InlineKindText, Text: "  hello  "}}, "hello"},
 		{
 			"example wraps with angle quotes",
@@ -335,12 +340,12 @@ func TestRenderInlineMarkdown(t *testing.T) {
 		},
 		{
 			"reference renders arrow link",
-			[]model.Inline{{Kind: model.InlineKindReference, Text: "6", Target: "bien#ref1"}},
+			[]model.Inline{{Kind: model.InlineKindReference, Text: "6", Target: testBienRef1}},
 			"→ [6](bien#ref1)",
 		},
 		{
 			"empty reference returns empty",
-			[]model.Inline{{Kind: model.InlineKindReference, Text: "", Target: "bien#ref1"}},
+			[]model.Inline{{Kind: model.InlineKindReference, Text: "", Target: testBienRef1}},
 			"",
 		},
 		{
@@ -395,7 +400,7 @@ func TestRenderMarkdownInlines(t *testing.T) {
 	}{
 		{"nil inlines", nil, ""},
 		{"empty inlines", []model.Inline{}, ""},
-		{"single text", []model.Inline{{Kind: model.InlineKindText, Text: "hello"}}, "hello"},
+		{testSingleText, []model.Inline{{Kind: model.InlineKindText, Text: "hello"}}, "hello"},
 		{
 			"example wraps with asterisks (not angle quotes)",
 			[]model.Inline{{Kind: model.InlineKindExample, Text: "Cierra bien"}},
@@ -408,7 +413,7 @@ func TestRenderMarkdownInlines(t *testing.T) {
 		},
 		{
 			"reference renders arrow link",
-			[]model.Inline{{Kind: model.InlineKindReference, Text: "6", Target: "bien#ref1"}},
+			[]model.Inline{{Kind: model.InlineKindReference, Text: "6", Target: testBienRef1}},
 			"→ [6](bien#ref1)",
 		},
 		{

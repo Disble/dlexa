@@ -145,46 +145,44 @@ func renderInlineMarkdownItem(inline model.Inline) string {
 
 func renderStyledInlineMarkdown(children []model.Inline, marker string) string {
 	var builder strings.Builder
-	appendPiece := func(piece string) {
-		if piece == "" {
-			return
-		}
-		if builder.Len() > 0 && !ShouldGlueInlineWordBoundary(builder.String(), piece) && NeedsInlineSpace(builder.String(), piece) {
-			builder.WriteString(" ")
-		}
-		builder.WriteString(piece)
-	}
-	flush := func(buffer []model.Inline) {
-		text := strings.TrimSpace(RenderInlineMarkdown(buffer))
-		if text == "" {
-			return
-		}
-		piece := text
-		if ShouldWrapStyledBuffer(buffer) {
-			piece = marker + text + marker
-		}
-		appendPiece(piece)
-	}
-
 	buffer := make([]model.Inline, 0, len(children))
 	for _, child := range children {
 		if child.Kind != model.InlineKindScaffold {
 			buffer = append(buffer, child)
 			continue
 		}
-		flush(buffer)
+		flushStyledInlineBuffer(&builder, buffer, marker)
 		buffer = buffer[:0]
 		plain := strings.TrimSpace(RenderInlineMarkdown(child.Children))
 		if plain == "" {
 			plain = strings.TrimSpace(child.Text)
 		}
-		if plain == "" {
-			continue
-		}
-		appendPiece(plain)
+		appendInlinePiece(&builder, plain)
 	}
-	flush(buffer)
+	flushStyledInlineBuffer(&builder, buffer, marker)
 	return strings.TrimSpace(builder.String())
+}
+
+func appendInlinePiece(builder *strings.Builder, piece string) {
+	if piece == "" {
+		return
+	}
+	if builder.Len() > 0 && !ShouldGlueInlineWordBoundary(builder.String(), piece) && NeedsInlineSpace(builder.String(), piece) {
+		builder.WriteString(" ")
+	}
+	builder.WriteString(piece)
+}
+
+func flushStyledInlineBuffer(builder *strings.Builder, buffer []model.Inline, marker string) {
+	text := strings.TrimSpace(RenderInlineMarkdown(buffer))
+	if text == "" {
+		return
+	}
+	piece := text
+	if ShouldWrapStyledBuffer(buffer) {
+		piece = marker + text + marker
+	}
+	appendInlinePiece(builder, piece)
 }
 
 // RenderMarkdownInlines renders inlines for the render layer.
@@ -242,47 +240,44 @@ func renderMarkdownInline(inline model.Inline) string {
 func renderStyledMarkdownInline(children []model.Inline, marker string) string {
 	var builder strings.Builder
 	buffer := make([]model.Inline, 0, len(children))
-	appendPiece := func(piece string) {
-		if piece == "" {
-			return
-		}
-		if builder.Len() > 0 && !ShouldGlueInlineWordBoundary(builder.String(), piece) && NeedsInlineSpace(builder.String(), piece) {
-			builder.WriteString(" ")
-		}
-		builder.WriteString(piece)
-	}
-	flush := func() {
-		if len(buffer) == 0 {
-			return
-		}
-		snapshot := append([]model.Inline(nil), buffer...)
-		text := strings.TrimSpace(RenderMarkdownInlines(buffer))
-		buffer = buffer[:0]
-		if text == "" {
-			return
-		}
-		piece := text
-		if ShouldWrapStyledBuffer(snapshot) {
-			piece = marker + text + marker
-		}
-		appendPiece(piece)
-	}
-
 	for _, child := range children {
 		if child.Kind != model.InlineKindScaffold {
 			buffer = append(buffer, child)
 			continue
 		}
-		flush()
+		buffer = flushStyledMarkdownBuffer(&builder, buffer, marker)
 		piece := strings.TrimSpace(RenderMarkdownInlines(child.Children))
 		if piece == "" {
 			piece = strings.TrimSpace(child.Text)
 		}
-		if piece == "" {
-			continue
-		}
-		appendPiece(piece)
+		appendMarkdownPiece(&builder, piece)
 	}
-	flush()
+	flushStyledMarkdownBuffer(&builder, buffer, marker)
 	return strings.TrimSpace(builder.String())
+}
+
+func appendMarkdownPiece(builder *strings.Builder, piece string) {
+	if piece == "" {
+		return
+	}
+	if builder.Len() > 0 && !ShouldGlueInlineWordBoundary(builder.String(), piece) && NeedsInlineSpace(builder.String(), piece) {
+		builder.WriteString(" ")
+	}
+	builder.WriteString(piece)
+}
+
+func flushStyledMarkdownBuffer(builder *strings.Builder, buffer []model.Inline, marker string) []model.Inline {
+	if len(buffer) == 0 {
+		return buffer[:0]
+	}
+	snapshot := append([]model.Inline(nil), buffer...)
+	text := strings.TrimSpace(RenderMarkdownInlines(buffer))
+	if text != "" {
+		piece := text
+		if ShouldWrapStyledBuffer(snapshot) {
+			piece = marker + text + marker
+		}
+		appendMarkdownPiece(builder, piece)
+	}
+	return buffer[:0]
 }
