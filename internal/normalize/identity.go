@@ -7,16 +7,20 @@ import (
 	"github.com/gentleman-programming/dlexa/internal/parse"
 )
 
+// IdentityNormalizer preserves parsed fields without transformation.
 type IdentityNormalizer struct{}
 
+// NewIdentityNormalizer returns a new IdentityNormalizer instance.
 func NewIdentityNormalizer() *IdentityNormalizer {
 	return &IdentityNormalizer{}
 }
 
+// Normalize delegates to NormalizeEntries for identity passthrough.
 func (n *IdentityNormalizer) Normalize(ctx context.Context, descriptor model.SourceDescriptor, result parse.Result) ([]model.Entry, []model.Warning, error) {
 	return n.NormalizeEntries(ctx, descriptor, result)
 }
 
+// NormalizeEntries converts parsed articles into entries without semantic transformation.
 func (n *IdentityNormalizer) NormalizeEntries(ctx context.Context, descriptor model.SourceDescriptor, result parse.Result) ([]model.Entry, []model.Warning, error) {
 	_ = ctx
 	normalized := make([]model.Entry, 0, len(result.Articles))

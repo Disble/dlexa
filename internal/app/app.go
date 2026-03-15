@@ -1,3 +1,4 @@
+// Package app provides the main application entry point for dlexa.
 package app
 
 import (
@@ -15,6 +16,7 @@ import (
 	"github.com/gentleman-programming/dlexa/internal/version"
 )
 
+// App wires together configuration, lookup, and rendering to drive the CLI.
 type App struct {
 	platform  platform.CLI
 	config    config.Loader
@@ -23,6 +25,7 @@ type App struct {
 	renderers render.Registry
 }
 
+// Run parses CLI flags, performs the lookup, and writes rendered output.
 func (a *App) Run(ctx context.Context) error {
 	flagSet := flag.NewFlagSet(version.BinaryName, flag.ContinueOnError)
 	flagSet.SetOutput(a.platform.Stderr())

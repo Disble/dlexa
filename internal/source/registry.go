@@ -7,10 +7,12 @@ import (
 	"github.com/gentleman-programming/dlexa/internal/model"
 )
 
+// StaticRegistry holds a fixed, priority-ordered list of sources.
 type StaticRegistry struct {
 	sources []Source
 }
 
+// NewStaticRegistry creates a registry with sources ordered by priority.
 func NewStaticRegistry(sources ...Source) *StaticRegistry {
 	ordered := append([]Source(nil), sources...)
 	sort.SliceStable(ordered, func(i, j int) bool {
@@ -20,6 +22,7 @@ func NewStaticRegistry(sources ...Source) *StaticRegistry {
 	return &StaticRegistry{sources: ordered}
 }
 
+// SourcesFor returns the sources matching the requested names, or all sources if none specified.
 func (r *StaticRegistry) SourcesFor(request model.LookupRequest) ([]Source, error) {
 	if len(request.Sources) == 0 {
 		return r.sources, nil

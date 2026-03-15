@@ -9,6 +9,7 @@ import (
 	"github.com/gentleman-programming/dlexa/internal/parse"
 )
 
+// PipelineSource implements Source by chaining a fetcher, parser, and normalizer.
 type PipelineSource struct {
 	descriptor model.SourceDescriptor
 	fetcher    fetch.Fetcher
@@ -16,6 +17,7 @@ type PipelineSource struct {
 	normalizer normalize.Normalizer
 }
 
+// NewPipelineSource creates a PipelineSource with the given adapters.
 func NewPipelineSource(
 	descriptor model.SourceDescriptor,
 	fetcher fetch.Fetcher,
@@ -30,10 +32,12 @@ func NewPipelineSource(
 	}
 }
 
+// Descriptor returns the source metadata for this pipeline.
 func (s *PipelineSource) Descriptor() model.SourceDescriptor {
 	return s.descriptor
 }
 
+// Lookup fetches, parses, and normalizes a dictionary entry for the given request.
 func (s *PipelineSource) Lookup(ctx context.Context, request model.LookupRequest) (model.SourceResult, error) {
 	result := model.SourceResult{Source: s.descriptor}
 

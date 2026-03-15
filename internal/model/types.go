@@ -1,3 +1,4 @@
+// Package model defines the domain types shared across dlexa.
 package model
 
 import (
@@ -5,6 +6,7 @@ import (
 	"time"
 )
 
+// Problem codes, severity levels, and inline content kinds.
 const (
 	ProblemCodeSourceLookupFailed = "source_lookup_failed"
 	ProblemCodeDPDFetchFailed     = "dpd_fetch_failed"
@@ -32,6 +34,7 @@ const (
 	InlineKindEmphasis       = "emphasis"
 )
 
+// LookupRequest holds the parameters for a dictionary lookup query.
 type LookupRequest struct {
 	Query   string
 	Format  string
@@ -39,6 +42,7 @@ type LookupRequest struct {
 	NoCache bool
 }
 
+// LookupResult contains the aggregated entries and metadata from a lookup.
 type LookupResult struct {
 	Request     LookupRequest
 	Entries     []Entry
@@ -49,6 +53,7 @@ type LookupResult struct {
 	GeneratedAt time.Time
 }
 
+// Entry represents a single dictionary entry with its content and metadata.
 type Entry struct {
 	ID       string
 	Headword string
@@ -60,6 +65,7 @@ type Entry struct {
 	Article  *Article
 }
 
+// Article is the structured representation of a dictionary article.
 type Article struct {
 	Dictionary   string
 	Edition      string
@@ -69,13 +75,16 @@ type Article struct {
 	Citation     Citation
 }
 
+// ArticleBlockKind identifies the type of content block within an article section.
 type ArticleBlockKind string
 
+// Supported article block kinds.
 const (
 	ArticleBlockKindParagraph ArticleBlockKind = "paragraph"
 	ArticleBlockKindTable     ArticleBlockKind = "table"
 )
 
+// Section groups related blocks under a labeled heading within an article.
 type Section struct {
 	Label      string
 	Title      string
@@ -84,21 +93,25 @@ type Section struct {
 	Children   []Section
 }
 
+// Block is a union container for a paragraph or table within a section.
 type Block struct {
 	Kind      ArticleBlockKind `json:"kind"`
 	Paragraph *Paragraph       `json:"paragraph,omitempty"`
 	Table     *Table           `json:"table,omitempty"`
 }
 
+// Table holds header and body rows for tabular content.
 type Table struct {
 	Headers []TableRow `json:"headers,omitempty"`
 	Rows    []TableRow `json:"rows,omitempty"`
 }
 
+// TableRow is an ordered sequence of cells forming one row.
 type TableRow struct {
 	Cells []TableCell `json:"cells,omitempty"`
 }
 
+// TableCell represents a single cell with optional inline content and span attributes.
 type TableCell struct {
 	Text    string   `json:"text"`
 	Inlines []Inline `json:"inlines,omitempty"`
@@ -106,11 +119,13 @@ type TableCell struct {
 	RowSpan int      `json:"rowspan,omitempty"`
 }
 
+// Paragraph holds rendered markdown and its constituent inline elements.
 type Paragraph struct {
 	Markdown string
 	Inlines  []Inline
 }
 
+// Inline is a span of styled or annotated text within a paragraph.
 type Inline struct {
 	Kind     string
 	Variant  string
@@ -119,6 +134,7 @@ type Inline struct {
 	Children []Inline
 }
 
+// Citation contains bibliographic reference data for an article.
 type Citation struct {
 	SourceLabel  string
 	CanonicalURL string
@@ -127,6 +143,7 @@ type Citation struct {
 	Text         string
 }
 
+// SourceDescriptor defines a dictionary source's identity and behavior.
 type SourceDescriptor struct {
 	Name        string
 	DisplayName string
@@ -135,6 +152,7 @@ type SourceDescriptor struct {
 	Cacheable   bool
 }
 
+// SourceResult pairs a source descriptor with the entries it produced.
 type SourceResult struct {
 	Source    SourceDescriptor
 	Entries   []Entry
@@ -143,12 +161,14 @@ type SourceResult struct {
 	FetchedAt time.Time
 }
 
+// Warning represents a non-fatal issue encountered during lookup.
 type Warning struct {
 	Code    string
 	Message string
 	Source  string
 }
 
+// Problem describes a categorized error with source attribution and severity.
 type Problem struct {
 	Code     string
 	Message  string
@@ -156,11 +176,13 @@ type Problem struct {
 	Severity string
 }
 
+// ProblemError wraps a Problem as a Go error for use in error chains.
 type ProblemError struct {
 	Problem Problem
 	Err     error
 }
 
+// NewProblemError creates a ProblemError, defaulting severity to error if unset.
 func NewProblemError(problem Problem, err error) *ProblemError {
 	if problem.Severity == "" {
 		problem.Severity = ProblemSeverityError
@@ -189,6 +211,7 @@ func (e *ProblemError) Unwrap() error {
 	return e.Err
 }
 
+// AsProblem extracts a Problem from an error chain, if present.
 func AsProblem(err error) (Problem, bool) {
 	var problemErr *ProblemError
 	if !errors.As(err, &problemErr) {

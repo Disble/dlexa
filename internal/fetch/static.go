@@ -7,12 +7,14 @@ import (
 	"time"
 )
 
+// StaticFetcher returns synthetic documents for bootstrap and testing.
 type StaticFetcher struct {
 	BaseURL     string
 	ContentType string
 	Template    string
 }
 
+// NewStaticFetcher creates a StaticFetcher with the given base URL.
 func NewStaticFetcher(baseURL string) *StaticFetcher {
 	return &StaticFetcher{
 		BaseURL:     baseURL,
@@ -21,10 +23,12 @@ func NewStaticFetcher(baseURL string) *StaticFetcher {
 	}
 }
 
+// Fetch delegates to FetchDocument to satisfy the Fetcher interface.
 func (f *StaticFetcher) Fetch(ctx context.Context, request Request) (Document, error) {
 	return f.FetchDocument(ctx, request)
 }
 
+// FetchDocument generates a synthetic document from the request query.
 func (f *StaticFetcher) FetchDocument(ctx context.Context, request Request) (Document, error) {
 	_ = ctx
 	query := strings.TrimSpace(request.Query)
