@@ -10,6 +10,15 @@ import (
 	"github.com/Disble/dlexa/internal/source"
 )
 
+const (
+	lookupErrFmt    = "Lookup() error = %v"
+	entryID1        = "entry-1"
+	warningCode1    = "first-warning"
+	problemCode1    = "first-problem"
+	entryID2        = "entry-2"
+	warningCode2    = "second-warning"
+)
+
 func TestLookupReturnsCachedResultAsCacheHit(t *testing.T) {
 	request := model.LookupRequest{Query: "cache", Format: "json", Sources: []string{"demo"}}
 	cached := model.LookupResult{Request: request, Entries: []model.Entry{{ID: "cached-entry"}}}
@@ -19,7 +28,7 @@ func TestLookupReturnsCachedResultAsCacheHit(t *testing.T) {
 	service := NewService(registry, store)
 	result, err := service.Lookup(context.Background(), request)
 	if err != nil {
-		t.Fatalf("Lookup() error = %v", err)
+		t.Fatalf(lookupErrFmt, err)
 	}
 
 	if !result.CacheHit {
@@ -40,26 +49,26 @@ func TestLookupReturnsCachedResultAsCacheHit(t *testing.T) {
 }
 
 func TestLookupAggregatesEntriesWarningsProblemsAndSourceResults(t *testing.T) {
-	firstDescriptor := model.SourceDescriptor{Name: "demo"}
-	secondDescriptor := model.SourceDescriptor{Name: "backup"}
-	failingDescriptor := model.SourceDescriptor{Name: "broken"}
+	firstDescriptor := model.SourceDescriptor{Name: "demo", Priority: 1}
+	secondDescriptor := model.SourceDescriptor{Name: "backup", Priority: 2}
+	failingDescriptor := model.SourceDescriptor{Name: "broken", Priority: 3}
 
 	registry := &stubRegistry{sources: []source.Source{
 		&stubSource{
 			descriptor: firstDescriptor,
 			result: model.SourceResult{
 				Source:   firstDescriptor,
-				Entries:  []model.Entry{{ID: "entry-1", Source: firstDescriptor.Name}},
-				Warnings: []model.Warning{{Code: "first-warning", Source: firstDescriptor.Name}},
-				Problems: []model.Problem{{Code: "first-problem", Source: firstDescriptor.Name, Severity: "warning"}},
+				Entries:  []model.Entry{{ID: entryID1, Source: firstDescriptor.Name}},
+				Warnings: []model.Warning{{Code: warningCode1, Source: firstDescriptor.Name}},
+				Problems: []model.Problem{{Code: problemCode1, Source: firstDescriptor.Name, Severity: "warning"}},
 			},
 		},
 		&stubSource{
 			descriptor: secondDescriptor,
 			result: model.SourceResult{
 				Source:   secondDescriptor,
-				Entries:  []model.Entry{{ID: "entry-2", Source: secondDescriptor.Name}},
-				Warnings: []model.Warning{{Code: "second-warning", Source: secondDescriptor.Name}},
+				Entries:  []model.Entry{{ID: entryID2, Source: secondDescriptor.Name}},
+				Warnings: []model.Warning{{Code: warningCode2, Source: secondDescriptor.Name}},
 			},
 		},
 		&stubSource{
@@ -78,7 +87,7 @@ func TestLookupAggregatesEntriesWarningsProblemsAndSourceResults(t *testing.T) {
 
 	result, err := service.Lookup(context.Background(), request)
 	if err != nil {
-		t.Fatalf("Lookup() error = %v", err)
+		t.Fatalf(lookupErrFmt, err)
 	}
 
 	if !reflect.DeepEqual(result.Request, request) {
@@ -89,20 +98,20 @@ func TestLookupAggregatesEntriesWarningsProblemsAndSourceResults(t *testing.T) {
 		t.Fatalf("Lookup() sources = %d, want 2", len(result.Sources))
 	}
 
-	if gotIDs := []string{result.Entries[0].ID, result.Entries[1].ID}; !reflect.DeepEqual(gotIDs, []string{"entry-1", "entry-2"}) {
-		t.Fatalf("Lookup() entry IDs = %#v, want %#v", gotIDs, []string{"entry-1", "entry-2"})
+	if gotIDs := []string{result.Entries[0].ID, result.Entries[1].ID}; !reflect.DeepEqual(gotIDs, []string{entryID1, entryID2}) {
+		t.Fatalf("Lookup() entry IDs = %#v, want %#v", gotIDs, []string{entryID1, entryID2})
 	}
 
-	if gotCodes := []string{result.Warnings[0].Code, result.Warnings[1].Code}; !reflect.DeepEqual(gotCodes, []string{"first-warning", "second-warning"}) {
-		t.Fatalf("Lookup() warning codes = %#v, want %#v", gotCodes, []string{"first-warning", "second-warning"})
+	if gotCodes := []string{result.Warnings[0].Code, result.Warnings[1].Code}; !reflect.DeepEqual(gotCodes, []string{warningCode1, warningCode2}) {
+		t.Fatalf("Lookup() warning codes = %#v, want %#v", gotCodes, []string{warningCode1, warningCode2})
 	}
 
 	if len(result.Problems) != 2 {
 		t.Fatalf("Lookup() problems = %d, want 2", len(result.Problems))
 	}
 
-	if gotCodes := []string{result.Problems[0].Code, result.Problems[1].Code}; !reflect.DeepEqual(gotCodes, []string{"first-problem", model.ProblemCodeDPDFetchFailed}) {
-		t.Fatalf("Lookup() problem codes = %#v, want %#v", gotCodes, []string{"first-problem", model.ProblemCodeDPDFetchFailed})
+	if gotCodes := []string{result.Problems[0].Code, result.Problems[1].Code}; !reflect.DeepEqual(gotCodes, []string{problemCode1, model.ProblemCodeDPDFetchFailed}) {
+		t.Fatalf("Lookup() problem codes = %#v, want %#v", gotCodes, []string{problemCode1, model.ProblemCodeDPDFetchFailed})
 	}
 
 	if result.Problems[1].Source != failingDescriptor.Name {
@@ -123,7 +132,7 @@ func TestLookupFallsBackToGenericProblemForUntypedErrors(t *testing.T) {
 	service := NewService(registry, &stubStore{})
 	result, err := service.Lookup(context.Background(), model.LookupRequest{Query: "palabra", Sources: []string{"broken"}, NoCache: true})
 	if err != nil {
-		t.Fatalf("Lookup() error = %v", err)
+		t.Fatalf(lookupErrFmt, err)
 	}
 
 	if len(result.Problems) != 1 {

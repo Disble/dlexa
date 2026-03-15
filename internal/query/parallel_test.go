@@ -11,6 +11,12 @@ import (
 	"github.com/Disble/dlexa/internal/source"
 )
 
+const (
+	sourcePriority3 = "priority-3"
+	sourcePriority1 = "priority-1"
+	sourcePriority2 = "priority-2"
+)
+
 // delayedStubSource is a stub that introduces artificial latency before returning.
 type delayedStubSource struct {
 	descriptor model.SourceDescriptor
@@ -60,7 +66,7 @@ func TestLookupQueriesSourcesConcurrently(t *testing.T) {
 	elapsed := time.Since(start)
 
 	if err != nil {
-		t.Fatalf("Lookup() error = %v", err)
+		t.Fatalf(lookupErrFmt, err)
 	}
 
 	// With 3 sources each taking 100ms, sequential would be ~300ms.
@@ -199,9 +205,9 @@ func TestLookupAllSourcesFail(t *testing.T) {
 func TestLookupResultsOrderedByPriority(t *testing.T) {
 	// Sources with priorities 3, 1, 2. Use varying delays so completion order
 	// differs from priority order.
-	descP3 := model.SourceDescriptor{Name: "priority-3", Priority: 3}
-	descP1 := model.SourceDescriptor{Name: "priority-1", Priority: 1}
-	descP2 := model.SourceDescriptor{Name: "priority-2", Priority: 2}
+	descP3 := model.SourceDescriptor{Name: sourcePriority3, Priority: 3}
+	descP1 := model.SourceDescriptor{Name: sourcePriority1, Priority: 1}
+	descP2 := model.SourceDescriptor{Name: sourcePriority2, Priority: 2}
 
 	sources := []source.Source{
 		&delayedStubSource{
@@ -232,11 +238,11 @@ func TestLookupResultsOrderedByPriority(t *testing.T) {
 
 	registry := &stubRegistry{sources: sources}
 	service := NewService(registry, &stubStore{})
-	request := model.LookupRequest{Query: "ordered", Sources: []string{"priority-3", "priority-1", "priority-2"}, NoCache: true}
+	request := model.LookupRequest{Query: "ordered", Sources: []string{sourcePriority3, sourcePriority1, sourcePriority2}, NoCache: true}
 
 	result, err := service.Lookup(context.Background(), request)
 	if err != nil {
-		t.Fatalf("Lookup() error = %v", err)
+		t.Fatalf(lookupErrFmt, err)
 	}
 
 	if len(result.Sources) != 3 {
@@ -244,7 +250,7 @@ func TestLookupResultsOrderedByPriority(t *testing.T) {
 	}
 
 	// Sources must be ordered by ascending priority.
-	wantOrder := []string{"priority-1", "priority-2", "priority-3"}
+	wantOrder := []string{sourcePriority1, sourcePriority2, sourcePriority3}
 	for i, sr := range result.Sources {
 		if sr.Source.Name != wantOrder[i] {
 			t.Fatalf("Lookup() sources[%d].Source.Name = %q, want %q", i, sr.Source.Name, wantOrder[i])
@@ -289,7 +295,7 @@ func TestLookupRaceDetector(t *testing.T) {
 
 	result, err := service.Lookup(context.Background(), request)
 	if err != nil {
-		t.Fatalf("Lookup() error = %v", err)
+		t.Fatalf(lookupErrFmt, err)
 	}
 
 	if len(result.Entries) != sourceCount {
