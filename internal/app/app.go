@@ -20,9 +20,9 @@ import (
 type App struct {
 	platform  platform.CLI
 	config    config.Loader
-	doctor    doctor.Service
-	lookup    query.Service
-	renderers render.Registry
+	doctor    doctor.Runner
+	lookup    query.Looker
+	renderers render.RendererResolver
 }
 
 // Run parses CLI flags, performs the lookup, and writes rendered output.
@@ -62,10 +62,7 @@ func (a *App) Run(ctx context.Context) error {
 		return err
 	}
 
-	formatName := runtimeConfig.DefaultFormat
-	if strings.TrimSpace(*formatFlag) != "" {
-		formatName = strings.TrimSpace(*formatFlag)
-	}
+	formatName := resolveFormat(*formatFlag, runtimeConfig.DefaultFormat)
 
 	request := model.LookupRequest{
 		Query:   queryText,
@@ -74,6 +71,11 @@ func (a *App) Run(ctx context.Context) error {
 		NoCache: *noCacheFlag || !runtimeConfig.CacheEnabled,
 	}
 
+	return a.runLookup(ctx, request, formatName)
+}
+
+// runLookup executes the lookup, renders the result, and writes the output.
+func (a *App) runLookup(ctx context.Context, request model.LookupRequest, formatName string) error {
 	result, err := a.lookup.Lookup(ctx, request)
 	if err != nil {
 		return err
@@ -93,13 +95,24 @@ func (a *App) Run(ctx context.Context) error {
 		return err
 	}
 
-	if len(payload) == 0 || payload[len(payload)-1] != '\n' {
-		if _, err := a.platform.Stdout().Write([]byte("\n")); err != nil {
-			return err
-		}
-	}
+	return a.ensureTrailingNewline(payload)
+}
 
-	return nil
+// ensureTrailingNewline writes a newline to stdout if payload does not already end with one.
+func (a *App) ensureTrailingNewline(payload []byte) error {
+	if len(payload) > 0 && payload[len(payload)-1] == '\n' {
+		return nil
+	}
+	_, err := a.platform.Stdout().Write([]byte("\n"))
+	return err
+}
+
+// resolveFormat returns the explicit format if non-empty, otherwise the default.
+func resolveFormat(explicit, defaultFormat string) string {
+	if strings.TrimSpace(explicit) != "" {
+		return strings.TrimSpace(explicit)
+	}
+	return defaultFormat
 }
 
 func (a *App) runDoctor(ctx context.Context) error {

@@ -2,7 +2,7 @@ package render
 
 import "fmt"
 
-// StaticRegistry is a Registry backed by a fixed set of renderers.
+// StaticRegistry is a RendererResolver backed by a fixed set of renderers.
 type StaticRegistry struct {
 	renderers map[string]Renderer
 }

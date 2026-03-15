@@ -13,7 +13,7 @@ type Source interface {
 	Lookup(ctx context.Context, request model.LookupRequest) (model.SourceResult, error)
 }
 
-// Registry provides access to available sources for a given lookup request.
-type Registry interface {
+// SourcesForer provides access to available sources for a given lookup request.
+type SourcesForer interface {
 	SourcesFor(request model.LookupRequest) ([]Source, error)
 }

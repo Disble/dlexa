@@ -12,7 +12,7 @@ type Renderer interface {
 	Render(ctx context.Context, result model.LookupResult) ([]byte, error)
 }
 
-// Registry resolves a Renderer by output format name.
-type Registry interface {
+// RendererResolver resolves a Renderer by output format name.
+type RendererResolver interface {
 	Renderer(format string) (Renderer, error)
 }

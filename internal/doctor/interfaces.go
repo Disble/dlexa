@@ -20,7 +20,7 @@ type Report struct {
 	GeneratedAt time.Time
 }
 
-// Service runs health-check diagnostics and returns a report.
-type Service interface {
+// Runner runs health-check diagnostics and returns a report.
+type Runner interface {
 	Run(ctx context.Context) (Report, error)
 }

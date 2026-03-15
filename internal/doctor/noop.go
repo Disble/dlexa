@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// NoopDoctor is a doctor.Service that always reports healthy.
+// NoopDoctor is a doctor.Runner that always reports healthy.
 type NoopDoctor struct{}
 
 // NewNoopDoctor returns a NoopDoctor instance.

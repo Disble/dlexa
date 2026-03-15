@@ -20,12 +20,12 @@ type sourceOutcome struct {
 
 // LookupService orchestrates parallel source lookups with caching.
 type LookupService struct {
-	registry source.Registry
+	registry source.SourcesForer
 	cache    cache.Store
 }
 
 // NewService creates a LookupService backed by the given registry and cache.
-func NewService(registry source.Registry, store cache.Store) *LookupService {
+func NewService(registry source.SourcesForer, store cache.Store) *LookupService {
 	return &LookupService{registry: registry, cache: store}
 }
 
