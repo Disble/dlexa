@@ -205,6 +205,14 @@ func TestDPDArticleParserKeepsExamplesSeparateFromProse(t *testing.T) {
 	}
 }
 
+func checkBienEmphasisInline(inline model.Inline, sawMention *bool) {
+	for _, child := range inline.Children {
+		if child.Kind == model.InlineKindMention && (strings.Contains(child.Text, "mejor") || strings.Contains(child.Text, "más bien")) {
+			*sawMention = true
+		}
+	}
+}
+
 func checkBienInline(inline model.Inline, sawExample, sawMention, sawGloss, sawReference *bool) {
 	switch inline.Kind {
 	case model.InlineKindExample:
@@ -212,11 +220,7 @@ func checkBienInline(inline model.Inline, sawExample, sawMention, sawGloss, sawR
 			*sawExample = true
 		}
 	case model.InlineKindEmphasis:
-		for _, child := range inline.Children {
-			if child.Kind == model.InlineKindMention && (strings.Contains(child.Text, "mejor") || strings.Contains(child.Text, "más bien")) {
-				*sawMention = true
-			}
-		}
+		checkBienEmphasisInline(inline, sawMention)
 	case model.InlineKindGloss:
 		if strings.Contains(inline.Text, "correcta y adecuadamente") {
 			*sawGloss = true
