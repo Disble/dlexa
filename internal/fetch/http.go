@@ -14,8 +14,8 @@ import (
 
 const challengeBodySnippetLimit = 1024
 
-// HTTPClient abstracts the HTTP transport for testability.
-type HTTPClient interface {
+// Doer abstracts the HTTP transport for testability.
+type Doer interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
@@ -23,7 +23,7 @@ type HTTPClient interface {
 type DPDFetcher struct {
 	BaseURL   string
 	UserAgent string
-	Client    HTTPClient
+	Client    Doer
 	now       func() time.Time
 }
 
@@ -66,12 +66,7 @@ func (f *DPDFetcher) Fetch(ctx context.Context, request Request) (Document, erro
 		}, err)
 	}
 
-	client := f.Client
-	if client == nil {
-		client = &http.Client{Timeout: 10 * time.Second}
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, lookupURL, nil)
+	req, err := f.buildRequest(ctx, lookupURL)
 	if err != nil {
 		return Document{}, model.NewProblemError(model.Problem{
 			Code:     model.ProblemCodeDPDFetchFailed,
@@ -81,23 +76,7 @@ func (f *DPDFetcher) Fetch(ctx context.Context, request Request) (Document, erro
 		}, err)
 	}
 
-	if f.UserAgent != "" {
-		req.Header.Set("User-Agent", f.UserAgent)
-	}
-	if req.Header.Get("Accept") == "" {
-		req.Header.Set("Accept", "text/html,application/xhtml+xml")
-	}
-	if req.Header.Get("Accept-Language") == "" {
-		req.Header.Set("Accept-Language", "es-ES,es;q=0.9,en;q=0.8")
-	}
-	if req.Header.Get("Cache-Control") == "" {
-		req.Header.Set("Cache-Control", "no-cache")
-	}
-	if req.Header.Get("Pragma") == "" {
-		req.Header.Set("Pragma", "no-cache")
-	}
-
-	resp, err := client.Do(req)
+	resp, err := f.resolveClient().Do(req)
 	if err != nil {
 		return Document{}, model.NewProblemError(model.Problem{
 			Code:     model.ProblemCodeDPDFetchFailed,
@@ -145,12 +124,45 @@ func (f *DPDFetcher) Fetch(ctx context.Context, request Request) (Document, erro
 		}, nil)
 	}
 
+	return f.buildDocument(resp, body, lookupURL), nil
+}
+
+// buildRequest creates an HTTP GET request for the given URL and sets default headers.
+func (f *DPDFetcher) buildRequest(ctx context.Context, lookupURL string) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, lookupURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if f.UserAgent != "" {
+		req.Header.Set("User-Agent", f.UserAgent)
+	}
+
+	setDefaultHeader(req, "Accept", "text/html,application/xhtml+xml")
+	setDefaultHeader(req, "Accept-Language", "es-ES,es;q=0.9,en;q=0.8")
+	setDefaultHeader(req, "Cache-Control", "no-cache")
+	setDefaultHeader(req, "Pragma", "no-cache")
+
+	return req, nil
+}
+
+// resolveClient returns the configured client or a default one if nil.
+func (f *DPDFetcher) resolveClient() Doer {
+	if f.Client != nil {
+		return f.Client
+	}
+
+	return &http.Client{Timeout: 10 * time.Second}
+}
+
+// buildDocument assembles a Document from the response, body, and fallback URL.
+func (f *DPDFetcher) buildDocument(resp *http.Response, body []byte, fallbackURL string) Document {
 	retrievedAt := time.Now().UTC()
 	if f.now != nil {
 		retrievedAt = f.now()
 	}
 
-	finalURL := lookupURL
+	finalURL := fallbackURL
 	if resp.Request != nil && resp.Request.URL != nil {
 		finalURL = resp.Request.URL.String()
 	}
@@ -161,7 +173,14 @@ func (f *DPDFetcher) Fetch(ctx context.Context, request Request) (Document, erro
 		StatusCode:  resp.StatusCode,
 		Body:        body,
 		RetrievedAt: retrievedAt,
-	}, nil
+	}
+}
+
+// setDefaultHeader sets the header only if it has not already been set.
+func setDefaultHeader(req *http.Request, key, value string) {
+	if req.Header.Get(key) == "" {
+		req.Header.Set(key, value)
+	}
 }
 
 func isChallengeBody(body []byte) bool {

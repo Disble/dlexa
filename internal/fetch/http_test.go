@@ -13,30 +13,27 @@ import (
 	"github.com/Disble/dlexa/internal/model"
 )
 
+const (
+	testLookupURL  = "https://example.invalid/dpd/bien%20compuesto"
+	testUserAgent  = "dlexa-test"
+	testAcceptLang = "es-ES,es;q=0.9,en;q=0.8"
+)
+
 func TestDPDFetcherClassifiesTransportOutcomesAndCapturesDocuments(t *testing.T) {
 	fixedNow := time.Date(2026, time.March, 13, 16, 30, 0, 0, time.UTC)
 	request := Request{Query: "  bien compuesto  ", Source: model.SourceDescriptor{Name: "dpd"}}
 
 	tests := []struct {
-		name           string
-		client         HTTPClient
-		wantDocument   Document
-		wantProblem    *model.Problem
-		wantRequestURL string
-		wantUserAgent  string
-		wantAcceptLang string
+		name         string
+		client       Doer
+		wantDocument Document
+		wantProblem  *model.Problem
 	}{
 		{
 			name: "successful html document capture",
 			client: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-				if got := req.URL.String(); got != "https://example.invalid/dpd/bien%20compuesto" {
-					return nil, errors.New("unexpected request URL: " + got)
-				}
-				if got := req.Header.Get("User-Agent"); got != "dlexa-test" {
-					return nil, errors.New("unexpected user agent: " + got)
-				}
-				if got := req.Header.Get("Accept-Language"); got != "es-ES,es;q=0.9,en;q=0.8" {
-					return nil, errors.New("unexpected accept-language: " + got)
+				if err := validateRequestHeaders(req); err != nil {
+					return nil, err
 				}
 
 				return &http.Response{
@@ -49,15 +46,12 @@ func TestDPDFetcherClassifiesTransportOutcomesAndCapturesDocuments(t *testing.T)
 				}, nil
 			}),
 			wantDocument: Document{
-				URL:         "https://example.invalid/dpd/bien%20compuesto",
+				URL:         testLookupURL,
 				ContentType: "text/html; charset=utf-8",
 				StatusCode:  http.StatusOK,
 				Body:        []byte("<html>ok</html>"),
 				RetrievedAt: fixedNow,
 			},
-			wantRequestURL: "https://example.invalid/dpd/bien%20compuesto",
-			wantUserAgent:  "dlexa-test",
-			wantAcceptLang: "es-ES,es;q=0.9,en;q=0.8",
 		},
 		{
 			name: "timeout failure becomes fetch problem",
@@ -70,9 +64,6 @@ func TestDPDFetcherClassifiesTransportOutcomesAndCapturesDocuments(t *testing.T)
 				Source:   "dpd",
 				Severity: model.ProblemSeverityError,
 			},
-			wantRequestURL: "https://example.invalid/dpd/bien%20compuesto",
-			wantUserAgent:  "dlexa-test",
-			wantAcceptLang: "es-ES,es;q=0.9,en;q=0.8",
 		},
 		{
 			name: "network failure becomes fetch problem",
@@ -85,9 +76,6 @@ func TestDPDFetcherClassifiesTransportOutcomesAndCapturesDocuments(t *testing.T)
 				Source:   "dpd",
 				Severity: model.ProblemSeverityError,
 			},
-			wantRequestURL: "https://example.invalid/dpd/bien%20compuesto",
-			wantUserAgent:  "dlexa-test",
-			wantAcceptLang: "es-ES,es;q=0.9,en;q=0.8",
 		},
 		{
 			name: "404 becomes not found problem",
@@ -104,9 +92,6 @@ func TestDPDFetcherClassifiesTransportOutcomesAndCapturesDocuments(t *testing.T)
 				Source:   "dpd",
 				Severity: model.ProblemSeverityError,
 			},
-			wantRequestURL: "https://example.invalid/dpd/bien%20compuesto",
-			wantUserAgent:  "dlexa-test",
-			wantAcceptLang: "es-ES,es;q=0.9,en;q=0.8",
 		},
 		{
 			name: "challenge page becomes fetch problem",
@@ -123,9 +108,6 @@ func TestDPDFetcherClassifiesTransportOutcomesAndCapturesDocuments(t *testing.T)
 				Source:   "dpd",
 				Severity: model.ProblemSeverityError,
 			},
-			wantRequestURL: "https://example.invalid/dpd/bien%20compuesto",
-			wantUserAgent:  "dlexa-test",
-			wantAcceptLang: "es-ES,es;q=0.9,en;q=0.8",
 		},
 		{
 			name: "non success transport handling becomes fetch problem",
@@ -142,47 +124,79 @@ func TestDPDFetcherClassifiesTransportOutcomesAndCapturesDocuments(t *testing.T)
 				Source:   "dpd",
 				Severity: model.ProblemSeverityError,
 			},
-			wantRequestURL: "https://example.invalid/dpd/bien%20compuesto",
-			wantUserAgent:  "dlexa-test",
-			wantAcceptLang: "es-ES,es;q=0.9,en;q=0.8",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fetcher := NewDPDFetcher("https://example.invalid/dpd", 2*time.Second, "dlexa-test")
+			fetcher := NewDPDFetcher("https://example.invalid/dpd", 2*time.Second, testUserAgent)
 			fetcher.Client = tt.client
 			fetcher.now = func() time.Time { return fixedNow }
 
 			document, err := fetcher.Fetch(context.Background(), request)
+
 			if tt.wantProblem != nil {
-				if err == nil {
-					t.Fatal("Fetch() error = nil, want typed problem")
-				}
-
-				problem, ok := model.AsProblem(err)
-				if !ok {
-					t.Fatalf("Fetch() error = %T, want typed problem error", err)
-				}
-
-				if !reflect.DeepEqual(problem, *tt.wantProblem) {
-					t.Fatalf("Fetch() problem = %#v, want %#v", problem, *tt.wantProblem)
-				}
-
-				if !reflect.DeepEqual(document, Document{}) {
-					t.Fatalf("Fetch() document = %#v, want zero value on error", document)
-				}
+				assertFetchProblem(t, err, document, tt.wantProblem)
 				return
 			}
 
-			if err != nil {
-				t.Fatalf("Fetch() error = %v", err)
-			}
-
-			if !reflect.DeepEqual(document, tt.wantDocument) {
-				t.Fatalf("Fetch() document = %#v, want %#v", document, tt.wantDocument)
-			}
+			assertFetchDocument(t, err, document, tt.wantDocument)
 		})
+	}
+}
+
+// validateRequestHeaders checks that the request carries the expected URL and headers.
+// It is used inside round-trip closures that need to verify the outgoing request.
+func validateRequestHeaders(req *http.Request) error {
+	if got := req.URL.String(); got != testLookupURL {
+		return errors.New("unexpected request URL: " + got)
+	}
+
+	if got := req.Header.Get("User-Agent"); got != testUserAgent {
+		return errors.New("unexpected user agent: " + got)
+	}
+
+	if got := req.Header.Get("Accept-Language"); got != testAcceptLang {
+		return errors.New("unexpected accept-language: " + got)
+	}
+
+	return nil
+}
+
+// assertFetchProblem is a test helper that verifies Fetch() returned the expected
+// typed problem and a zero-value Document.
+func assertFetchProblem(t *testing.T, err error, document Document, want *model.Problem) {
+	t.Helper()
+
+	if err == nil {
+		t.Fatal("Fetch() error = nil, want typed problem")
+	}
+
+	problem, ok := model.AsProblem(err)
+	if !ok {
+		t.Fatalf("Fetch() error = %T, want typed problem error", err)
+	}
+
+	if !reflect.DeepEqual(problem, *want) {
+		t.Fatalf("Fetch() problem = %#v, want %#v", problem, *want)
+	}
+
+	if !reflect.DeepEqual(document, Document{}) {
+		t.Fatalf("Fetch() document = %#v, want zero value on error", document)
+	}
+}
+
+// assertFetchDocument is a test helper that verifies Fetch() returned no error
+// and a Document equal to want.
+func assertFetchDocument(t *testing.T, err error, document Document, want Document) {
+	t.Helper()
+
+	if err != nil {
+		t.Fatalf("Fetch() error = %v", err)
+	}
+
+	if !reflect.DeepEqual(document, want) {
+		t.Fatalf("Fetch() document = %#v, want %#v", document, want)
 	}
 }
 
