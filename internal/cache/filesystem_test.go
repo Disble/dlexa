@@ -14,6 +14,18 @@ import (
 	"github.com/Disble/dlexa/internal/model"
 )
 
+const (
+	errFmtGetWantNil = "Get error = %v, want nil"
+	errFmtGetZero    = "Get result = %+v, want zero value"
+	errFmtSet        = "Set error = %v"
+	errFmtGet        = "Get error = %v"
+	errFmtGetQuery   = "Get result.Request.Query = %q, want %q"
+	keyExpire        = "expire-key"
+	keyTTL           = "ttl-key"
+	fmtFilename      = "%x.json"
+	keyShared        = "shared-key"
+)
+
 func sampleLookupResult(query string) model.LookupResult {
 	return model.LookupResult{
 		Request: model.LookupRequest{Query: query},
@@ -45,24 +57,24 @@ func sampleLookupResult(query string) model.LookupResult {
 	}
 }
 
-func TestFilesystemStore_ColdMiss(t *testing.T) {
+func TestFilesystemStoreColdMiss(t *testing.T) {
 	dir := t.TempDir()
 	store := NewFilesystemStore(dir, 24*time.Hour)
 	ctx := context.Background()
 
 	result, ok, err := store.Get(ctx, "nonexistent-key")
 	if err != nil {
-		t.Fatalf("Get error = %v, want nil", err)
+		t.Fatalf(errFmtGetWantNil, err)
 	}
 	if ok {
 		t.Fatal("Get ok = true, want false for cold store")
 	}
 	if result.Request.Query != "" {
-		t.Errorf("Get result = %+v, want zero value", result)
+		t.Errorf(errFmtGetZero, result)
 	}
 }
 
-func TestFilesystemStore_SetThenGet(t *testing.T) {
+func TestFilesystemStoreSetThenGet(t *testing.T) {
 	dir := t.TempDir()
 	store := NewFilesystemStore(dir, 24*time.Hour)
 	ctx := context.Background()
@@ -70,18 +82,18 @@ func TestFilesystemStore_SetThenGet(t *testing.T) {
 	expected := sampleLookupResult("haber")
 
 	if err := store.Set(ctx, "my-key", expected); err != nil {
-		t.Fatalf("Set error = %v", err)
+		t.Fatalf(errFmtSet, err)
 	}
 
 	result, ok, err := store.Get(ctx, "my-key")
 	if err != nil {
-		t.Fatalf("Get error = %v", err)
+		t.Fatalf(errFmtGet, err)
 	}
 	if !ok {
 		t.Fatal("Get ok = false, want true after Set")
 	}
 	if result.Request.Query != expected.Request.Query {
-		t.Errorf("Get result.Request.Query = %q, want %q", result.Request.Query, expected.Request.Query)
+		t.Errorf(errFmtGetQuery, result.Request.Query, expected.Request.Query)
 	}
 	if len(result.Entries) != len(expected.Entries) {
 		t.Fatalf("Get result.Entries len = %d, want %d", len(result.Entries), len(expected.Entries))
@@ -94,7 +106,7 @@ func TestFilesystemStore_SetThenGet(t *testing.T) {
 	}
 }
 
-func TestFilesystemStore_PersistenceAcrossInstances(t *testing.T) {
+func TestFilesystemStorePersistenceAcrossInstances(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
 
@@ -103,24 +115,24 @@ func TestFilesystemStore_PersistenceAcrossInstances(t *testing.T) {
 	// Write with first instance.
 	store1 := NewFilesystemStore(dir, 24*time.Hour)
 	if err := store1.Set(ctx, "persist-key", expected); err != nil {
-		t.Fatalf("Set error = %v", err)
+		t.Fatalf(errFmtSet, err)
 	}
 
 	// Read with a new instance on the same directory.
 	store2 := NewFilesystemStore(dir, 24*time.Hour)
 	result, ok, err := store2.Get(ctx, "persist-key")
 	if err != nil {
-		t.Fatalf("Get error = %v", err)
+		t.Fatalf(errFmtGet, err)
 	}
 	if !ok {
 		t.Fatal("Get ok = false, want true for persisted entry")
 	}
 	if result.Request.Query != expected.Request.Query {
-		t.Errorf("Get result.Request.Query = %q, want %q", result.Request.Query, expected.Request.Query)
+		t.Errorf(errFmtGetQuery, result.Request.Query, expected.Request.Query)
 	}
 }
 
-func TestFilesystemStore_ExpiredEntry(t *testing.T) {
+func TestFilesystemStoreExpiredEntry(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
 
@@ -130,12 +142,12 @@ func TestFilesystemStore_ExpiredEntry(t *testing.T) {
 	store.now = func() time.Time { return now }
 
 	expected := sampleLookupResult("expirado")
-	if err := store.Set(ctx, "expire-key", expected); err != nil {
-		t.Fatalf("Set error = %v", err)
+	if err := store.Set(ctx, keyExpire, expected); err != nil {
+		t.Fatalf(errFmtSet, err)
 	}
 
 	// Verify it's a hit immediately.
-	_, ok, _ := store.Get(ctx, "expire-key")
+	_, ok, _ := store.Get(ctx, keyExpire)
 	if !ok {
 		t.Fatal("Get ok = false, want true before expiry")
 	}
@@ -144,19 +156,19 @@ func TestFilesystemStore_ExpiredEntry(t *testing.T) {
 	now = now.Add(2 * time.Second)
 	store.now = func() time.Time { return now }
 
-	result, ok, err := store.Get(ctx, "expire-key")
+	result, ok, err := store.Get(ctx, keyExpire)
 	if err != nil {
-		t.Fatalf("Get error = %v, want nil", err)
+		t.Fatalf(errFmtGetWantNil, err)
 	}
 	if ok {
 		t.Fatal("Get ok = true, want false for expired entry")
 	}
 	if result.Request.Query != "" {
-		t.Errorf("Get result = %+v, want zero value", result)
+		t.Errorf(errFmtGetZero, result)
 	}
 }
 
-func TestFilesystemStore_NonExpiredEntry(t *testing.T) {
+func TestFilesystemStoreNonExpiredEntry(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
 
@@ -166,7 +178,7 @@ func TestFilesystemStore_NonExpiredEntry(t *testing.T) {
 
 	expected := sampleLookupResult("vigente")
 	if err := store.Set(ctx, "valid-key", expected); err != nil {
-		t.Fatalf("Set error = %v", err)
+		t.Fatalf(errFmtSet, err)
 	}
 
 	// Advance 1 hour (within 24h TTL).
@@ -175,17 +187,17 @@ func TestFilesystemStore_NonExpiredEntry(t *testing.T) {
 
 	result, ok, err := store.Get(ctx, "valid-key")
 	if err != nil {
-		t.Fatalf("Get error = %v", err)
+		t.Fatalf(errFmtGet, err)
 	}
 	if !ok {
 		t.Fatal("Get ok = false, want true for non-expired entry")
 	}
 	if result.Request.Query != expected.Request.Query {
-		t.Errorf("Get result.Request.Query = %q, want %q", result.Request.Query, expected.Request.Query)
+		t.Errorf(errFmtGetQuery, result.Request.Query, expected.Request.Query)
 	}
 }
 
-func TestFilesystemStore_CustomTTL(t *testing.T) {
+func TestFilesystemStoreCustomTTL(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
 
@@ -194,15 +206,15 @@ func TestFilesystemStore_CustomTTL(t *testing.T) {
 	store.now = func() time.Time { return now }
 
 	expected := sampleLookupResult("custom-ttl")
-	if err := store.Set(ctx, "ttl-key", expected); err != nil {
-		t.Fatalf("Set error = %v", err)
+	if err := store.Set(ctx, keyTTL, expected); err != nil {
+		t.Fatalf(errFmtSet, err)
 	}
 
 	// Advance 30 minutes: should still be valid.
 	now = now.Add(30 * time.Minute)
 	store.now = func() time.Time { return now }
 
-	_, ok, _ := store.Get(ctx, "ttl-key")
+	_, ok, _ := store.Get(ctx, keyTTL)
 	if !ok {
 		t.Fatal("Get ok = false, want true within 1h TTL")
 	}
@@ -211,13 +223,13 @@ func TestFilesystemStore_CustomTTL(t *testing.T) {
 	now = now.Add(31 * time.Minute)
 	store.now = func() time.Time { return now }
 
-	_, ok, _ = store.Get(ctx, "ttl-key")
+	_, ok, _ = store.Get(ctx, keyTTL)
 	if ok {
 		t.Fatal("Get ok = true, want false after 1h TTL expired")
 	}
 }
 
-func TestFilesystemStore_CorruptFile(t *testing.T) {
+func TestFilesystemStoreCorruptFile(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
 
@@ -226,7 +238,7 @@ func TestFilesystemStore_CorruptFile(t *testing.T) {
 	// Write a corrupt file directly to the cache directory.
 	key := "corrupt-key"
 	hash := sha256.Sum256([]byte(key))
-	filename := fmt.Sprintf("%x.json", hash)
+	filename := fmt.Sprintf(fmtFilename, hash)
 	corruptPath := filepath.Join(dir, filename)
 
 	if err := os.WriteFile(corruptPath, []byte("this is not valid json{{{"), 0600); err != nil {
@@ -235,13 +247,13 @@ func TestFilesystemStore_CorruptFile(t *testing.T) {
 
 	result, ok, err := store.Get(ctx, key)
 	if err != nil {
-		t.Fatalf("Get error = %v, want nil for corrupt file", err)
+		t.Fatalf(errFmtGetWantNil, err)
 	}
 	if ok {
 		t.Fatal("Get ok = true, want false for corrupt file")
 	}
 	if result.Request.Query != "" {
-		t.Errorf("Get result = %+v, want zero value", result)
+		t.Errorf(errFmtGetZero, result)
 	}
 
 	// Corrupt file should be removed.
@@ -250,7 +262,7 @@ func TestFilesystemStore_CorruptFile(t *testing.T) {
 	}
 }
 
-func TestFilesystemStore_SpecialCharKey(t *testing.T) {
+func TestFilesystemStoreSpecialCharKey(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
 
@@ -289,13 +301,13 @@ func TestFilesystemStore_SpecialCharKey(t *testing.T) {
 	}
 }
 
-func TestFilesystemStore_DistinctKeys(t *testing.T) {
+func TestFilesystemStoreDistinctKeys(t *testing.T) {
 	keys := []string{"alpha", "beta", "gamma", "alpha/beta", "alpha|beta"}
 	seen := make(map[string]string) // filename -> original key
 
 	for _, key := range keys {
 		hash := sha256.Sum256([]byte(key))
-		filename := fmt.Sprintf("%x.json", hash)
+		filename := fmt.Sprintf(fmtFilename, hash)
 
 		if original, exists := seen[filename]; exists {
 			t.Fatalf("keys %q and %q produce the same filename %q", original, key, filename)
@@ -304,7 +316,7 @@ func TestFilesystemStore_DistinctKeys(t *testing.T) {
 	}
 }
 
-func TestFilesystemStore_NonExistentDirectory(t *testing.T) {
+func TestFilesystemStoreNonExistentDirectory(t *testing.T) {
 	// Use a directory that doesn't exist yet — should create on first Set.
 	base := t.TempDir()
 	dir := filepath.Join(base, "subdir", "cache")
@@ -319,7 +331,7 @@ func TestFilesystemStore_NonExistentDirectory(t *testing.T) {
 
 	result, ok, err := store.Get(ctx, "nested-key")
 	if err != nil {
-		t.Fatalf("Get error = %v", err)
+		t.Fatalf(errFmtGet, err)
 	}
 	if !ok {
 		t.Fatal("Get ok = false, want true")
@@ -329,7 +341,7 @@ func TestFilesystemStore_NonExistentDirectory(t *testing.T) {
 	}
 }
 
-func TestFilesystemStore_ReadOnlyDirectoryGetReturnssMiss(t *testing.T) {
+func TestFilesystemStoreReadOnlyDirectoryGetReturnssMiss(t *testing.T) {
 	// Get on a non-existent directory should return miss, not error.
 	dir := filepath.Join(t.TempDir(), "does-not-exist")
 	ctx := context.Background()
@@ -338,17 +350,17 @@ func TestFilesystemStore_ReadOnlyDirectoryGetReturnssMiss(t *testing.T) {
 
 	result, ok, err := store.Get(ctx, "any-key")
 	if err != nil {
-		t.Fatalf("Get error = %v, want nil", err)
+		t.Fatalf(errFmtGetWantNil, err)
 	}
 	if ok {
 		t.Fatal("Get ok = true, want false")
 	}
 	if result.Request.Query != "" {
-		t.Errorf("Get result = %+v, want zero value", result)
+		t.Errorf(errFmtGetZero, result)
 	}
 }
 
-func TestFilesystemStore_EnvelopeFormat(t *testing.T) {
+func TestFilesystemStoreEnvelopeFormat(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
 
@@ -358,12 +370,12 @@ func TestFilesystemStore_EnvelopeFormat(t *testing.T) {
 
 	expected := sampleLookupResult("formato")
 	if err := store.Set(ctx, "format-key", expected); err != nil {
-		t.Fatalf("Set error = %v", err)
+		t.Fatalf(errFmtSet, err)
 	}
 
 	// Read the raw file and verify the envelope structure.
 	hash := sha256.Sum256([]byte("format-key"))
-	filename := fmt.Sprintf("%x.json", hash)
+	filename := fmt.Sprintf(fmtFilename, hash)
 	data, err := os.ReadFile(filepath.Join(dir, filename)) //nolint:gosec // G304: test code, path constructed from known hash
 	if err != nil {
 		t.Fatalf("ReadFile error = %v", err)
@@ -390,6 +402,50 @@ func TestFilesystemStore_EnvelopeFormat(t *testing.T) {
 	}
 }
 
+func runFilesystemWriter(t *testing.T, store *FilesystemStore, id, iterations int, wg *sync.WaitGroup) {
+	t.Helper()
+	defer wg.Done()
+	ctx := context.Background()
+	for i := 0; i < iterations; i++ {
+		sharedResult := model.LookupResult{
+			Request: model.LookupRequest{Query: "shared"},
+			Entries: []model.Entry{{ID: fmt.Sprintf("writer-%d-iter-%d", id, i)}},
+		}
+		if err := store.Set(ctx, keyShared, sharedResult); err != nil {
+			t.Errorf("Set(shared) error = %v", err)
+			return
+		}
+
+		uniqueKey := fmt.Sprintf("key-%d-%d", id, i)
+		uniqueResult := model.LookupResult{
+			Request: model.LookupRequest{Query: uniqueKey},
+			Entries: []model.Entry{{ID: uniqueKey}},
+		}
+		if err := store.Set(ctx, uniqueKey, uniqueResult); err != nil {
+			t.Errorf("Set(unique) error = %v", err)
+			return
+		}
+	}
+}
+
+func runFilesystemReader(t *testing.T, store *FilesystemStore, id, iterations, writers int, wg *sync.WaitGroup) {
+	t.Helper()
+	defer wg.Done()
+	ctx := context.Background()
+	for i := 0; i < iterations; i++ {
+		if _, _, err := store.Get(ctx, keyShared); err != nil {
+			t.Errorf("Get(shared) error = %v", err)
+			return
+		}
+
+		otherKey := fmt.Sprintf("key-%d-%d", id%writers, i)
+		if _, _, err := store.Get(ctx, otherKey); err != nil {
+			t.Errorf("Get(other) error = %v", err)
+			return
+		}
+	}
+}
+
 // Task 1.2: Concurrent read/write race-detector test.
 func TestFilesystemStoreConcurrentReadWrite(t *testing.T) {
 	dir := t.TempDir()
@@ -405,60 +461,18 @@ func TestFilesystemStoreConcurrentReadWrite(t *testing.T) {
 
 	// Writer goroutines: each writes to shared and unique keys.
 	for w := 0; w < writers; w++ {
-		go func(id int) {
-			defer wg.Done()
-			for i := 0; i < iterations; i++ {
-				// Write to shared key to stress concurrent access.
-				sharedResult := model.LookupResult{
-					Request: model.LookupRequest{Query: "shared"},
-					Entries: []model.Entry{{ID: fmt.Sprintf("writer-%d-iter-%d", id, i)}},
-				}
-				if err := store.Set(ctx, "shared-key", sharedResult); err != nil {
-					t.Errorf("Set(shared) error = %v", err)
-					return
-				}
-
-				// Write to unique key.
-				uniqueKey := fmt.Sprintf("key-%d-%d", id, i)
-				uniqueResult := model.LookupResult{
-					Request: model.LookupRequest{Query: uniqueKey},
-					Entries: []model.Entry{{ID: uniqueKey}},
-				}
-				if err := store.Set(ctx, uniqueKey, uniqueResult); err != nil {
-					t.Errorf("Set(unique) error = %v", err)
-					return
-				}
-			}
-		}(w)
+		go runFilesystemWriter(t, store, w, iterations, &wg)
 	}
 
 	// Reader goroutines: each reads from shared key and random unique keys.
 	for r := 0; r < readers; r++ {
-		go func(id int) {
-			defer wg.Done()
-			for i := 0; i < iterations; i++ {
-				// Read shared key.
-				_, _, err := store.Get(ctx, "shared-key")
-				if err != nil {
-					t.Errorf("Get(shared) error = %v", err)
-					return
-				}
-
-				// Read a key from another writer.
-				otherKey := fmt.Sprintf("key-%d-%d", id%writers, i)
-				_, _, err = store.Get(ctx, otherKey)
-				if err != nil {
-					t.Errorf("Get(other) error = %v", err)
-					return
-				}
-			}
-		}(r)
+		go runFilesystemReader(t, store, r, iterations, writers, &wg)
 	}
 
 	wg.Wait()
 
 	// Verify the shared key was written at least once.
-	result, ok, err := store.Get(ctx, "shared-key")
+	result, ok, err := store.Get(ctx, keyShared)
 	if err != nil {
 		t.Fatalf("final Get(shared) error = %v", err)
 	}
