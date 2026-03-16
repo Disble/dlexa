@@ -24,6 +24,17 @@
 ```bash
 git clone https://github.com/Disble/dlexa.git
 cd dlexa
+```
+
+Windows:
+
+```powershell
+go build -o dlexa.exe ./cmd/dlexa
+```
+
+Linux/macOS:
+
+```bash
 go build -o dlexa ./cmd/dlexa
 ```
 
