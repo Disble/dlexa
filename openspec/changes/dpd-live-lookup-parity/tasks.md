@@ -42,5 +42,5 @@
 ## Implementation Notes
 
 - Validated live access behavior for this environment is now explicit: direct `GET https://www.rae.es/dpd/<term>` with a browser-like `User-Agent` reaches article HTML, while low-profile/no-UA requests can still trigger Cloudflare challenge pages.
-- `/srv/keys` is not a useful access path for this change.
+- `/srv/keys` is useful for DPD entry discovery only; it is not the direct article-fetch path for this change.
 - `go-rae` remains out of scope as a direct implementation blueprint because it talks to a third-party API rather than parsing raw DPD article HTML.

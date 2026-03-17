@@ -8,7 +8,7 @@
 
 - Validated from this environment: raw DPD article HTML is reachable with direct `GET https://www.rae.es/dpd/<term>` when the request uses a browser-like profile, especially a browser-like `User-Agent`.
 - Also validated: lower-profile or no-`User-Agent` request shapes can still hit Cloudflare `403` challenge pages.
-- `/srv/keys` is not a useful access path for this project here.
+- `/srv/keys` is useful for DPD entry discovery only; it is not the direct article-fetch path for this change.
 - `go-rae` is NOT a direct DPD access blueprint for this change because it calls a third-party API instead of parsing the raw DPD HTML page.
 
 ## Work Performed

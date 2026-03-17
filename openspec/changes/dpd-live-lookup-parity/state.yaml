@@ -36,5 +36,5 @@ tasks_progress:
     - 5.7
     - 5.8
 notes:
-  access_method: "Validated direct GET https://www.rae.es/dpd/<term> with browser-like User-Agent reaches article HTML; low-profile/no-UA requests may hit Cloudflare challenge pages; /srv/keys is not useful; go-rae is not a direct DPD blueprint."
+  access_method: "Validated direct GET https://www.rae.es/dpd/<term> with browser-like User-Agent reaches article HTML; low-profile/no-UA requests may hit Cloudflare challenge pages; /srv/keys is useful for entry discovery only, not as the direct article-fetch path; go-rae is not a direct DPD blueprint."
 last_updated: 2026-03-13T20:08:00Z
