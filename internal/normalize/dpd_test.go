@@ -371,6 +371,9 @@ func TestDPDSignsNormalizePhase1(t *testing.T) {
 	if got := cleanInlineText("+ infinitivo"); got != "+ infinitivo" {
 		t.Errorf("expected + to survive, got %q", got)
 	}
+	if got := normalizeSingleParagraph(t, `Tilde diacrítica en <em>qué</em> / que.`); got != "Tilde diacrítica en *qué* / que." {
+		t.Errorf("expected slash to remain plain text, got %q", got)
+	}
 }
 
 func TestDPDSignsNormalizePhase3Synthetic(t *testing.T) {

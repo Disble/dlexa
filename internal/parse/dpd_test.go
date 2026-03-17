@@ -613,6 +613,19 @@ func TestDPDSignsParsePhase1(t *testing.T) {
 	if len(inlinesAt) != 1 || inlinesAt[0].Kind != model.InlineKindDigitalEdition {
 		t.Errorf("expected DigitalEdition, got %+v", inlinesAt)
 	}
+	if inlinesAt[0].Text != "@" {
+		t.Errorf("expected @ text, got %+v", inlinesAt)
+	}
+
+	// Non-@ superscript must remain plain text
+	rawSuperscriptText := `<sup>2</sup>`
+	inlinesSuperscriptText := extractInlines(rawSuperscriptText)
+	if len(inlinesSuperscriptText) != 1 || inlinesSuperscriptText[0].Kind != model.InlineKindText {
+		t.Errorf("expected plain text superscript, got %+v", inlinesSuperscriptText)
+	}
+	if inlinesSuperscriptText[0].Text != "2" {
+		t.Errorf("expected superscript text 2, got %+v", inlinesSuperscriptText)
+	}
 
 	// + sign
 	rawPlus := `<span class="nc">+ infinitivo</span>`
@@ -642,6 +655,34 @@ func TestDPDSignsParsePhase2(t *testing.T) {
 	inlinesInterp := extractInlines(rawInterp)
 	if len(inlinesInterp) != 1 || inlinesInterp[0].Kind != model.InlineKindBracketInterpolation {
 		t.Errorf("expected BracketInterpolation, got %+v", inlinesInterp)
+	}
+}
+
+func TestDPDSignsBracketContextsStayBoundToImmediateParent(t *testing.T) {
+	raw := `<dfn>[una ley]</dfn> <span class="nn">[alikuóto]</span> <span class="yy">[las feministas]</span>`
+	inlines := extractInlines(raw)
+
+	if len(inlines) != 3 {
+		t.Fatalf("expected 3 bracket inlines, got %+v", inlines)
+	}
+
+	tests := []struct {
+		index    int
+		wantKind string
+		wantText string
+	}{
+		{index: 0, wantKind: model.InlineKindBracketDefinition, wantText: `[una ley]`},
+		{index: 1, wantKind: model.InlineKindBracketPronunciation, wantText: `[alikuóto]`},
+		{index: 2, wantKind: model.InlineKindBracketInterpolation, wantText: `[las feministas]`},
+	}
+
+	for _, tt := range tests {
+		if inlines[tt.index].Kind != tt.wantKind || inlines[tt.index].Text != tt.wantText {
+			t.Fatalf("inline[%d] = %+v, want kind=%q text=%q", tt.index, inlines[tt.index], tt.wantKind, tt.wantText)
+		}
+		if len(inlines[tt.index].Children) != 1 || inlines[tt.index].Children[0].Kind != model.InlineKindText || inlines[tt.index].Children[0].Text != tt.wantText {
+			t.Fatalf("inline[%d] children = %+v, want text child %q", tt.index, inlines[tt.index].Children, tt.wantText)
+		}
 	}
 }
 

@@ -154,6 +154,63 @@ Diccionario panhispánico de dudas
 
 ---
 
+## DPD Semantic Signs Example
+
+**Command**: `dlexa --source dpd --format json alícuota`
+
+**Markdown excerpt** (from the current DPD golden fixture):
+
+```markdown
+... (*Día* @ es 26.10.2014). ... ⊗[alikuóto], ⊗[alikuóta].
+```
+
+**Structured inline excerpt** (representative fragment from `.Entries[].Article.Sections[].Blocks[].paragraph.Inlines`):
+
+```json
+[
+  {
+    "Kind": "digital_edition",
+    "Variant": "",
+    "Text": "@",
+    "Target": "",
+    "Children": null
+  },
+  {
+    "Kind": "bracket_pronunciation",
+    "Variant": "",
+    "Text": "[alikuóto]",
+    "Target": "",
+    "Children": null
+  },
+  {
+    "Kind": "bracket_pronunciation",
+    "Variant": "",
+    "Text": "[alikuóta]",
+    "Target": "",
+    "Children": null
+  }
+]
+```
+
+**Related validated kind from another DPD fixture**:
+
+```json
+{
+  "Kind": "construction_marker",
+  "Text": "+ infinitivo"
+}
+```
+
+**What this means**:
+
+- Markdown keeps the authored/plain signs visible: `@`, `⊗`, `[ ... ]`
+- JSON keeps bracket context and sign semantics in `Inline.Kind`
+- Validated kinds are `digital_edition`, `construction_marker`, `bracket_definition`, `bracket_pronunciation`, and `bracket_interpolation`
+- Speculative kinds `agrammatical`, `hypothetical`, and `phoneme` are non-authoritative/inferred only
+- Archived `<` and `>` signs remain intentionally unsupported
+
+---
+
 ## Error Output Example
 
 **Command**: `dlexa zkxjqwerty` (nonsense word to trigger "not found")

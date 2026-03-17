@@ -58,6 +58,11 @@ func parseNormalizeDPDFixtureFromPath(t *testing.T, term string, fixturePath str
 func renderDPDFixtureOutputs(t *testing.T, term string, fixturePath string) dpdFixtureOutput {
 	t.Helper()
 	entries := parseNormalizeDPDFixtureFromPath(t, term, fixturePath)
+	return renderDPDEntries(t, term, entries)
+}
+
+func renderDPDEntries(t *testing.T, term string, entries []model.Entry) dpdFixtureOutput {
+	t.Helper()
 
 	markdownRenderer := NewMarkdownRenderer()
 	markdownPayload, err := markdownRenderer.Render(context.Background(), model.LookupResult{
@@ -82,6 +87,29 @@ func renderDPDFixtureOutputs(t *testing.T, term string, fixturePath string) dpdF
 		md:      stripANSITestOutput(string(markdownPayload)),
 		json:    jsonPayload,
 	}
+}
+
+func renderDPDRawHTMLOutputs(t *testing.T, term string, raw string) dpdFixtureOutput {
+	t.Helper()
+
+	parser := parse.NewDPDArticleParser()
+	parsed, _, err := parser.Parse(context.Background(), model.SourceDescriptor{Name: "dpd", DisplayName: term}, fetch.Document{
+		URL:         "https://www.rae.es/dpd/" + term,
+		ContentType: "text/html; charset=utf-8",
+		StatusCode:  200,
+		Body:        []byte(raw),
+	})
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+
+	normalizer := normalize.NewDPDNormalizer()
+	entries, _, err := normalizer.Normalize(context.Background(), model.SourceDescriptor{Name: "dpd"}, parsed)
+	if err != nil {
+		t.Fatalf("Normalize() error = %v", err)
+	}
+
+	return renderDPDEntries(t, term, entries)
 }
 
 func requireJSONContainsInlineKind(t *testing.T, payload []byte, want string) {
@@ -209,6 +237,23 @@ func TestDPDSignsBracketSemanticTaggingUsesRealFixtures(t *testing.T) {
 			requireJSONContainsInlineKind(t, output.json, tt.wantKind)
 			requireMarkdownContainsPlainBracket(t, output.md, tt.wantBracketMD)
 		})
+	}
+}
+
+func TestDPDSignsBracketSemanticTaggingKeepsMixedContextsDistinctInOneArticle(t *testing.T) {
+	raw := `<entry class="tem" id="mixed-brackets" header="mixed brackets"><header class="tem">mixed brackets</header><section class="BLOQUEACEPS"><p n="1n"><span class="enum">1.</span> Contextos: <dfn>[una ley]</dfn> <span class="nn">[alikuóto]</span> <span class="yy">[las feministas]</span>.</p></section></entry>`
+	output := renderDPDRawHTMLOutputs(t, "mixed-brackets", raw)
+
+	for _, kind := range []string{
+		model.InlineKindBracketDefinition,
+		model.InlineKindBracketPronunciation,
+		model.InlineKindBracketInterpolation,
+	} {
+		requireJSONContainsInlineKind(t, output.json, kind)
+	}
+
+	for _, bracket := range []string{"[una ley]", "[alikuóto]", "[las feministas]"} {
+		requireMarkdownContainsPlainBracket(t, output.md, bracket)
 	}
 }
 

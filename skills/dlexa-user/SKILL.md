@@ -103,6 +103,34 @@ type Entry struct {
 }
 ```
 
+### DPD Semantic Sign Contract
+
+For DPD entries, treat Markdown and JSON as complementary views of the same article:
+
+- **Markdown keeps authored/plain sign presentation**. Signs such as `@`, `+`, `⊗`, and bracket text stay visible without synthetic editorial wrappers.
+- **JSON preserves validated inline semantics** in `.Entries[].Article.Sections[].Blocks[].paragraph.Inlines[].Kind`.
+
+Validated DPD inline kinds:
+
+- `digital_edition`
+- `construction_marker`
+- `bracket_definition`
+- `bracket_pronunciation`
+- `bracket_interpolation`
+
+Speculative, non-authoritative inline kinds still exist for defensive parsing only:
+
+- `agrammatical`
+- `hypothetical`
+- `phoneme`
+
+Archived signs intentionally **not implemented**:
+
+- `<`
+- `>`
+
+Do NOT present speculative kinds as confirmed DPD behavior, and do NOT expect Markdown to add wrappers just to expose bracket context. That distinction lives in structured JSON.
+
 ### JSON Navigation Examples
 
 **Extract first definition**:
@@ -169,6 +197,24 @@ dlexa --doctor
 
 Runs diagnostic checks. Exit code 0 = healthy, exit code 1 = issues found.
 
+### 6. Inspect DPD Sign Semantics
+
+```bash
+dlexa --source dpd --format json alícuota
+```
+
+Use this when you need structured DPD semantics, not just rendered prose. Inspect:
+
+```bash
+echo "$result" | jq '.Entries[].Article.Sections[].Blocks[]?.paragraph.Inlines[]? | select(.Kind | test("digital_edition|construction_marker|bracket_")) | {Kind, Text}'
+```
+
+Expected pattern:
+
+- JSON exposes semantic kinds such as `digital_edition` and `bracket_pronunciation`
+- Markdown/plain content still shows authored signs like `@` and `[alikuóto]`
+- Bracket meaning is differentiated in JSON, not by synthetic Markdown labels
+
 ---
 
 ## Troubleshooting Decision Tree
@@ -179,6 +225,8 @@ Runs diagnostic checks. Exit code 0 = healthy, exit code 1 = issues found.
 | Output is markdown but expected JSON | Was `--format json` used? | Add `--format json` flag to command |
 | Empty results | Is word in dictionary? | Try `--no-cache`, check with `--doctor`, verify word spelling |
 | Data seems stale | Cache TTL (24h) | Use `--no-cache` to force refresh |
+| DPD brackets lost their meaning in a script | Are you reading `.Content` only? | Parse `.Article...Inlines[].Kind`; bracket semantics live in JSON inline kinds |
+| DPD signs look plain in markdown | Is this a renderer bug or expected authored output? | Plain/authored Markdown is expected; use JSON to recover sign semantics |
 | Exit code 1 with stderr | Check stderr for Problem code | See [Problem Codes Reference](assets/examples.md#problem-codes-reference) |
 
 ---
@@ -202,6 +250,9 @@ dlexa --source dpd palabra
 
 # Multiple flags
 dlexa --format json --no-cache --source dpd palabra
+
+# Inspect DPD sign semantics
+dlexa --format json --source dpd alícuota
 
 # Health check
 dlexa --doctor

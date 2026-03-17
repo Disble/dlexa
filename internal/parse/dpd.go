@@ -550,7 +550,11 @@ func parseSupportedOpenTag(tag, remaining string) (model.Inline, string, bool) {
 		inline.Kind = model.InlineKindWorkTitle
 		return inline, "i", true
 	case strings.HasPrefix(lower, "<sup"):
-		inline.Kind = model.InlineKindDigitalEdition
+		if cleanInlineSegment(previewInnerHTML(remaining, "sup")) == digitalEditionGlyph {
+			inline.Kind = model.InlineKindDigitalEdition
+		} else {
+			inline.Kind = model.InlineKindText
+		}
 		return inline, "sup", true
 	case strings.HasPrefix(lower, "<a "):
 		parts := reReference.FindStringSubmatch(tag + "</a>")

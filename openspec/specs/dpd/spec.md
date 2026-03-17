@@ -91,8 +91,86 @@ DPD table rendering MUST prefer standard Markdown tables for simple rectangular 
 - THEN the table MUST be emitted as HTML table markup embedded in the Markdown output
 - AND acceptance MUST fail if the renderer flattens that structure into a misleading Markdown grid that loses semantic relationships
 
+### Requirement: DPD Typographical Signs Preserve Validated Semantics End-to-End
+
+The system MUST preserve validated DPD typographical signs through the HTML → Parse → Normalize → Render pipeline without collapsing their semantic meaning.
+
+Validated signs for this contract are:
+
+- `@` digital edition marker from `<sup>@</sup>`
+- `+` construction marker from `<span class="nc">+ ...</span>`
+- `⊗` exclusion marker from `<span class="bolaspa">⊗</span>`
+- `→` cross-reference arrow in rendered references
+- bracket contexts authored through `<dfn>`, `<span class="nn">`, and `<span class="yy">`
+
+#### Scenario: Digital edition marker survives end-to-end
+
+- GIVEN DPD HTML contains `<sup>@</sup>` inside article content
+- WHEN the article is parsed, normalized, and rendered
+- THEN the final Markdown output MUST contain `@`
+- AND the structured output MUST preserve its semantic distinction as a digital edition marker
+
+#### Scenario: Construction marker survives end-to-end
+
+- GIVEN DPD HTML contains `<span class="nc">+ infinitivo</span>` inside a phrase
+- WHEN the article is parsed, normalized, and rendered
+- THEN the final Markdown output MUST contain `+ infinitivo`
+- AND the structured output MUST preserve its semantic distinction as a construction marker
+
+#### Scenario: Existing exclusion and reference markers do not regress
+
+- GIVEN DPD HTML contains exclusion markers and cross-reference links
+- WHEN the article is parsed, normalized, and rendered
+- THEN exclusion markers MUST remain visible as `⊗`
+- AND references MUST remain visible in canonical Markdown-link form with their `→` semantics preserved
+
+### Requirement: Bracket Contexts Remain Distinct In Structured DPD Output
+
+The system MUST preserve bracket content as plain Markdown text while keeping its semantic context distinct in structured output.
+
+The protected bracket contexts are:
+
+- definition/correction brackets authored with `<dfn>[...]</dfn>`
+- pronunciation brackets authored with `<span class="nn">[...]</span>`
+- interpolation/example brackets authored with `<span class="yy">[...]</span>`
+
+#### Scenario: Structured output distinguishes bracket contexts
+
+- GIVEN a DPD article contains definition, pronunciation, and interpolation brackets
+- WHEN the article is parsed and normalized
+- THEN each bracketed segment MUST keep the semantic context implied by its immediate HTML container
+- AND acceptance MUST fail if different bracket contexts are conflated into one indistinguishable structured kind
+
+#### Scenario: Markdown output keeps authored brackets without synthetic wrappers
+
+- GIVEN a bracketed DPD span reaches final Markdown rendering
+- WHEN the renderer emits the article
+- THEN the output MUST preserve the authored brackets as plain bracket text
+- AND the renderer MUST NOT add synthetic wrappers or labels to express bracket semantics
+
+### Requirement: Unvalidated DPD Signs Stay Explicitly Non-Authoritative
+
+The system MAY include defensive support for unvalidated DPD signs inferred from patterns, but those cases MUST remain explicitly documented as speculative until real DPD HTML evidence exists.
+
+Archived signs `<` and `>` remain intentionally unimplemented because their collision risk with HTML syntax is higher than their proven value.
+
+#### Scenario: Speculative signs are implemented with warnings only
+
+- GIVEN support exists for inferred signs such as `*`, `‖`, or `//`
+- WHEN that support is reviewed or verified
+- THEN the code and tests MUST clearly state that the behavior is speculative and pending real HTML validation
+- AND acceptance MUST NOT treat those inferred paths as equivalent to validated DPD sign evidence
+
+#### Scenario: Archived signs remain excluded pending safer evidence
+
+- GIVEN developers review DPD sign support scope
+- WHEN they inspect the authoritative spec and archive evidence
+- THEN `<` and `>` MUST remain documented as intentionally excluded from implementation
+- AND future support MUST require real article evidence plus a collision-safe parsing strategy
+
 ## Out-of-Scope Guardrails
 
 - This specification does NOT redefine remote lookup, fetch, or parser ownership.
 - This specification does NOT require perfect handling of every nested emphasis edge case before archive.
 - This specification does NOT allow regressing to plain terminal output as the primary contract.
+- This specification does NOT require speculative DPD signs to be treated as validated behavior before real HTML evidence exists.
