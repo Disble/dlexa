@@ -138,6 +138,26 @@ func renderInlineMarkdownItem(inline model.Inline) string {
 		return text
 	case model.InlineKindCitationQuote:
 		return "«" + text + "»"
+	// Phase 1: VALIDATED signs with real HTML evidence
+	case model.InlineKindDigitalEdition:
+		return text // @ sign preserved as-is
+	case model.InlineKindConstructionMarker:
+		return text // + sign with construction phrase preserved as-is
+	// Phase 2: Bracket semantic contexts (VALIDATED)
+	case model.InlineKindBracketDefinition,
+		model.InlineKindBracketPronunciation,
+		model.InlineKindBracketInterpolation:
+		// Markdown output: brackets as plain text
+		// JSON output: semantic distinction preserved via InlineKind
+		return text
+	// WARNING: Speculative signs - no real HTML validation exists yet. These
+	// render branches are inferred and MUST be updated when real examples are found.
+	case model.InlineKindAgrammatical:
+		return text // * sign (SPECULATIVE - synthetic coverage only)
+	case model.InlineKindHypothetical:
+		return text // ‖ sign (SPECULATIVE - synthetic coverage only)
+	case model.InlineKindPhoneme:
+		return text // // sign (SPECULATIVE - synthetic coverage only)
 	default:
 		return text
 	}

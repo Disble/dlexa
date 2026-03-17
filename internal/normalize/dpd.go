@@ -542,7 +542,30 @@ func slug(raw string) string {
 func cleanInlineText(raw string) string {
 	text := html.UnescapeString(raw)
 	text = strings.ReplaceAll(text, "\u200d", "")
+
+	// Preserve validated and speculative DPD signs before whitespace collapsing.
+	// WARNING: *, ‖, and // are speculative only; no real DPD HTML validation
+	// exists yet, so these inferred patterns MUST be revisited when examples are found.
+	preservedSigns := []string{
+		"\u2297", // ⊗ exclusion
+		"@",      // digital edition
+		"+",      // construction marker
+		"*",      // agrammatical (SPECULATIVE)
+		"‖",      // hypothetical (SPECULATIVE)
+		"//",     // phoneme (SPECULATIVE)
+	}
+	placeholders := make([]string, len(preservedSigns))
+	for idx, sign := range preservedSigns {
+		placeholder := fmt.Sprintf("\x00DPDSIGN%d\x00", idx)
+		placeholders[idx] = placeholder
+		text = strings.ReplaceAll(text, sign, placeholder)
+	}
+
 	text = strings.Join(strings.Fields(text), " ")
+	for idx, placeholder := range placeholders {
+		text = strings.ReplaceAll(text, placeholder, preservedSigns[idx])
+	}
+
 	return strings.TrimSpace(text)
 }
 

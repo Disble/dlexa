@@ -327,7 +327,20 @@ func extractAttribute(re *regexp.Regexp, attrs string) string {
 const (
 	challengePageSnippetLimit = 1024
 	exclusionGlyph            = "\u2297" // ⊗
+	digitalEditionGlyph       = "@"
+	constructionMarkerGlyph   = "+"
+
+	// WARNING: Speculative signs - no real HTML validation found in DPD articles.
+	// Patterns are inferred from validated sign handling and MUST be updated when
+	// real examples are discovered.
+	agrammaticalGlyph = "*"
+	hypotheticalGlyph = "‖" // \u2016
+	phonemeGlyph      = "//"
 )
+
+// ARCHIVED SIGNS (not implemented):
+// < (etymology) and > (transformation) remain excluded because of HTML tag
+// collision risk. See testdata/dpd-signs-analysis/SIGN_ANALYSIS.md.
 
 func isChallengePage(body string) bool {
 	snippet := body
@@ -417,15 +430,11 @@ func (p *inlineParser) handleCloseTag(lower string) {
 func (p *inlineParser) advanceTextBefore(raw string) string {
 	nextTag := strings.Index(raw, "<")
 	if nextTag == -1 {
-		if text := cleanInlineSegment(raw); text != "" {
-			p.appendNode(model.Inline{Kind: model.InlineKindText, Text: text})
-		}
+		appendPlainOrSpeculativeInline(p, raw)
 		return ""
 	}
 	if nextTag > 0 {
-		if text := cleanInlineSegment(raw[:nextTag]); text != "" {
-			p.appendNode(model.Inline{Kind: model.InlineKindText, Text: text})
-		}
+		appendPlainOrSpeculativeInline(p, raw[:nextTag])
 		return raw[nextTag:]
 	}
 	return raw
@@ -449,9 +458,7 @@ func extractInlines(raw string) []model.Inline {
 		end := strings.Index(raw, ">")
 		if end == -1 {
 			// Malformed: tag opened but never closed — treat remainder as text.
-			if text := cleanInlineSegment(raw); text != "" {
-				p.appendNode(model.Inline{Kind: model.InlineKindText, Text: text})
-			}
+			appendPlainOrSpeculativeInline(p, raw)
 			break
 		}
 
@@ -464,7 +471,7 @@ func extractInlines(raw string) []model.Inline {
 			continue
 		}
 
-		if inline, closeTag, ok := parseSupportedOpenTag(tagToken); ok {
+		if inline, closeTag, ok := parseSupportedOpenTag(tagToken, raw); ok {
 			p.stack = append(p.stack, inlineFrame{tag: closeTag, inline: inline})
 		}
 	}
@@ -487,18 +494,24 @@ func mergeTextInlines(inlines []model.Inline) []model.Inline {
 	return merged
 }
 
-func parseSupportedOpenTag(tag string) (model.Inline, string, bool) {
+func parseSupportedOpenTag(tag, remaining string) (model.Inline, string, bool) {
 	lower := strings.ToLower(tag)
 	inline := model.Inline{}
 	switch {
 	case strings.HasPrefix(lower, "<span"):
-		classParts := reAnchorClass.FindStringSubmatch(tag)
-		if len(classParts) != 2 {
-			return model.Inline{}, "", false
+		if classParts := reAnchorClass.FindStringSubmatch(tag); len(classParts) == 2 {
+			inline.Variant = cleanText(classParts[1])
 		}
-		className := cleanText(classParts[1])
-		inline.Variant = className
-		switch className {
+
+		// WARNING: Speculative signs - no real HTML validation exists in DPD
+		// fixtures yet. This is a best-guess lookahead based on the current span
+		// container shape. Update when real examples are discovered.
+		if kind, ok := inferSpeculativeSpanKind(remaining); ok {
+			inline.Kind = kind
+			return inline, "span", true
+		}
+
+		switch inline.Variant {
 		case "ejemplo":
 			inline.Kind = model.InlineKindExample
 		case "ment":
@@ -512,11 +525,13 @@ func parseSupportedOpenTag(tag string) (model.Inline, string, bool) {
 		case "vers", "cbil":
 			inline.Kind = model.InlineKindSmallCaps
 		case "yy":
-			inline.Kind = model.InlineKindEditorial
+			inline.Kind = model.InlineKindBracketInterpolation
 		case "bolaspa":
 			inline.Kind = model.InlineKindExclusion
-		case "nn", "nc":
-			inline.Kind = model.InlineKindScaffold
+		case "nn":
+			inline.Kind = model.InlineKindBracketPronunciation
+		case "nc":
+			inline.Kind = model.InlineKindConstructionMarker
 		case "pattern":
 			inline.Kind = model.InlineKindPattern
 		case "correction":
@@ -526,7 +541,7 @@ func parseSupportedOpenTag(tag string) (model.Inline, string, bool) {
 		}
 		return inline, "span", true
 	case strings.HasPrefix(lower, "<dfn"):
-		inline.Kind = model.InlineKindGloss
+		inline.Kind = model.InlineKindBracketDefinition
 		return inline, "dfn", true
 	case strings.HasPrefix(lower, "<em"):
 		inline.Kind = model.InlineKindEmphasis
@@ -534,6 +549,9 @@ func parseSupportedOpenTag(tag string) (model.Inline, string, bool) {
 	case strings.HasPrefix(lower, "<i"):
 		inline.Kind = model.InlineKindWorkTitle
 		return inline, "i", true
+	case strings.HasPrefix(lower, "<sup"):
+		inline.Kind = model.InlineKindDigitalEdition
+		return inline, "sup", true
 	case strings.HasPrefix(lower, "<a "):
 		parts := reReference.FindStringSubmatch(tag + "</a>")
 		if len(parts) >= 2 {
@@ -547,6 +565,30 @@ func parseSupportedOpenTag(tag string) (model.Inline, string, bool) {
 	default:
 		return model.Inline{}, "", false
 	}
+}
+
+func inferSpeculativeSpanKind(remaining string) (string, bool) {
+	preview := cleanInlineSegment(previewInnerHTML(remaining, "span"))
+	switch preview {
+	case agrammaticalGlyph:
+		return model.InlineKindAgrammatical, true
+	case hypotheticalGlyph:
+		return model.InlineKindHypothetical, true
+	case phonemeGlyph:
+		return model.InlineKindPhoneme, true
+	default:
+		return "", false
+	}
+}
+
+func previewInnerHTML(raw, closeTag string) string {
+	lower := strings.ToLower(raw)
+	needle := "</" + closeTag + ">"
+	end := strings.Index(lower, needle)
+	if end == -1 {
+		return ""
+	}
+	return raw[:end]
 }
 
 func renderInlineChildrenText(inlines []model.Inline) string {
@@ -595,6 +637,23 @@ func normalizeInlinePlainText(raw string) string {
 	return cleanText(reTags.ReplaceAllString(normalized, ""))
 }
 
+func appendPlainOrSpeculativeInline(p *inlineParser, raw string) {
+	text := cleanInlineSegment(raw)
+	if text == "" {
+		return
+	}
+
+	// WARNING: Speculative phoneme handling has no real DPD HTML validation.
+	// Only isolated plain-text // is upgraded; broader patterns must wait for
+	// real examples.
+	if text == phonemeGlyph {
+		p.appendNode(model.Inline{Kind: model.InlineKindPhoneme, Text: text})
+		return
+	}
+
+	p.appendNode(model.Inline{Kind: model.InlineKindText, Text: text})
+}
+
 var semanticSpanAllowed = map[string]bool{
 	"<dfn>":                       true,
 	"</dfn>":                      true,
@@ -602,6 +661,8 @@ var semanticSpanAllowed = map[string]bool{
 	"</em>":                       true,
 	"<i>":                         true,
 	"</i>":                        true,
+	"<sup>":                       true,
+	"</sup>":                      true,
 	"<span class=\"ejemplo\">":    true,
 	"<span class=\"ment\">":       true,
 	"<span class=\"bib\">":        true,
@@ -674,7 +735,9 @@ func preserveSemanticSpans(raw string) string {
 func cleanText(raw string) string {
 	text := html.UnescapeString(raw)
 	text = strings.ReplaceAll(text, "\u200d", "")
-	text = strings.ReplaceAll(text, exclusionGlyph, exclusionGlyph) //nolint:gocritic // dupArg: intentional normalization of ⊗ variants from HTML entities
+	text = strings.ReplaceAll(text, exclusionGlyph, exclusionGlyph)                   //nolint:gocritic // dupArg: intentional normalization of ⊗ variants from HTML entities
+	text = strings.ReplaceAll(text, digitalEditionGlyph, digitalEditionGlyph)         //nolint:gocritic // Preserve @ sign
+	text = strings.ReplaceAll(text, constructionMarkerGlyph, constructionMarkerGlyph) //nolint:gocritic // Preserve + sign
 	text = strings.Join(strings.Fields(text), " ")
 	return strings.TrimSpace(text)
 }
@@ -682,7 +745,14 @@ func cleanText(raw string) string {
 func cleanInlineSegment(raw string) string {
 	text := html.UnescapeString(reTags.ReplaceAllString(raw, ""))
 	text = strings.ReplaceAll(text, "\u200d", "")
-	text = strings.ReplaceAll(text, exclusionGlyph, exclusionGlyph) //nolint:gocritic // dupArg: intentional normalization of ⊗ variants from HTML entities
+	text = strings.ReplaceAll(text, exclusionGlyph, exclusionGlyph)                   //nolint:gocritic // dupArg: intentional normalization of ⊗ variants from HTML entities
+	text = strings.ReplaceAll(text, digitalEditionGlyph, digitalEditionGlyph)         //nolint:gocritic // Preserve @ sign
+	text = strings.ReplaceAll(text, constructionMarkerGlyph, constructionMarkerGlyph) //nolint:gocritic // Preserve + sign
+	// WARNING: Speculative signs - no real HTML validation. Patterns are inferred
+	// and MUST be updated when real DPD examples are discovered.
+	text = strings.ReplaceAll(text, agrammaticalGlyph, agrammaticalGlyph) //nolint:gocritic // Preserve * sign (SPECULATIVE)
+	text = strings.ReplaceAll(text, hypotheticalGlyph, hypotheticalGlyph) //nolint:gocritic // Preserve ‖ sign (SPECULATIVE)
+	text = strings.ReplaceAll(text, phonemeGlyph, phonemeGlyph)           //nolint:gocritic // Preserve // sign (SPECULATIVE)
 	leading := strings.HasPrefix(text, " ") || strings.HasPrefix(text, "\n") || strings.HasPrefix(text, "\t")
 	trailing := strings.HasSuffix(text, " ") || strings.HasSuffix(text, "\n") || strings.HasSuffix(text, "\t")
 	text = strings.Join(strings.Fields(text), " ")

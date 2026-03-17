@@ -10,12 +10,12 @@ import (
 )
 
 const (
-	dpdDictionary    = "Diccionario panhispánico de dudas"
-	dpdEdition       = "2.ª edición"
-	dpdNormalizeErr  = "Normalize() error = %v"
-	dpdDespues       = "Después"
-	dpdTildeURL      = "https://www.rae.es/dpd/tilde"
-	dpdConTilde      = "Con tilde"
+	dpdDictionary   = "Diccionario panhispánico de dudas"
+	dpdEdition      = "2.ª edición"
+	dpdNormalizeErr = "Normalize() error = %v"
+	dpdDespues      = "Después"
+	dpdTildeURL     = "https://www.rae.es/dpd/tilde"
+	dpdConTilde     = "Con tilde"
 )
 
 func normalizeSingleParagraph(t *testing.T, raw string) string {
@@ -361,5 +361,36 @@ func TestDPDNormalizerSeparatesCitationFieldsFromProse(t *testing.T) {
 	}
 	if citation.ConsultedAt != "10/03/2026" {
 		t.Fatalf("ConsultedAt = %q", citation.ConsultedAt)
+	}
+}
+
+func TestDPDSignsNormalizePhase1(t *testing.T) {
+	if got := cleanInlineText("hello @ world"); got != "hello @ world" {
+		t.Errorf("expected @ to survive, got %q", got)
+	}
+	if got := cleanInlineText("+ infinitivo"); got != "+ infinitivo" {
+		t.Errorf("expected + to survive, got %q", got)
+	}
+}
+
+func TestDPDSignsNormalizePhase3Synthetic(t *testing.T) {
+	// SYNTHETIC TEST - NO REAL HTML VALIDATION.
+	// These cases are inferred and MUST be revisited when real DPD examples are found.
+	tests := []struct {
+		name string
+		raw  string
+		want string
+	}{
+		{name: "agrammatical marker survives", raw: "*", want: "*"},
+		{name: "hypothetical marker survives", raw: "‖", want: "‖"},
+		{name: "phoneme marker survives", raw: "//", want: "//"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := cleanInlineText(tt.raw); got != tt.want {
+				t.Fatalf("cleanInlineText(%q) = %q, want %q", tt.raw, got, tt.want)
+			}
+		})
 	}
 }

@@ -221,7 +221,7 @@ func checkBienInline(inline model.Inline, sawExample, sawMention, sawGloss, sawR
 		}
 	case model.InlineKindEmphasis:
 		checkBienEmphasisInline(inline, sawMention)
-	case model.InlineKindGloss:
+	case model.InlineKindBracketDefinition:
 		if strings.Contains(inline.Text, "correcta y adecuadamente") {
 			*sawGloss = true
 		}
@@ -299,7 +299,7 @@ func assertDarPatternMarkers(t *testing.T, inlines []model.Inline) {
 
 func checkForEditorial(children []model.Inline, sawEditorial bool) bool {
 	for _, child := range children {
-		if child.Kind == model.InlineKindEditorial {
+		if child.Kind == model.InlineKindBracketInterpolation {
 			sawEditorial = true
 		}
 	}
@@ -388,7 +388,7 @@ func TestExtractInlinesKeepsNestedScaffoldAsFormattingOverride(t *testing.T) {
 	if mention.Children[0].Kind != model.InlineKindText || mention.Children[0].Text != "tilde" {
 		t.Fatalf("mention text child = %#v", mention.Children[0])
 	}
-	if mention.Children[1].Kind != model.InlineKindScaffold || mention.Children[1].Text != "2" {
+	if mention.Children[1].Kind != model.InlineKindBracketPronunciation || mention.Children[1].Text != "2" {
 		t.Fatalf("mention override child = %#v", mention.Children[1])
 	}
 }
@@ -603,5 +603,82 @@ func TestDPDArticleParserDetectsChallengePages(t *testing.T) {
 	}
 	if problem.Code != model.ProblemCodeDPDExtractFailed {
 		t.Fatalf("problem code = %q, want %q", problem.Code, model.ProblemCodeDPDExtractFailed)
+	}
+}
+
+func TestDPDSignsParsePhase1(t *testing.T) {
+	// @ sign
+	rawAt := `<sup>@</sup>`
+	inlinesAt := extractInlines(rawAt)
+	if len(inlinesAt) != 1 || inlinesAt[0].Kind != model.InlineKindDigitalEdition {
+		t.Errorf("expected DigitalEdition, got %+v", inlinesAt)
+	}
+
+	// + sign
+	rawPlus := `<span class="nc">+ infinitivo</span>`
+	inlinesPlus := extractInlines(rawPlus)
+	if len(inlinesPlus) != 1 || inlinesPlus[0].Kind != model.InlineKindConstructionMarker {
+		t.Errorf("expected ConstructionMarker, got %+v", inlinesPlus)
+	}
+}
+
+func TestDPDSignsParsePhase2(t *testing.T) {
+	// Bracket Definition
+	rawDef := `<dfn>[una ley]</dfn>`
+	inlinesDef := extractInlines(rawDef)
+	if len(inlinesDef) != 1 || inlinesDef[0].Kind != model.InlineKindBracketDefinition {
+		t.Errorf("expected BracketDefinition, got %+v", inlinesDef)
+	}
+
+	// Bracket Pronunciation
+	rawPron := `<span class="nn">[alikuóto]</span>`
+	inlinesPron := extractInlines(rawPron)
+	if len(inlinesPron) != 1 || inlinesPron[0].Kind != model.InlineKindBracketPronunciation {
+		t.Errorf("expected BracketPronunciation, got %+v", inlinesPron)
+	}
+
+	// Bracket Interpolation
+	rawInterp := `<span class="yy">[las feministas]</span>`
+	inlinesInterp := extractInlines(rawInterp)
+	if len(inlinesInterp) != 1 || inlinesInterp[0].Kind != model.InlineKindBracketInterpolation {
+		t.Errorf("expected BracketInterpolation, got %+v", inlinesInterp)
+	}
+}
+
+func TestDPDSignsParsePhase3Synthetic(t *testing.T) {
+	// SYNTHETIC TEST - NO REAL HTML VALIDATION.
+	// These patterns are inferred and MUST be updated when real DPD examples are found.
+	tests := []struct {
+		name string
+		raw  string
+		want string
+	}{
+		{
+			name: "agrammatical marker inferred span pattern",
+			raw:  `<span class="synthetic-sign">*</span>`,
+			want: model.InlineKindAgrammatical,
+		},
+		{
+			name: "hypothetical marker inferred span pattern",
+			raw:  `<span class="synthetic-sign">‖</span>`,
+			want: model.InlineKindHypothetical,
+		},
+		{
+			name: "phoneme marker inferred plain text pattern",
+			raw:  `//`,
+			want: model.InlineKindPhoneme,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inlines := extractInlines(tt.raw)
+			if len(inlines) != 1 {
+				t.Fatalf("extractInlines() len = %d, want 1 (%+v)", len(inlines), inlines)
+			}
+			if inlines[0].Kind != tt.want {
+				t.Fatalf("extractInlines() kind = %q, want %q (%+v)", inlines[0].Kind, tt.want, inlines)
+			}
+		})
 	}
 }

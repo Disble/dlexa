@@ -32,6 +32,24 @@ const (
 	InlineKindCorrection     = "correction"
 	InlineKindReference      = "reference"
 	InlineKindEmphasis       = "emphasis"
+
+	// DPD Signs - VALIDATED (real HTML evidence)
+	InlineKindDigitalEdition       = "digital_edition"       // @ sign in <sup>@</sup>
+	InlineKindConstructionMarker   = "construction_marker"   // + sign in <span class="nc">
+	InlineKindBracketDefinition    = "bracket_definition"    // [...] in <dfn>
+	InlineKindBracketPronunciation = "bracket_pronunciation" // [...] in <span class="nn">
+	InlineKindBracketInterpolation = "bracket_interpolation" // [...] in <span class="yy">
+
+	// WARNING: SPECULATIVE signs - no real HTML validation found in DPD articles.
+	// Patterns are inferred from validated sign containers and MUST be revisited
+	// when real examples are discovered.
+	InlineKindAgrammatical = "agrammatical" // * sign (SPECULATIVE)
+	InlineKindHypothetical = "hypothetical" // ‖ sign (SPECULATIVE)
+	InlineKindPhoneme      = "phoneme"      // // sign (SPECULATIVE)
+
+	// ARCHIVED SIGNS (not implemented):
+	// < (etymology) and > (transformation) remain excluded because of HTML tag
+	// collision risk. See testdata/dpd-signs-analysis/SIGN_ANALYSIS.md.
 )
 
 // LookupRequest holds the parameters for a dictionary lookup query.

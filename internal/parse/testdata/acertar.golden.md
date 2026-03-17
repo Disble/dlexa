@@ -1,0 +1,19 @@
+# acertar
+
+Diccionario panhispánico de dudas
+
+2.ª edición
+
+1. 'Adivinar o resolver correctamente [algo]', 'alcanzar algo o a alguien con un disparo o un golpe', 'tener acierto o tino en algo' y 'encontrar lo que se busca'. Verbo irregular (→ [acertar](/dpd/ayuda/modelos-de-conjugacion-verbal#acertar)).
+
+2. Cuando significa 'alcanzar algo o a alguien con un disparo o un golpe', lo normal es usarlo como intransitivo, con un complemento encabezado por *a*, que expresa la persona o cosa alcanzada, y que a menudo va representado, concurrentemente o no, por el pronombre de dativo *le(s)*:«Ramón Barrera, en un intento de acertar a una pieza, alcanzó en una pierna a su compañero de cacería» (*Mundo* es 17.10.1994);«Le había enseñado unas palabras mágicas para acertar le a un pájaro con una piedra» (GaMárquez *Amor* co 1985). A menudo lleva un segundo complemento, encabezado por *en*, que expresa la parte concreta alcanzada:«Holliday le acertó a Billy en el pecho» (Cela *Cristo* es 1988). Si el complemento de *acertar* son los sustantivos genéricos *blanco* o *diana*, se usa la preposición *en*:«Aunque dispare no es capaz de acertar en el blanco» (GaBadell *Funeral* es 1975). Con este mismo significado, *acertar* se usa también, aunque más raramente, como transitivo:«No pudo impedir que la alcachofa[…] le acertara el ojo derecho» (Marsé *Muchacha* es 1978);«Una vez acerté un colorado de doce puntas en la cabeza» (Guido *Invitación* ar 1979).
+
+3. Cuando significa 'tener acierto o tino en algo', es intransitivo y se construye con un complemento encabezado por la preposición *en*:«El Barcelona acertó en tres de sus cuatro primeros lanzamientos» (*Vanguardia* es 16.10.1995);«El presidente Samper ha acertado en encontrar a un hombre que ofrece todas las garantías» (*Tiempo* co 13.9.1996). En algún caso es también válido, con este sentido, el uso transitivo:«Clifford Robinson acertó dos tiros libres» (*Siglo* pa 7.11.2000).
+
+4. acertar a + infinitivo. 'Conseguir hacer algo' y 'suceder por casualidad la acción denotada por el infinitivo':«Está borracho y no acierta a hilar las palabras» (GaMay *Operación* es 1991);«Estaba ella esperando el autobús, cuando acertó a pasar por ahí un loco» (*Nacional* ve 18.4.1997). No se debe suprimir la preposición: ⊗«En eso acertó llegar el negrito Memín» (*Siglo* pa 29.5.2001).
+
+Source: Real Academia Española y Asociación de Academias de la Lengua Española
+Dictionary: Diccionario panhispánico de dudas
+Edition: 2.ª edición
+URL: https://www.rae.es/dpd/acertar
+Consulted: 16/03/2026

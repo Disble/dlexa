@@ -339,6 +339,21 @@ func TestRenderInlineMarkdown(t *testing.T) {
 			"*muy*",
 		},
 		{
+			"BracketDefinition remains plain text",
+			[]model.Inline{{Kind: model.InlineKindBracketDefinition, Text: "[una ley]"}},
+			"[una ley]",
+		},
+		{
+			"BracketPronunciation remains plain text",
+			[]model.Inline{{Kind: model.InlineKindBracketPronunciation, Text: "[alikuóto]"}},
+			"[alikuóto]",
+		},
+		{
+			"BracketInterpolation remains plain text",
+			[]model.Inline{{Kind: model.InlineKindBracketInterpolation, Text: "[las feministas]"}},
+			"[las feministas]",
+		},
+		{
 			"reference renders arrow link",
 			[]model.Inline{{Kind: model.InlineKindReference, Text: "6", Target: testBienRef1}},
 			"→ [6](bien#ref1)",
@@ -482,6 +497,40 @@ func TestRenderMarkdownInlines(t *testing.T) {
 			got := RenderMarkdownInlines(tt.inlines)
 			if got != tt.want {
 				t.Fatalf("RenderMarkdownInlines() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRenderInlineMarkdownSpeculativeSignsSynthetic(t *testing.T) {
+	// SYNTHETIC TEST - NO REAL HTML VALIDATION.
+	// These render expectations are inferred from the current preservation design.
+	tests := []struct {
+		name   string
+		inline model.Inline
+		want   string
+	}{
+		{
+			name:   "agrammatical marker renders as plain text",
+			inline: model.Inline{Kind: model.InlineKindAgrammatical, Text: "*"},
+			want:   "*",
+		},
+		{
+			name:   "hypothetical marker renders as plain text",
+			inline: model.Inline{Kind: model.InlineKindHypothetical, Text: "‖"},
+			want:   "‖",
+		},
+		{
+			name:   "phoneme marker renders as plain text",
+			inline: model.Inline{Kind: model.InlineKindPhoneme, Text: "//"},
+			want:   "//",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := RenderInlineMarkdown([]model.Inline{tt.inline}); got != tt.want {
+				t.Fatalf("RenderInlineMarkdown() = %q, want %q", got, tt.want)
 			}
 		})
 	}
