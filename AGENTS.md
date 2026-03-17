@@ -27,3 +27,11 @@
 - The repo-level lint and pre-commit onboarding flow lives in `CONTRIBUTING.md`.
 - Full-repo lint uses the repo-pinned command: `go tool --modfile=golangci-lint.mod golangci-lint run ./...`.
 - The pre-commit hook intentionally stays diff-based: `go tool --modfile=golangci-lint.mod golangci-lint run --new-from-rev=HEAD`.
+
+## Delegation Guardrails
+
+- When delegating bugfix or apply work to sub-agents, prompts MUST include the exact reproduction steps/commands when known.
+- Those prompts MUST include both acceptance examples and rejection/negative examples; do not describe only the happy path.
+- Those prompts MUST name forbidden outputs or behaviors explicitly when the bug involves false positives, misleading fallbacks, or malformed UX.
+- When parser/classification behavior is involved, prompts MUST require negative regression coverage and adversarial fixture guidance when relevant.
+- If the user explicitly asks the orchestrator to perform a repo-doc or instruction-file update itself, do not delegate that file edit to a sub-agent.
