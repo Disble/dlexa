@@ -11,12 +11,12 @@ import (
 )
 
 const (
-	lookupErrFmt    = "Lookup() error = %v"
-	entryID1        = "entry-1"
-	warningCode1    = "first-warning"
-	problemCode1    = "first-problem"
-	entryID2        = "entry-2"
-	warningCode2    = "second-warning"
+	lookupErrFmt = "Lookup() error = %v"
+	entryID1     = "entry-1"
+	warningCode1 = "first-warning"
+	problemCode1 = "first-problem"
+	entryID2     = "entry-2"
+	warningCode2 = "second-warning"
 )
 
 func TestLookupReturnsCachedResultAsCacheHit(t *testing.T) {
@@ -120,6 +120,39 @@ func TestLookupAggregatesEntriesWarningsProblemsAndSourceResults(t *testing.T) {
 
 	if result.GeneratedAt.IsZero() {
 		t.Fatal("Lookup() GeneratedAt is zero")
+	}
+}
+
+func TestLookupAggregatesStructuredMissesWithoutTurningThemIntoProblems(t *testing.T) {
+	descriptor := model.SourceDescriptor{Name: "dpd", Priority: 1}
+	miss := model.LookupMiss{
+		Kind:   model.LookupMissKindRelatedEntry,
+		Query:  "alicuota",
+		Source: descriptor.Name,
+		Suggestion: &model.LookupSuggestion{
+			Kind:        "related_entry",
+			DisplayText: "alícuota",
+			EntryID:     "alícuota",
+			URL:         "https://www.rae.es/dpd/alícuota",
+		},
+	}
+	registry := &stubRegistry{sources: []source.Source{
+		&stubSource{descriptor: descriptor, result: model.SourceResult{Source: descriptor, Miss: &miss}},
+	}}
+
+	service := NewService(registry, &stubStore{})
+	result, err := service.Lookup(context.Background(), model.LookupRequest{Query: "alicuota", Sources: []string{"dpd"}, NoCache: true})
+	if err != nil {
+		t.Fatalf(lookupErrFmt, err)
+	}
+	if len(result.Misses) != 1 {
+		t.Fatalf("Lookup() misses = %#v, want 1 structured miss", result.Misses)
+	}
+	if result.Misses[0].Kind != model.LookupMissKindRelatedEntry {
+		t.Fatalf("miss kind = %q", result.Misses[0].Kind)
+	}
+	if len(result.Problems) != 0 {
+		t.Fatalf("Lookup() problems = %#v, want none", result.Problems)
 	}
 }
 

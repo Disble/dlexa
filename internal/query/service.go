@@ -103,6 +103,9 @@ func appendOutcome(result *model.LookupResult, outcome sourceOutcome) {
 
 	result.Sources = append(result.Sources, outcome.result)
 	result.Entries = append(result.Entries, outcome.result.Entries...)
+	if outcome.result.Miss != nil {
+		result.Misses = append(result.Misses, *outcome.result.Miss)
+	}
 	result.Warnings = append(result.Warnings, outcome.result.Warnings...)
 	result.Problems = append(result.Problems, outcome.result.Problems...)
 }

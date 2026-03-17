@@ -36,6 +36,9 @@ func (r *JSONRenderer) RenderResult(ctx context.Context, result model.LookupResu
 			result.Entries[idx].Content = articleContentProjection(result.Entries[idx].Article)
 		}
 	}
+	if len(result.Misses) == 0 {
+		result.Misses = nil
+	}
 	return marshalNoEscape(result)
 }
 

@@ -63,15 +63,59 @@ type LookupRequest struct {
 	NoCache bool
 }
 
-// LookupResult contains the aggregated entries and metadata from a lookup.
+// LookupResult contains the aggregated entries, structured misses, and metadata
+// from a lookup.
 type LookupResult struct {
 	Request     LookupRequest
 	Entries     []Entry
+	Misses      []LookupMiss `json:"misses,omitempty"`
 	Warnings    []Warning
 	Problems    []Problem
 	Sources     []SourceResult
 	CacheHit    bool
 	GeneratedAt time.Time
+}
+
+// LookupMissKind classifies a structured lookup miss outcome.
+type LookupMissKind string
+
+// LookupNextActionKind classifies an explicit next-step suggestion for a miss.
+type LookupNextActionKind string
+
+const (
+	// LookupMissKindGenericNotFound marks a lookup miss with no native DPD suggestion.
+	LookupMissKindGenericNotFound LookupMissKind = "generic_not_found"
+	// LookupMissKindRelatedEntry marks a lookup miss with a native DPD related-entry suggestion.
+	LookupMissKindRelatedEntry LookupMissKind = "related_entry"
+
+	// LookupNextActionKindSearch marks an explicit recommendation to run the search command.
+	LookupNextActionKindSearch LookupNextActionKind = "search"
+)
+
+// LookupMiss preserves format-neutral miss semantics across pipeline boundaries.
+type LookupMiss struct {
+	Kind       LookupMissKind    `json:"kind"`
+	Query      string            `json:"query"`
+	NoticeText string            `json:"notice_text,omitempty"`
+	Suggestion *LookupSuggestion `json:"suggestion,omitempty"`
+	NextAction *LookupNextAction `json:"next_action,omitempty"`
+	Source     string            `json:"source,omitempty"`
+}
+
+// LookupSuggestion carries a native upstream suggestion for a near miss.
+type LookupSuggestion struct {
+	Kind         string `json:"kind"`
+	DisplayText  string `json:"display_text"`
+	EntryID      string `json:"entry_id,omitempty"`
+	URL          string `json:"url,omitempty"`
+	RawLabelHTML string `json:"raw_label_html,omitempty"`
+}
+
+// LookupNextAction carries an explicit user action recommendation for a miss.
+type LookupNextAction struct {
+	Kind    LookupNextActionKind `json:"kind"`
+	Query   string               `json:"query"`
+	Command string               `json:"command"`
 }
 
 // Entry represents a single dictionary entry with its content and metadata.
@@ -173,10 +217,12 @@ type SourceDescriptor struct {
 	Cacheable   bool
 }
 
-// SourceResult pairs a source descriptor with the entries it produced.
+// SourceResult pairs a source descriptor with the entries or structured miss it
+// produced.
 type SourceResult struct {
 	Source    SourceDescriptor
 	Entries   []Entry
+	Miss      *LookupMiss `json:"miss,omitempty"`
 	Warnings  []Warning
 	Problems  []Problem
 	FetchedAt time.Time

@@ -105,6 +105,116 @@ func TestDPDArticleParserExtractsBienArticleAndSkipsChrome(t *testing.T) {
 	}
 }
 
+func TestDPDArticleParserClassifiesExactHitsAndMisses(t *testing.T) {
+	tests := []struct {
+		name               string
+		fixture            string
+		descriptor         model.SourceDescriptor
+		documentURL        string
+		wantArticleCount   int
+		wantMissKind       ParsedLookupMissKind
+		wantMissQuery      string
+		wantSuggestionText string
+		wantSuggestionHref string
+	}{
+		{
+			name:             "exact article hit remains article-only",
+			fixture:          "bien",
+			descriptor:       model.SourceDescriptor{Name: "dpd", DisplayName: "bien"},
+			documentURL:      "https://www.rae.es/dpd/bien",
+			wantArticleCount: 1,
+		},
+		{
+			name:               "suggestion bearing miss preserves native related entry",
+			fixture:            "alicuota",
+			descriptor:         model.SourceDescriptor{Name: "dpd", DisplayName: "alicuota"},
+			documentURL:        "https://www.rae.es/dpd/alicuota",
+			wantMissKind:       ParsedLookupMissKindRelatedEntry,
+			wantMissQuery:      "alicuota",
+			wantSuggestionText: "alícuota",
+			wantSuggestionHref: "https://www.rae.es/dpd/alícuota",
+		},
+		{
+			name:               "live abu shape preserves native related entry from single quoted relative href",
+			fixture:            "abu",
+			descriptor:         model.SourceDescriptor{Name: "dpd", DisplayName: "Diccionario panhispánico de dudas"},
+			documentURL:        "https://www.rae.es/dpd/abu",
+			wantMissKind:       ParsedLookupMissKindRelatedEntry,
+			wantMissQuery:      "abu",
+			wantSuggestionText: "agur",
+			wantSuggestionHref: "https://www.rae.es/dpd/agur",
+		},
+		{
+			name:          "generic miss without related entry stays structured",
+			fixture:       "zumbidoinexistente",
+			descriptor:    model.SourceDescriptor{Name: "dpd", DisplayName: "Diccionario panhispánico de dudas"},
+			documentURL:   "https://www.rae.es/dpd/zumbidoinexistente",
+			wantMissKind:  ParsedLookupMissKindGenericNotFound,
+			wantMissQuery: "zumbidoinexistente",
+		},
+		{
+			name:          "generic miss with incidental resultados link stays generic not found",
+			fixture:       "zzzzz",
+			descriptor:    model.SourceDescriptor{Name: "dpd", DisplayName: "Diccionario panhispánico de dudas"},
+			documentURL:   "https://www.rae.es/dpd/zzzzz",
+			wantMissKind:  ParsedLookupMissKindGenericNotFound,
+			wantMissQuery: "zzzzz",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parser := NewDPDArticleParser()
+			result, _, err := parser.Parse(context.Background(), tt.descriptor, fetch.Document{
+				URL:         tt.documentURL,
+				ContentType: "text/html; charset=utf-8",
+				StatusCode:  200,
+				Body:        loadDPDFixtureHTML(t, tt.fixture),
+			})
+			if err != nil {
+				t.Fatalf("Parse() error = %v", err)
+			}
+
+			if got := len(result.Articles); got != tt.wantArticleCount {
+				t.Fatalf("articles = %d, want %d", got, tt.wantArticleCount)
+			}
+
+			if tt.wantArticleCount > 0 {
+				if result.Miss != nil {
+					t.Fatalf("result.Miss = %#v, want nil for exact hit", result.Miss)
+				}
+				return
+			}
+
+			if result.Miss == nil {
+				t.Fatal("result.Miss = nil, want structured miss")
+			}
+			if result.Miss.Kind != tt.wantMissKind {
+				t.Fatalf("miss kind = %q, want %q", result.Miss.Kind, tt.wantMissKind)
+			}
+			if result.Miss.Query != tt.wantMissQuery {
+				t.Fatalf("miss query = %q, want %q", result.Miss.Query, tt.wantMissQuery)
+			}
+			if tt.wantSuggestionText == "" {
+				if result.Miss.RelatedEntry != nil {
+					t.Fatalf("related entry = %#v, want nil", result.Miss.RelatedEntry)
+				}
+				return
+			}
+
+			if result.Miss.RelatedEntry == nil {
+				t.Fatal("related entry = nil, want suggestion")
+			}
+			if result.Miss.RelatedEntry.DisplayText != tt.wantSuggestionText {
+				t.Fatalf("display text = %q, want %q", result.Miss.RelatedEntry.DisplayText, tt.wantSuggestionText)
+			}
+			if result.Miss.RelatedEntry.Href != tt.wantSuggestionHref {
+				t.Fatalf("href = %q, want %q", result.Miss.RelatedEntry.Href, tt.wantSuggestionHref)
+			}
+		})
+	}
+}
+
 func assertTildeFirstSection(t *testing.T, first ParsedSection) {
 	t.Helper()
 	if len(first.Blocks) != 3 {

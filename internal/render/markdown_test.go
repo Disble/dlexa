@@ -12,13 +12,13 @@ import (
 )
 
 const (
-	testDictionary    = "Diccionario panhispánico de dudas"
-	testEdition       = "2.ª edición"
-	testSourceLabel   = "Real Academia Española y Asociación de Academias de la Lengua Española"
-	testConsultedAt   = "10/03/2026"
-	testColSinTilde   = "Sin tilde"
-	testColConTilde   = "Con tilde"
-	testErrRender     = "Render() error = %v"
+	testDictionary     = "Diccionario panhispánico de dudas"
+	testEdition        = "2.ª edición"
+	testSourceLabel    = "Real Academia Española y Asociación de Academias de la Lengua Española"
+	testConsultedAt    = "10/03/2026"
+	testColSinTilde    = "Sin tilde"
+	testColConTilde    = "Con tilde"
+	testErrRender      = "Render() error = %v"
 	testPayloadMissing = "payload missing %q\n%s"
 )
 
@@ -524,6 +524,65 @@ func TestMarkdownRendererRendersStructuredCitation(t *testing.T) {
 		if !strings.Contains(text, want) {
 			t.Fatalf(testPayloadMissing, want, text)
 		}
+	}
+}
+
+func TestMarkdownRendererRendersStructuredLookupMissGuidance(t *testing.T) {
+	renderer := NewMarkdownRenderer()
+	tests := []struct {
+		name     string
+		result   model.LookupResult
+		mustHave []string
+		mustNot  []string
+	}{
+		{
+			name: "native suggestion surfaces without search nudge",
+			result: model.LookupResult{
+				Request: model.LookupRequest{Query: "alicuota", Format: "markdown"},
+				Misses: []model.LookupMiss{{
+					Kind:       model.LookupMissKindRelatedEntry,
+					Query:      "alicuota",
+					Source:     "dpd",
+					Suggestion: &model.LookupSuggestion{Kind: "related_entry", DisplayText: "alícuota", URL: "https://www.rae.es/dpd/alícuota"},
+				}},
+			},
+			mustHave: []string{"# alicuota", "Quizá quiso decir **alícuota**.", "https://www.rae.es/dpd/alícuota"},
+			mustNot:  []string{"dlexa search alicuota"},
+		},
+		{
+			name: "generic miss nudges explicit search command only",
+			result: model.LookupResult{
+				Request: model.LookupRequest{Query: "zumbidoinexistente", Format: "markdown"},
+				Misses: []model.LookupMiss{{
+					Kind:       model.LookupMissKindGenericNotFound,
+					Query:      "zumbidoinexistente",
+					Source:     "dpd",
+					NextAction: &model.LookupNextAction{Kind: model.LookupNextActionKindSearch, Query: "zumbidoinexistente", Command: "dlexa search zumbidoinexistente"},
+				}},
+			},
+			mustHave: []string{"# zumbidoinexistente", "Try `dlexa search zumbidoinexistente`."},
+			mustNot:  []string{"Quizá quiso decir", "automatic"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			payload, err := renderer.Render(context.Background(), tt.result)
+			if err != nil {
+				t.Fatalf(testErrRender, err)
+			}
+			text := string(payload)
+			for _, want := range tt.mustHave {
+				if !strings.Contains(text, want) {
+					t.Fatalf(testPayloadMissing, want, text)
+				}
+			}
+			for _, forbidden := range tt.mustNot {
+				if strings.Contains(text, forbidden) {
+					t.Fatalf("payload contains forbidden text %q\n%s", forbidden, text)
+				}
+			}
+		})
 	}
 }
 

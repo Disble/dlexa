@@ -8,6 +8,7 @@ import (
 
 	"github.com/Disble/dlexa/internal/fetch"
 	"github.com/Disble/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/normalize"
 	"github.com/Disble/dlexa/internal/parse"
 )
 
@@ -42,8 +43,7 @@ func TestPipelineSourceFetchesParsesAndNormalizesInOrder(t *testing.T) {
 	}
 	normalizer := &recordingNormalizer{
 		calls:          &callOrder,
-		entries:        normalizedEntries,
-		warnings:       []model.Warning{{Code: normalizeWarningCode, Source: descriptor.Name}},
+		result:         normalize.Result{Entries: normalizedEntries, Warnings: []model.Warning{{Code: normalizeWarningCode, Source: descriptor.Name}}},
 		expectedResult: parsedResult,
 		expectedSource: descriptor,
 	}
@@ -68,6 +68,43 @@ func TestPipelineSourceFetchesParsesAndNormalizesInOrder(t *testing.T) {
 
 	if !result.FetchedAt.Equal(retrievedAt) {
 		t.Fatalf("Lookup() fetchedAt = %v, want %v", result.FetchedAt, retrievedAt)
+	}
+}
+
+func TestPipelineSourcePropagatesStructuredMissWithoutProblemFallback(t *testing.T) {
+	descriptor := model.SourceDescriptor{Name: "dpd", DisplayName: "DPD"}
+	callOrder := make([]string, 0, 3)
+	parsedResult := parse.Result{Miss: &parse.ParsedLookupMiss{Kind: parse.ParsedLookupMissKindGenericNotFound, Query: "alicuota"}}
+	normalizedMiss := &model.LookupMiss{
+		Kind:   model.LookupMissKindGenericNotFound,
+		Query:  "alicuota",
+		Source: descriptor.Name,
+		NextAction: &model.LookupNextAction{
+			Kind:    model.LookupNextActionKindSearch,
+			Query:   "alicuota",
+			Command: "dlexa search alicuota",
+		},
+	}
+
+	pipeline := NewPipelineSource(
+		descriptor,
+		&recordingFetcher{calls: &callOrder, document: fetch.Document{Body: []byte("body")}},
+		&recordingParser{calls: &callOrder, result: parsedResult, expectedBody: []byte("body"), expectedSource: descriptor},
+		&recordingNormalizer{calls: &callOrder, result: normalize.Result{Miss: normalizedMiss}, expectedResult: parsedResult, expectedSource: descriptor},
+	)
+
+	result, err := pipeline.Lookup(context.Background(), model.LookupRequest{Query: "alicuota"})
+	if err != nil {
+		t.Fatalf("Lookup() error = %v", err)
+	}
+	if result.Miss == nil {
+		t.Fatal("Lookup() miss = nil")
+	}
+	if *result.Miss != *normalizedMiss {
+		t.Fatalf("Lookup() miss = %#v, want %#v", result.Miss, normalizedMiss)
+	}
+	if len(result.Problems) != 0 {
+		t.Fatalf("Lookup() problems = %#v, want none", result.Problems)
 	}
 }
 
@@ -109,25 +146,24 @@ func (p *recordingParser) Parse(_ context.Context, descriptor model.SourceDescri
 
 type recordingNormalizer struct {
 	calls          *[]string
-	entries        []model.Entry
-	warnings       []model.Warning
+	result         normalize.Result
 	expectedResult parse.Result
 	expectedSource model.SourceDescriptor
 	inputResult    parse.Result
 	descriptor     model.SourceDescriptor
 }
 
-func (n *recordingNormalizer) Normalize(_ context.Context, descriptor model.SourceDescriptor, result parse.Result) ([]model.Entry, []model.Warning, error) {
+func (n *recordingNormalizer) Normalize(_ context.Context, descriptor model.SourceDescriptor, result parse.Result) (normalize.Result, error) {
 	*n.calls = append(*n.calls, "normalize")
 	n.descriptor = descriptor
 	n.inputResult = result
 	if !reflect.DeepEqual(descriptor, n.expectedSource) {
-		return nil, nil, &testError{message: "normalizer received unexpected source descriptor"}
+		return normalize.Result{}, &testError{message: "normalizer received unexpected source descriptor"}
 	}
 	if !reflect.DeepEqual(result, n.expectedResult) {
-		return nil, nil, &testError{message: "normalizer received unexpected entries"}
+		return normalize.Result{}, &testError{message: "normalizer received unexpected entries"}
 	}
-	return n.entries, n.warnings, nil
+	return n.result, nil
 }
 
 type testError struct {

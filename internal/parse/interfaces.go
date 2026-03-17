@@ -16,6 +16,33 @@ type Parser interface {
 // Result holds the articles extracted from a parsed document.
 type Result struct {
 	Articles []ParsedArticle
+	Miss     *ParsedLookupMiss
+}
+
+// ParsedLookupMissKind classifies a structured DPD lookup miss.
+type ParsedLookupMissKind string
+
+const (
+	// ParsedLookupMissKindGenericNotFound marks a miss page with no native related-entry suggestion.
+	ParsedLookupMissKindGenericNotFound ParsedLookupMissKind = "generic_not_found"
+	// ParsedLookupMissKindRelatedEntry marks a miss page that includes a native related-entry suggestion.
+	ParsedLookupMissKindRelatedEntry ParsedLookupMissKind = "related_entry"
+)
+
+// ParsedLookupMiss holds raw miss facts extracted from the DPD response.
+type ParsedLookupMiss struct {
+	Kind         ParsedLookupMissKind
+	Query        string
+	NoticeText   string
+	RelatedEntry *ParsedRelatedEntry
+}
+
+// ParsedRelatedEntry holds the upstream related-entry suggestion extracted from a DPD miss page.
+type ParsedRelatedEntry struct {
+	RawLabelHTML string
+	DisplayText  string
+	EntryID      string
+	Href         string
 }
 
 // ParsedBlockKind discriminates block content types within a section.

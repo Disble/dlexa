@@ -38,10 +38,11 @@ func TestDPDNormalizerBuildsMarkdownReadyArticle(t *testing.T) {
 		Citation: parse.ParsedCitation{Text: "Real Academia Española..."},
 	}}}
 
-	entries, warnings, err := normalizer.Normalize(context.Background(), model.SourceDescriptor{Name: "dpd"}, result)
+	normalized, err := normalizer.Normalize(context.Background(), model.SourceDescriptor{Name: "dpd"}, result)
 	if err != nil {
 		t.Fatalf(dpdNormalizeErr, err)
 	}
+	entries, warnings := normalized.Entries, normalized.Warnings
 	if len(warnings) == 0 || warnings[0].Code != "dpd_access_profile" {
 		t.Fatalf("warnings = %#v, want access profile warning", warnings)
 	}
@@ -67,6 +68,86 @@ func TestDPDNormalizerBuildsMarkdownReadyArticle(t *testing.T) {
 	}
 	if want := "1. Uno\n\n6. Seis\n\na) Hijo A\n\nb) Hijo B\n\nc) Hijo C"; entry.Content != want {
 		t.Fatalf("content = %q, want %q", entry.Content, want)
+	}
+}
+
+func TestDPDNormalizerPreservesStructuredLookupMisses(t *testing.T) {
+	normalizer := NewDPDNormalizer()
+	tests := []struct {
+		name           string
+		parsedMiss     *parse.ParsedLookupMiss
+		wantKind       model.LookupMissKind
+		wantSuggestion *model.LookupSuggestion
+		wantNextAction *model.LookupNextAction
+	}{
+		{
+			name: "native suggestion keeps suggestion only",
+			parsedMiss: &parse.ParsedLookupMiss{
+				Kind:       parse.ParsedLookupMissKindRelatedEntry,
+				Query:      "alicuota",
+				NoticeText: "Quizá quiso decir alícuota.",
+				RelatedEntry: &parse.ParsedRelatedEntry{
+					RawLabelHTML: `<span class="ment">alícuota</span>`,
+					DisplayText:  "alícuota",
+					EntryID:      "alícuota",
+					Href:         "https://www.rae.es/dpd/alícuota",
+				},
+			},
+			wantKind: model.LookupMissKindRelatedEntry,
+			wantSuggestion: &model.LookupSuggestion{
+				Kind:         "related_entry",
+				DisplayText:  "alícuota",
+				EntryID:      "alícuota",
+				URL:          "https://www.rae.es/dpd/alícuota",
+				RawLabelHTML: `<span class="ment">alícuota</span>`,
+			},
+		},
+		{
+			name: "generic miss gets explicit search next action only",
+			parsedMiss: &parse.ParsedLookupMiss{
+				Kind:       parse.ParsedLookupMissKindGenericNotFound,
+				Query:      "abu",
+				NoticeText: "No se encontró ninguna entrada exacta.",
+			},
+			wantKind: model.LookupMissKindGenericNotFound,
+			wantNextAction: &model.LookupNextAction{
+				Kind:    model.LookupNextActionKindSearch,
+				Query:   "abu",
+				Command: "dlexa search abu",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			normalized, err := normalizer.Normalize(context.Background(), model.SourceDescriptor{Name: "dpd"}, parse.Result{Miss: tt.parsedMiss})
+			if err != nil {
+				t.Fatalf(dpdNormalizeErr, err)
+			}
+			if len(normalized.Entries) != 0 {
+				t.Fatalf("entries = %#v, want none for miss-only result", normalized.Entries)
+			}
+			if normalized.Miss == nil {
+				t.Fatal("normalized miss = nil")
+			}
+			if normalized.Miss.Kind != tt.wantKind {
+				t.Fatalf("miss kind = %q, want %q", normalized.Miss.Kind, tt.wantKind)
+			}
+			if tt.wantSuggestion == nil {
+				if normalized.Miss.Suggestion != nil {
+					t.Fatalf("suggestion = %#v, want nil", normalized.Miss.Suggestion)
+				}
+			} else if *normalized.Miss.Suggestion != *tt.wantSuggestion {
+				t.Fatalf("suggestion = %#v, want %#v", normalized.Miss.Suggestion, tt.wantSuggestion)
+			}
+			if tt.wantNextAction == nil {
+				if normalized.Miss.NextAction != nil {
+					t.Fatalf("next action = %#v, want nil", normalized.Miss.NextAction)
+				}
+			} else if *normalized.Miss.NextAction != *tt.wantNextAction {
+				t.Fatalf("next action = %#v, want %#v", normalized.Miss.NextAction, tt.wantNextAction)
+			}
+		})
 	}
 }
 
@@ -101,10 +182,11 @@ func TestDPDNormalizerBuildsDistinctIDsForDuplicateLemmas(t *testing.T) {
 		{Dictionary: dpdDictionary, Edition: dpdEdition, EntryID: "tilde2", Lemma: "tilde", CanonicalURL: dpdTildeURL, Sections: []parse.ParsedSection{{Label: "1.", Blocks: []parse.ParsedBlock{{Kind: parse.ParsedBlockKindParagraph, Paragraph: &parse.ParsedParagraph{HTML: "Dos"}}}}}},
 	}}
 
-	entries, _, err := NewDPDNormalizer().Normalize(context.Background(), model.SourceDescriptor{Name: "dpd"}, result)
+	normalized, err := NewDPDNormalizer().Normalize(context.Background(), model.SourceDescriptor{Name: "dpd"}, result)
 	if err != nil {
 		t.Fatalf(dpdNormalizeErr, err)
 	}
+	entries := normalized.Entries
 	if len(entries) != 2 {
 		t.Fatalf("entries = %d, want 2", len(entries))
 	}
@@ -133,10 +215,11 @@ func TestDPDNormalizerCoheresMixedBlocksIntoFallbackContent(t *testing.T) {
 		}},
 	}}}
 
-	entries, _, err := NewDPDNormalizer().Normalize(context.Background(), model.SourceDescriptor{Name: "dpd"}, result)
+	normalized, err := NewDPDNormalizer().Normalize(context.Background(), model.SourceDescriptor{Name: "dpd"}, result)
 	if err != nil {
 		t.Fatalf(dpdNormalizeErr, err)
 	}
+	entries := normalized.Entries
 	text := entries[0].Content
 	for _, want := range []string{"1.", "Antes", "| Con tilde | Sin tilde |", "| solo      | solo      |", dpdDespues} {
 		if !strings.Contains(text, want) {
@@ -195,10 +278,11 @@ func TestDPDNormalizerUsesHTMLFallbackForComplexTablesInContentProjection(t *tes
 		}},
 	}}}
 
-	entries, _, err := NewDPDNormalizer().Normalize(context.Background(), model.SourceDescriptor{Name: "dpd"}, result)
+	normalized, err := NewDPDNormalizer().Normalize(context.Background(), model.SourceDescriptor{Name: "dpd"}, result)
 	if err != nil {
 		t.Fatalf(dpdNormalizeErr, err)
 	}
+	entries := normalized.Entries
 	text := entries[0].Content
 	for _, want := range []string{"<table>", `<th colspan="4"><em>qué</em> / que</th>`, `<td rowspan="2">Con tilde</td>`} {
 		if !strings.Contains(text, want) {

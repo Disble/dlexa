@@ -7,7 +7,8 @@ import (
 	"github.com/Disble/dlexa/internal/model"
 )
 
-// Source represents a dictionary lookup backend that can resolve queries into entries.
+// Source represents a dictionary lookup backend that can resolve queries into
+// entries or structured miss outcomes.
 type Source interface {
 	Descriptor() model.SourceDescriptor
 	Lookup(ctx context.Context, request model.LookupRequest) (model.SourceResult, error)

@@ -47,6 +47,9 @@ func (r *MarkdownRenderer) RenderResult(ctx context.Context, result model.Lookup
 	if areAllArticleEntries(result.Entries) {
 		return r.renderArticleGroupMarkdown(result), nil
 	}
+	if len(result.Entries) == 0 && len(result.Misses) > 0 {
+		return []byte(renderLookupMissMarkdown(result)), nil
+	}
 
 	fmt.Fprintf(&builder, mdFmtH1, result.Request.Query)
 	fmt.Fprintf(&builder, "- format: `%s`\n", result.Request.Format)
@@ -77,6 +80,42 @@ func (r *MarkdownRenderer) RenderResult(ctx context.Context, result model.Lookup
 	}
 
 	return []byte(builder.String()), nil
+}
+
+func renderLookupMissMarkdown(result model.LookupResult) string {
+	var builder strings.Builder
+	query := strings.TrimSpace(result.Request.Query)
+	if query == "" && len(result.Misses) > 0 {
+		query = result.Misses[0].Query
+	}
+	if query == "" {
+		query = "lookup"
+	}
+	fmt.Fprintf(&builder, mdFmtH1, query)
+	for idx, miss := range result.Misses {
+		if idx > 0 {
+			builder.WriteString("\n")
+		}
+		builder.WriteString(renderSingleLookupMissMarkdown(miss))
+		builder.WriteString("\n")
+	}
+	return strings.TrimSpace(builder.String()) + "\n"
+}
+
+func renderSingleLookupMissMarkdown(miss model.LookupMiss) string {
+	if miss.Suggestion != nil {
+		if suggestionURL := strings.TrimSpace(miss.Suggestion.URL); suggestionURL != "" {
+			return fmt.Sprintf("Quizá quiso decir **%s**.\n\n%s", miss.Suggestion.DisplayText, suggestionURL)
+		}
+		return fmt.Sprintf("Quizá quiso decir **%s**.", miss.Suggestion.DisplayText)
+	}
+	if miss.NextAction != nil && strings.TrimSpace(miss.NextAction.Command) != "" {
+		return fmt.Sprintf("Try `%s`.", miss.NextAction.Command)
+	}
+	if strings.TrimSpace(miss.NoticeText) != "" {
+		return miss.NoticeText
+	}
+	return "No exact DPD entry found."
 }
 
 func areAllArticleEntries(entries []model.Entry) bool {

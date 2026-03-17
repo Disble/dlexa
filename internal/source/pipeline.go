@@ -61,14 +61,15 @@ func (s *PipelineSource) Lookup(ctx context.Context, request model.LookupRequest
 		return result, err
 	}
 
-	normalizedEntries, normalizeWarnings, err := s.normalizer.Normalize(ctx, s.descriptor, parsedResult)
+	normalizedResult, err := s.normalizer.Normalize(ctx, s.descriptor, parsedResult)
 	if err != nil {
 		return result, err
 	}
 
-	result.Entries = normalizedEntries
+	result.Entries = normalizedResult.Entries
+	result.Miss = normalizedResult.Miss
 	result.Warnings = append(result.Warnings, parseWarnings...)
-	result.Warnings = append(result.Warnings, normalizeWarnings...)
+	result.Warnings = append(result.Warnings, normalizedResult.Warnings...)
 	result.FetchedAt = document.RetrievedAt
 
 	return result, nil

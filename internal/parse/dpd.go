@@ -24,9 +24,10 @@ var (
 	reLexical        = regexp.MustCompile(`(?is)^<span class="embf">(.*?)</span>$`)
 	reTags           = regexp.MustCompile(`(?is)<[^>]+>`)
 	reCitation       = regexp.MustCompile(`(?is)<p class="o">(.*?)</p>`)
-	reReference      = regexp.MustCompile(`(?is)<a\b[^>]*href="([^"]+)"[^>]*>(.*?)</a>`)
+	reReference      = regexp.MustCompile(`(?is)<a\b[^>]*href=(?:"([^"]+)"|'([^']+)')[^>]*>(.*?)</a>`)
 	reEmphasis       = regexp.MustCompile(`(?is)<em\b[^>]*>(.*?)</em>`)
 	reAnchorClass    = regexp.MustCompile(`(?is)class="([^"]+)"`)
+	reStrong         = regexp.MustCompile(`(?is)<strong\b[^>]*>(.*?)</strong>`)
 	reColSpan        = regexp.MustCompile(`(?is)\bcolspan="(\d+)"`)
 	reRowSpan        = regexp.MustCompile(`(?is)\browspan="(\d+)"`)
 	reTableRow       = regexp.MustCompile(`(?is)<tr\b[^>]*>(.*?)</tr>`)
@@ -35,6 +36,8 @@ var (
 	reTBody          = regexp.MustCompile(`(?is)<tbody\b[^>]*>(.*?)</tbody>`)
 	reTHeadCell      = regexp.MustCompile(`(?is)<th\b[^>]*>(.*?)</th>`)
 	reClassTokenizer = regexp.MustCompile(`\s+`)
+	reResultados     = regexp.MustCompile(`(?is)<div\b[^>]*id=(?:"resultados"|'resultados')[^>]*>(.*?)</div>`)
+	reParagraph      = regexp.MustCompile(`(?is)<p\b[^>]*>(.*?)</p>`)
 )
 
 var dpdArticleClasses = map[string]bool{
@@ -63,23 +66,150 @@ func (p *DPDArticleParser) Parse(ctx context.Context, descriptor model.SourceDes
 		}, nil)
 	}
 
-	query := strings.TrimSpace(descriptor.DisplayName)
-	if query == "" {
-		query = strings.TrimSpace(descriptor.Name)
-	}
+	query := lookupQuery(descriptor, document.URL)
 
 	articles := collectArticles(body, document.URL)
 	if len(articles) == 0 {
-		return Result{}, nil, model.NewProblemError(model.Problem{
-			Code:     model.ProblemCodeDPDNotFound,
-			Message:  fmt.Sprintf("DPD entry not found for %q", query),
-			Source:   descriptor.Name,
-			Severity: model.ProblemSeverityError,
-		}, nil)
+		miss := collectLookupMiss(body, query)
+		if miss == nil {
+			return Result{}, nil, model.NewProblemError(model.Problem{
+				Code:     model.ProblemCodeDPDNotFound,
+				Message:  fmt.Sprintf("DPD entry not found for %q", query),
+				Source:   descriptor.Name,
+				Severity: model.ProblemSeverityError,
+			}, nil)
+		}
+		return Result{Miss: miss}, []model.Warning{accessWarning(descriptor.Name)}, nil
 	}
 
 	warnings := []model.Warning{accessWarning(descriptor.Name)}
 	return Result{Articles: articles}, warnings, nil
+}
+
+func collectLookupMiss(body, query string) *ParsedLookupMiss {
+	resultados := extractFirstMatch(reResultados, body)
+	if resultados == "" {
+		return nil
+	}
+
+	paragraphs := reParagraph.FindAllStringSubmatch(resultados, -1)
+	noticeText := ""
+	for _, match := range paragraphs {
+		text := cleanText(reStrong.ReplaceAllString(match[1], `$1`))
+		if text == "" {
+			continue
+		}
+		noticeText = text
+		break
+	}
+
+	links := reReference.FindAllStringSubmatch(resultados, -1)
+	for _, match := range links {
+		href := relatedEntryHref(match)
+		labelHTML := strings.TrimSpace(match[3])
+		displayText := normalizeInlinePlainText(labelHTML)
+		if href == "" || displayText == "" || !isNativeRelatedEntryCandidate(href, displayText) {
+			continue
+		}
+		href = absolutizeLookupHref(href)
+		return &ParsedLookupMiss{
+			Kind:       ParsedLookupMissKindRelatedEntry,
+			Query:      query,
+			NoticeText: noticeText,
+			RelatedEntry: &ParsedRelatedEntry{
+				RawLabelHTML: labelHTML,
+				DisplayText:  displayText,
+				EntryID:      entryIDFromHref(href),
+				Href:         href,
+			},
+		}
+	}
+
+	return &ParsedLookupMiss{
+		Kind:       ParsedLookupMissKindGenericNotFound,
+		Query:      query,
+		NoticeText: noticeText,
+	}
+}
+
+func isNativeRelatedEntryCandidate(href, displayText string) bool {
+	trimmedHref := strings.TrimSpace(href)
+	trimmedText := strings.TrimSpace(displayText)
+	if trimmedHref == "" || trimmedText == "" {
+		return false
+	}
+	absolute := absolutizeLookupHref(trimmedHref)
+	if absolute == "https://www.rae.es/dpd" || absolute == "https://www.rae.es/dpd/" {
+		return false
+	}
+	entryID := strings.TrimSpace(entryIDFromHref(absolute))
+	if entryID == "" || entryID == "dpd" || strings.Contains(entryID, "://") {
+		return false
+	}
+	if trimmedText == absolute || trimmedText == trimmedHref || strings.Contains(trimmedText, "://") {
+		return false
+	}
+	return true
+}
+
+func lookupQuery(descriptor model.SourceDescriptor, documentURL string) string {
+	if query := queryFromDPDURL(documentURL); query != "" {
+		return query
+	}
+	if query := strings.TrimSpace(descriptor.DisplayName); query != "" && !strings.EqualFold(query, descriptor.Name) {
+		return query
+	}
+	return strings.TrimSpace(descriptor.Name)
+}
+
+func queryFromDPDURL(documentURL string) string {
+	trimmed := strings.TrimSpace(documentURL)
+	if trimmed == "" {
+		return ""
+	}
+	trimmed = strings.TrimRight(trimmed, "/")
+	idx := strings.LastIndex(trimmed, "/")
+	if idx < 0 || idx >= len(trimmed)-1 {
+		return ""
+	}
+	return trimmed[idx+1:]
+}
+
+func relatedEntryHref(match []string) string {
+	if len(match) < 4 {
+		return ""
+	}
+	href := strings.TrimSpace(match[1])
+	if href == "" {
+		href = strings.TrimSpace(match[2])
+	}
+	return html.UnescapeString(href)
+}
+
+func absolutizeLookupHref(href string) string {
+	trimmed := strings.TrimSpace(href)
+	if trimmed == "" || strings.HasPrefix(trimmed, "http://") || strings.HasPrefix(trimmed, "https://") {
+		return trimmed
+	}
+	if strings.HasPrefix(trimmed, "/") {
+		return "https://www.rae.es" + trimmed
+	}
+	return "https://www.rae.es/" + strings.TrimLeft(trimmed, "/")
+}
+
+func entryIDFromHref(href string) string {
+	trimmed := strings.TrimSpace(href)
+	if trimmed == "" {
+		return ""
+	}
+	if idx := strings.LastIndex(trimmed, "#"); idx >= 0 && idx < len(trimmed)-1 {
+		return trimmed[idx+1:]
+	}
+	trimmed = strings.TrimRight(trimmed, "/")
+	if idx := strings.LastIndex(trimmed, "/"); idx >= 0 && idx < len(trimmed)-1 {
+		return trimmed[idx+1:]
+	}
+	return trimmed
 }
 
 func collectArticles(body, canonicalURL string) []ParsedArticle {
@@ -558,8 +688,8 @@ func parseSupportedOpenTag(tag, remaining string) (model.Inline, string, bool) {
 		return inline, "sup", true
 	case strings.HasPrefix(lower, "<a "):
 		parts := reReference.FindStringSubmatch(tag + "</a>")
-		if len(parts) >= 2 {
-			inline.Target = html.UnescapeString(parts[1])
+		if href := relatedEntryHref(parts); href != "" {
+			inline.Target = href
 		}
 		if classParts := reAnchorClass.FindStringSubmatch(tag); len(classParts) == 2 {
 			inline.Variant = cleanText(classParts[1])
@@ -807,7 +937,7 @@ func accessWarning(source string) model.Warning {
 
 func citationText(raw string) string {
 	raw = strings.TrimSpace(raw)
-	raw = reReference.ReplaceAllString(raw, `$2`)
+	raw = reReference.ReplaceAllString(raw, `$3`)
 	raw = reEmphasis.ReplaceAllString(raw, `$1`)
 	raw = strings.ReplaceAll(raw, `<i>`, "")
 	raw = strings.ReplaceAll(raw, `</i>`, "")

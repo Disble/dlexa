@@ -47,12 +47,12 @@ func parseNormalizeDPDFixtureFromPath(t *testing.T, term string, fixturePath str
 	}
 
 	normalizer := normalize.NewDPDNormalizer()
-	entries, _, err := normalizer.Normalize(context.Background(), model.SourceDescriptor{Name: "dpd"}, parsed)
+	normalized, err := normalizer.Normalize(context.Background(), model.SourceDescriptor{Name: "dpd"}, parsed)
 	if err != nil {
 		t.Fatalf("Normalize() error = %v", err)
 	}
 
-	return entries
+	return normalized.Entries
 }
 
 func renderDPDFixtureOutputs(t *testing.T, term string, fixturePath string) dpdFixtureOutput {
@@ -104,12 +104,12 @@ func renderDPDRawHTMLOutputs(t *testing.T, term string, raw string) dpdFixtureOu
 	}
 
 	normalizer := normalize.NewDPDNormalizer()
-	entries, _, err := normalizer.Normalize(context.Background(), model.SourceDescriptor{Name: "dpd"}, parsed)
+	normalized, err := normalizer.Normalize(context.Background(), model.SourceDescriptor{Name: "dpd"}, parsed)
 	if err != nil {
 		t.Fatalf("Normalize() error = %v", err)
 	}
 
-	return renderDPDEntries(t, term, entries)
+	return renderDPDEntries(t, term, normalized.Entries)
 }
 
 func requireJSONContainsInlineKind(t *testing.T, payload []byte, want string) {

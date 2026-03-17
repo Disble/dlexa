@@ -31,15 +31,22 @@ func NewDPDNormalizer() *DPDNormalizer {
 	return &DPDNormalizer{}
 }
 
-// Normalize converts parsed DPD articles into normalized model entries.
-func (n *DPDNormalizer) Normalize(ctx context.Context, descriptor model.SourceDescriptor, result parse.Result) ([]model.Entry, []model.Warning, error) {
+// Normalize converts parsed DPD articles and structured misses into normalized results.
+func (n *DPDNormalizer) Normalize(ctx context.Context, descriptor model.SourceDescriptor, result parse.Result) (Result, error) {
 	_ = ctx
+	if result.Miss != nil {
+		return Result{
+			Miss:     normalizeLookupMiss(descriptor, *result.Miss),
+			Warnings: []model.Warning{accessProfileWarning(descriptor.Name)},
+		}, nil
+	}
+
 	entries := make([]model.Entry, 0, len(result.Articles))
 	warnings := []model.Warning{accessProfileWarning(descriptor.Name)}
 
 	for _, article := range result.Articles {
 		if len(article.Sections) == 0 {
-			return nil, warnings, model.NewProblemError(model.Problem{
+			return Result{Warnings: warnings}, model.NewProblemError(model.Problem{
 				Code:     model.ProblemCodeDPDTransformFailed,
 				Message:  "DPD article has no sections to normalize",
 				Source:   descriptor.Name,
@@ -79,7 +86,35 @@ func (n *DPDNormalizer) Normalize(ctx context.Context, descriptor model.SourceDe
 		entries = append(entries, entry)
 	}
 
-	return entries, warnings, nil
+	return Result{Entries: entries, Warnings: warnings}, nil
+}
+
+func normalizeLookupMiss(descriptor model.SourceDescriptor, miss parse.ParsedLookupMiss) *model.LookupMiss {
+	normalized := &model.LookupMiss{
+		Kind:       model.LookupMissKind(miss.Kind),
+		Query:      strings.TrimSpace(miss.Query),
+		NoticeText: strings.TrimSpace(miss.NoticeText),
+		Source:     descriptor.Name,
+	}
+	if miss.RelatedEntry != nil {
+		normalized.Suggestion = &model.LookupSuggestion{
+			Kind:         string(model.LookupMissKindRelatedEntry),
+			DisplayText:  strings.TrimSpace(miss.RelatedEntry.DisplayText),
+			EntryID:      strings.TrimSpace(miss.RelatedEntry.EntryID),
+			URL:          strings.TrimSpace(miss.RelatedEntry.Href),
+			RawLabelHTML: strings.TrimSpace(miss.RelatedEntry.RawLabelHTML),
+		}
+		return normalized
+	}
+	if normalized.Kind == model.LookupMissKindGenericNotFound {
+		query := normalized.Query
+		normalized.NextAction = &model.LookupNextAction{
+			Kind:    model.LookupNextActionKindSearch,
+			Query:   query,
+			Command: "dlexa search " + query,
+		}
+	}
+	return normalized
 }
 
 func normalizeSections(input []parse.ParsedSection) []model.Section {

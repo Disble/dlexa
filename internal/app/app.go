@@ -180,7 +180,7 @@ func (a *App) runDoctor(ctx context.Context) error {
 func (a *App) printUsage() error {
 	_, err := fmt.Fprintf(
 		a.platform.Stderr(),
-		"usage: %s [--format markdown|json] [--source name1,name2] [--no-cache] <query>\n       %s [--format markdown|json] [--no-cache] search <query>\n",
+		"usage: %s [--format markdown|json] [--source name1,name2] [--no-cache] <query>\n       %s [--format markdown|json] [--no-cache] search <query>\n\nUse `dlexa search <query>` when you do not know the exact DPD entry yet.\nUse `dlexa <query>` when you already know the exact entry.\n",
 		version.BinaryName,
 		version.BinaryName,
 	)

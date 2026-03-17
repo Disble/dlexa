@@ -159,6 +159,30 @@ func TestRunWritesRendererProducedStdoutPayloadForDPDSemantics(t *testing.T) {
 	}
 }
 
+func TestRunPrintsSearchFirstUsageGuidanceWithoutImplyingFallback(t *testing.T) {
+	cli := &fakeCLI{args: []string{"dlexa"}}
+	application := &App{platform: cli}
+
+	err := application.Run(context.Background())
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	usage := cli.stderr.String()
+	for _, want := range []string{
+		"Use `dlexa search <query>` when you do not know the exact DPD entry yet.",
+		"Use `dlexa <query>` when you already know the exact entry.",
+	} {
+		if !strings.Contains(usage, want) {
+			t.Fatalf("usage missing %q\n%s", want, usage)
+		}
+	}
+	for _, forbidden := range []string{"automatically falls back", "reroutes to search"} {
+		if strings.Contains(usage, forbidden) {
+			t.Fatalf("usage contains forbidden text %q\n%s", forbidden, usage)
+		}
+	}
+}
+
 type fakeCLI struct {
 	args   []string
 	stdout bytes.Buffer

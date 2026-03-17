@@ -10,5 +10,12 @@ import (
 
 // Normalizer converts parse results into normalized model entries.
 type Normalizer interface {
-	Normalize(ctx context.Context, descriptor model.SourceDescriptor, result parse.Result) ([]model.Entry, []model.Warning, error)
+	Normalize(ctx context.Context, descriptor model.SourceDescriptor, result parse.Result) (Result, error)
+}
+
+// Result holds normalized entries, structured miss data, and non-fatal warnings.
+type Result struct {
+	Entries  []model.Entry
+	Miss     *model.LookupMiss
+	Warnings []model.Warning
 }

@@ -36,11 +36,39 @@ func parseNormalizeDPD(t *testing.T, term string) []model.Entry {
 	}
 
 	normalizer := normalize.NewDPDNormalizer()
-	entries, _, err := normalizer.Normalize(context.Background(), model.SourceDescriptor{Name: "dpd"}, parsed)
+	normalized, err := normalizer.Normalize(context.Background(), model.SourceDescriptor{Name: "dpd"}, parsed)
 	if err != nil {
 		t.Fatalf("Normalize() error = %v", err)
 	}
-	return entries
+	return normalized.Entries
+}
+
+func parseNormalizeDPDMiss(t *testing.T, term string) *model.LookupMiss {
+	t.Helper()
+	body, err := os.ReadFile(filepath.Join("..", "..", "testdata", "dpd", term+".html")) //nolint:gosec // G304: test fixture path from controlled input
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+
+	parser := parse.NewDPDArticleParser()
+	parsed, _, err := parser.Parse(context.Background(), model.SourceDescriptor{Name: "dpd", DisplayName: "Diccionario panhispánico de dudas"}, fetch.Document{
+		URL:         "https://www.rae.es/dpd/" + term,
+		ContentType: "text/html; charset=utf-8",
+		StatusCode:  200,
+		Body:        body,
+	})
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+
+	normalized, err := normalize.NewDPDNormalizer().Normalize(context.Background(), model.SourceDescriptor{Name: "dpd"}, parsed)
+	if err != nil {
+		t.Fatalf("Normalize() error = %v", err)
+	}
+	if normalized.Miss == nil {
+		t.Fatal("normalized.Miss = nil")
+	}
+	return normalized.Miss
 }
 
 func TestDPDParseNormalizeRenderMatchesBienGolden(t *testing.T) {
@@ -159,5 +187,114 @@ func TestDPDParseNormalizeRenderProducesSemanticMarkdownOutput(t *testing.T) {
 		if strings.Contains(text, forbidden) {
 			t.Fatalf("markdown output contains forbidden plain-text projection %q\n%s", forbidden, text)
 		}
+	}
+}
+
+func TestLookupMissMarkdownAndJSONStayInParity(t *testing.T) {
+	tests := []struct {
+		name        string
+		result      model.LookupResult
+		wantKind    string
+		wantCommand string
+		wantText    string
+		wantDisplay string
+	}{
+		{
+			name: "native suggestion parity",
+			result: model.LookupResult{Request: model.LookupRequest{Query: "alicuota", Format: "markdown"}, Misses: []model.LookupMiss{{
+				Kind:       model.LookupMissKindRelatedEntry,
+				Query:      "alicuota",
+				Source:     "dpd",
+				Suggestion: &model.LookupSuggestion{Kind: "related_entry", DisplayText: "alícuota", URL: "https://www.rae.es/dpd/alícuota"},
+			}}},
+			wantKind:    "related_entry",
+			wantText:    "Quizá quiso decir **alícuota**.",
+			wantDisplay: "alícuota",
+		},
+		{
+			name: "generic search nudge parity",
+			result: model.LookupResult{Request: model.LookupRequest{Query: "zumbidoinexistente", Format: "markdown"}, Misses: []model.LookupMiss{{
+				Kind:       model.LookupMissKindGenericNotFound,
+				Query:      "zumbidoinexistente",
+				Source:     "dpd",
+				NextAction: &model.LookupNextAction{Kind: model.LookupNextActionKindSearch, Query: "zumbidoinexistente", Command: "dlexa search zumbidoinexistente"},
+			}}},
+			wantKind:    "generic_not_found",
+			wantCommand: "dlexa search zumbidoinexistente",
+			wantText:    "Try `dlexa search zumbidoinexistente`.",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			markdownPayload, err := NewMarkdownRenderer().Render(context.Background(), tt.result)
+			if err != nil {
+				t.Fatalf(renderErrFmt, err)
+			}
+			if !strings.Contains(string(markdownPayload), tt.wantText) {
+				t.Fatalf("markdown missing %q\n%s", tt.wantText, markdownPayload)
+			}
+
+			jsonPayload, err := NewJSONRenderer().Render(context.Background(), tt.result)
+			if err != nil {
+				t.Fatalf("JSON Render() error = %v", err)
+			}
+			var decoded struct {
+				Misses []struct {
+					Kind       string `json:"kind"`
+					Suggestion *struct {
+						DisplayText string `json:"display_text"`
+					} `json:"suggestion"`
+					NextAction *struct {
+						Command string `json:"command"`
+					} `json:"next_action"`
+				} `json:"misses"`
+			}
+			if err := json.Unmarshal(jsonPayload, &decoded); err != nil {
+				t.Fatalf("json.Unmarshal() error = %v", err)
+			}
+			if len(decoded.Misses) != 1 || decoded.Misses[0].Kind != tt.wantKind {
+				t.Fatalf("decoded misses = %#v, want kind %q", decoded.Misses, tt.wantKind)
+			}
+			if tt.wantCommand != "" {
+				if decoded.Misses[0].NextAction == nil || decoded.Misses[0].NextAction.Command != tt.wantCommand {
+					t.Fatalf("decoded next action = %#v, want %q", decoded.Misses[0].NextAction, tt.wantCommand)
+				}
+				return
+			}
+			if decoded.Misses[0].Suggestion == nil || decoded.Misses[0].Suggestion.DisplayText != tt.wantDisplay {
+				t.Fatalf("decoded suggestion = %#v, want %q", decoded.Misses[0].Suggestion, tt.wantDisplay)
+			}
+		})
+	}
+}
+
+func TestGenericMissFixtureDoesNotRenderBogusSuggestionURL(t *testing.T) {
+	miss := parseNormalizeDPDMiss(t, "zzzzz")
+	if miss.Kind != model.LookupMissKindGenericNotFound {
+		t.Fatalf("miss kind = %q, want %q", miss.Kind, model.LookupMissKindGenericNotFound)
+	}
+	if miss.Suggestion != nil {
+		t.Fatalf("suggestion = %#v, want nil", miss.Suggestion)
+	}
+	payload, err := NewMarkdownRenderer().Render(context.Background(), model.LookupResult{
+		Request: model.LookupRequest{Query: "zzzzz", Format: "markdown"},
+		Misses:  []model.LookupMiss{*miss},
+	})
+	if err != nil {
+		t.Fatalf(renderErrFmt, err)
+	}
+	text := string(payload)
+	for _, forbidden := range []string{
+		"Quizá quiso decir https://www.rae.es/dpd/",
+		"https://www.rae.es/dpd/\n",
+		"https://www.rae.es/dpd/.",
+	} {
+		if strings.Contains(text, forbidden) {
+			t.Fatalf("markdown contains forbidden bogus suggestion %q\n%s", forbidden, text)
+		}
+	}
+	if !strings.Contains(text, "Try `dlexa search zzzzz`.") {
+		t.Fatalf("markdown missing explicit search nudge\n%s", text)
 	}
 }

@@ -15,14 +15,34 @@ func NewIdentityNormalizer() *IdentityNormalizer {
 	return &IdentityNormalizer{}
 }
 
-// Normalize delegates to NormalizeEntries for identity passthrough.
-func (n *IdentityNormalizer) Normalize(ctx context.Context, descriptor model.SourceDescriptor, result parse.Result) ([]model.Entry, []model.Warning, error) {
-	return n.NormalizeEntries(ctx, descriptor, result)
+// Normalize delegates to NormalizeEntries and wraps the identity output in a result envelope.
+func (n *IdentityNormalizer) Normalize(ctx context.Context, descriptor model.SourceDescriptor, result parse.Result) (Result, error) {
+	entries, warnings, err := n.NormalizeEntries(ctx, descriptor, result)
+	if err != nil {
+		return Result{}, err
+	}
+	return Result{Entries: entries, Warnings: warnings}, nil
 }
 
 // NormalizeEntries converts parsed articles into entries without semantic transformation.
 func (n *IdentityNormalizer) NormalizeEntries(ctx context.Context, descriptor model.SourceDescriptor, result parse.Result) ([]model.Entry, []model.Warning, error) {
 	_ = ctx
+	if result.Miss != nil {
+		return nil, []model.Warning{{
+			Code:    "identity_normalizer",
+			Message: "normalizer preserves parsed fields until canonical rules exist",
+			Source:  descriptor.Name,
+		}}, nil
+	}
+	return n.normalizeArticles(descriptor, result), []model.Warning{{
+		Code:    "identity_normalizer",
+		Message: "normalizer preserves parsed fields until canonical rules exist",
+		Source:  descriptor.Name,
+	}}, nil
+}
+
+// normalizeArticles converts parsed articles into entries without semantic transformation.
+func (n *IdentityNormalizer) normalizeArticles(descriptor model.SourceDescriptor, result parse.Result) []model.Entry {
 	normalized := make([]model.Entry, 0, len(result.Articles))
 	for _, article := range result.Articles {
 		entry := model.Entry{
@@ -48,14 +68,7 @@ func (n *IdentityNormalizer) NormalizeEntries(ctx context.Context, descriptor mo
 		entry.Metadata["normalized_by"] = "identity"
 		normalized = append(normalized, entry)
 	}
-
-	warnings := []model.Warning{{
-		Code:    "identity_normalizer",
-		Message: "normalizer preserves parsed fields until canonical rules exist",
-		Source:  descriptor.Name,
-	}}
-
-	return normalized, warnings, nil
+	return normalized
 }
 
 func articleText(article parse.ParsedArticle) string {

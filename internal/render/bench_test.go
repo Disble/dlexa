@@ -37,11 +37,11 @@ func benchParseNormalize(b *testing.B, term string) []model.Entry {
 	}
 
 	normalizer := normalize.NewDPDNormalizer()
-	entries, _, err := normalizer.Normalize(context.Background(), model.SourceDescriptor{Name: "dpd"}, parsed)
+	normalized, err := normalizer.Normalize(context.Background(), model.SourceDescriptor{Name: "dpd"}, parsed)
 	if err != nil {
 		b.Fatalf("Normalize() error = %v", err)
 	}
-	return entries
+	return normalized.Entries
 }
 
 func BenchmarkMarkdownRender(b *testing.B) {

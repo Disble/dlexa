@@ -7,7 +7,8 @@ import (
 	"github.com/Disble/dlexa/internal/model"
 )
 
-// Looker defines the contract for performing dictionary lookups.
+// Looker defines the contract for performing dictionary lookups that may return
+// entries, structured misses, warnings, and problems.
 type Looker interface {
 	Lookup(ctx context.Context, request model.LookupRequest) (model.LookupResult, error)
 }

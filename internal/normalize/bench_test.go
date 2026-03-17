@@ -54,7 +54,7 @@ func BenchmarkDPDNormalize(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				_, _, err := normalizer.Normalize(context.Background(), descriptor, parsed)
+				_, err := normalizer.Normalize(context.Background(), descriptor, parsed)
 				if err != nil {
 					b.Fatalf("Normalize() error = %v", err)
 				}

@@ -163,6 +163,12 @@ Example JSON candidate shape:
 
 The CLI accepts free-text queries, but that does **not** mean every free-text request is a good fit. The intended use is consultation of DPD-style normative guidance.
 
+If a direct lookup does not resolve to an exact DPD article, `dlexa` can return a structured lookup miss instead of silently rerouting the command:
+
+- preserve a native DPD related-entry suggestion when one exists
+- otherwise show an explicit `dlexa search <query>` next step
+- never auto-run the search flow behind the user's back
+
 That means:
 
 - the same tool can answer doubts across spelling, pronunciation, morphology, syntax, and usage
@@ -245,8 +251,8 @@ dlexa/
    - write the aggregated result back to cache
 4. Each source runs an internal pipeline:
    - `fetch` obtains a raw document
-   - `parse` converts it into candidate entries
-   - `normalize` maps those entries to the shared model
+   - `parse` converts it into candidate entries or a structured lookup miss
+   - `normalize` maps those entries or miss metadata to the shared model
 5. `internal/render` converts the final `LookupResult` into `markdown` or `json`.
 
 ## Shared Model
@@ -255,6 +261,7 @@ The shared domain language is centered on:
 
 - `LookupRequest`
 - `LookupResult`
+- `LookupMiss`
 - `Entry`
 - `SourceDescriptor`
 - `SourceResult`
