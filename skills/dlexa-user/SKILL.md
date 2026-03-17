@@ -3,7 +3,7 @@ name: dlexa-user
 description: >
   User manual for LLM agents that need to invoke the dlexa CLI binary, parse outputs, and troubleshoot errors.
   Teaches operational patterns from an end-user perspective.
-  Trigger: When invoking dlexa, parsing dlexa output, troubleshooting dlexa, integrating dlexa into scripts, or automating dictionary lookups.
+  Trigger: When invoking dlexa for DPD-covered normative doubts, parsing dlexa output, troubleshooting dlexa, integrating dlexa into scripts, or automating DPD consultation workflows.
 license: Apache-2.0
 metadata:
   author: gentleman-programming
@@ -16,13 +16,32 @@ metadata:
 
 Load this skill when you need to:
 
-- Invoke the `dlexa` CLI binary to look up Spanish dictionary entries
+- Decide whether a Spanish-language question fits the DPD consultation model
+- Invoke the `dlexa` CLI binary for DPD-covered normative doubts in Spanish
 - Parse markdown or JSON output from dlexa commands
 - Troubleshoot dlexa errors or unexpected behavior
 - Integrate dlexa into automation scripts or workflows
 - Choose the right output format for your use case
 - Handle cache behavior and force fresh data retrieval
-- Query specific dictionary sources
+- Query specific sources for normative guidance
+
+Typical DPD-fit doubts include:
+
+- orthographic questions (`tilde`, accentuation, spelling, graphic variants)
+- orthoepic or pronunciation doubts
+- morphological variants and recommendations
+- syntactic constructions
+- lexico-semantic usage questions when the DPD treats them as normative doubts
+
+`dlexa` is appropriate even when the recommendation depends on **current usage**, **norma culta formal**, **register**, **geography**, or **communicative context**.
+
+Do **not** use this skill to present `dlexa` as:
+
+- a universal dictionary replacement
+- a translation tool
+- an etymology source
+- an encyclopedic reference
+- proof that every free-text Spanish query is within scope
 
 **This skill focuses on USING dlexa as an end-user tool.** It does NOT cover internal architecture, composition root patterns, query orchestration, source adapters, cache implementation, or development workflows.
 
@@ -30,13 +49,22 @@ Load this skill when you need to:
 
 ## Critical Patterns
 
+### Tool-Selection Decision Rule
+
+| If the user needs... | Use `dlexa`? | Why |
+|---|---|---|
+| A DPD-style normative doubt about spelling, pronunciation, morphology, syntax, or usage | Yes | This is the intended consultation model |
+| A context-sensitive recommendation that may vary by register, region, or current usage | Yes | DPD guidance is normative but contextual |
+| A generic dictionary definition for any arbitrary word | No | `dlexa` is not framed as a universal lexical lookup tool |
+| Translation, etymology, encyclopedic background, or broad lexical coverage | No | Use another source that actually fits the task |
+
 ### Command Syntax Reference
 
 | Flag | Type | Values | Description | Example |
 |------|------|--------|-------------|---------|
-| `--format` | string | `markdown`, `json` | Output format (default: `markdown`) | `dlexa --format json casa` |
-| `--source` | string | `dpd`, `demo`, etc. | Comma-separated source names (default: config) | `dlexa --source dpd casa` |
-| `--no-cache` | bool | - | Skip cache read/write (default: false) | `dlexa --no-cache casa` |
+| `--format` | string | `markdown`, `json` | Output format (default: `markdown`) | `dlexa --format json tilde` |
+| `--source` | string | `dpd`, `demo`, etc. | Comma-separated source names (default: config) | `dlexa --source dpd solo` |
+| `--no-cache` | bool | - | Skip cache read/write (default: false) | `dlexa --no-cache imprimido` |
 | `--doctor` | bool | - | Run diagnostic checks | `dlexa --doctor` |
 | `--version` | bool | - | Print version info | `dlexa --version` |
 
@@ -44,10 +72,10 @@ Load this skill when you need to:
 
 | Use Case | Choose | Rationale |
 |----------|--------|-----------|
-| Human asks "what does X mean?" | `markdown` (default) | Human-readable, no flag needed |
-| Script needs to parse definitions | `--format json` | Structured data, easy to navigate with jq |
-| Debugging unexpected behavior | `markdown` | Easier to inspect visually |
-| Automation pipeline | `--format json` | Programmatic parsing |
+| Human asks for DPD guidance on a normative doubt | `markdown` (default) | Human-readable, no flag needed |
+| Script needs to parse structured recommendations | `--format json` | Structured data, easy to navigate with jq |
+| Debugging unexpected DPD behavior | `markdown` | Easier to inspect visually |
+| Automation pipeline around DPD consultation | `--format json` | Programmatic parsing |
 
 ### Exit Code Reference
 
@@ -64,17 +92,19 @@ Load this skill when you need to:
 
 ### Markdown Structure
 
-Dlexa markdown output uses pipe-delimited tables:
+Dlexa markdown output can present DPD consultation content directly in authored markdown:
 
 ```
-# Resultados para: "casa"
+# tilde
 
-| Palabra | Definición | Fuente |
-|---------|------------|--------|
-| casa    | Edificio para habitar. | dpd |
+## tilde1
+
+Diccionario panhispánico de dudas
+
+2.ª edición
 ```
 
-**Definition extraction pattern**: Parse table rows after the header, extract definition from the second column.
+**Reading pattern**: headings mark entries, body text carries the recommendation, and citation metadata identifies the DPD source.
 
 ### JSON Structure
 
@@ -109,6 +139,7 @@ For DPD entries, treat Markdown and JSON as complementary views of the same arti
 
 - **Markdown keeps authored/plain sign presentation**. Signs such as `@`, `+`, `⊗`, and bracket text stay visible without synthetic editorial wrappers.
 - **JSON preserves validated inline semantics** in `.Entries[].Article.Sections[].Blocks[].paragraph.Inlines[].Kind`.
+- **Recommendations remain contextual**. Do not flatten DPD answers into fake universal rules when the article itself signals regional, register, or usage-sensitive nuance.
 
 Validated DPD inline kinds:
 
@@ -133,7 +164,7 @@ Do NOT present speculative kinds as confirmed DPD behavior, and do NOT expect Ma
 
 ### JSON Navigation Examples
 
-**Extract first definition**:
+**Extract first entry content**:
 ```bash
 echo "$result" | jq -r '.Entries[0].Content'
 ```
@@ -148,7 +179,7 @@ echo "$result" | jq -r '.Entries[].Headword'
 echo "$result" | jq -r '.CacheHit'
 ```
 
-**Get all definitions with sources**:
+**Get all entry contents with sources**:
 ```bash
 echo "$result" | jq -r '.Entries[] | "\(.Headword) (\(.Source)): \(.Content)"'
 ```
@@ -157,18 +188,18 @@ echo "$result" | jq -r '.Entries[] | "\(.Headword) (\(.Source)): \(.Content)"'
 
 ## Common Workflows
 
-### 1. Quick Dictionary Lookup
+### 1. Quick DPD Consultation
 
 ```bash
-dlexa casa
+dlexa tilde
 ```
 
-Returns human-readable markdown table with definitions.
+Returns human-readable markdown for a DPD-fit normative doubt.
 
 ### 2. JSON for Automation
 
 ```bash
-dlexa --format json casa
+dlexa --format json solo
 ```
 
 Returns structured JSON for programmatic parsing. Use with `jq` for extraction.
@@ -176,15 +207,15 @@ Returns structured JSON for programmatic parsing. Use with `jq` for extraction.
 ### 3. Force Fresh Data
 
 ```bash
-dlexa --no-cache casa
+dlexa --no-cache imprimido
 ```
 
 Bypasses cache (24-hour TTL), fetches from sources. Use when data seems stale or cache corruption is suspected.
 
-### 4. Multi-Source Query
+### 4. Restrict to DPD Source
 
 ```bash
-dlexa --source dpd casa
+dlexa --source dpd adecua
 ```
 
 Queries only specified sources (comma-separated for multiple). Source names are case-sensitive.
@@ -215,6 +246,10 @@ Expected pattern:
 - Markdown/plain content still shows authored signs like `@` and `[alikuóto]`
 - Bracket meaning is differentiated in JSON, not by synthetic Markdown labels
 
+### 7. Redirect an Out-of-Scope Task
+
+If the user asks for a generic dictionary definition, translation, or encyclopedic lookup, do **not** force `dlexa` into the answer. Say the task is outside the DPD consultation scope and use another tool/source instead.
+
 ---
 
 ## Troubleshooting Decision Tree
@@ -223,10 +258,11 @@ Expected pattern:
 |---------|-------|--------|
 | "dlexa: command not found" | Is dlexa in PATH? | Add binary location to PATH or use absolute path |
 | Output is markdown but expected JSON | Was `--format json` used? | Add `--format json` flag to command |
-| Empty results | Is word in dictionary? | Try `--no-cache`, check with `--doctor`, verify word spelling |
+| Empty results | Is the doubt actually covered by the DPD? | Try `--no-cache`, check with `--doctor`, verify spelling, and consider that the request may be out of DPD scope |
 | Data seems stale | Cache TTL (24h) | Use `--no-cache` to force refresh |
 | DPD brackets lost their meaning in a script | Are you reading `.Content` only? | Parse `.Article...Inlines[].Kind`; bracket semantics live in JSON inline kinds |
 | DPD signs look plain in markdown | Is this a renderer bug or expected authored output? | Plain/authored Markdown is expected; use JSON to recover sign semantics |
+| Someone wants to use dlexa as a generic dictionary | Is the task asking for broad lexical coverage rather than a normative doubt? | Redirect to a more appropriate source; `dlexa` is not a universal dictionary replacement |
 | Exit code 1 with stderr | Check stderr for Problem code | See [Problem Codes Reference](assets/examples.md#problem-codes-reference) |
 
 ---
@@ -236,20 +272,20 @@ Expected pattern:
 ### Quick Examples
 
 ```bash
-# Basic lookup (markdown)
-dlexa palabra
+# Basic DPD consultation (markdown)
+dlexa tilde
 
-# Lookup with JSON output
-dlexa --format json palabra
+# Consultation with JSON output
+dlexa --format json solo
 
 # Force fresh data (bypass cache)
-dlexa --no-cache palabra
+dlexa --no-cache imprimido
 
 # Query specific source
-dlexa --source dpd palabra
+dlexa --source dpd adecua
 
 # Multiple flags
-dlexa --format json --no-cache --source dpd palabra
+dlexa --format json --no-cache --source dpd solo
 
 # Inspect DPD sign semantics
 dlexa --format json --source dpd alícuota
@@ -267,5 +303,5 @@ dlexa --version
 
 For more detailed examples and integration patterns:
 
-- **Examples**: See [assets/examples.md](assets/examples.md) for real dlexa outputs (markdown, JSON, errors)
-- **Workflows**: See [assets/workflows.md](assets/workflows.md) for shell script integration patterns
+- **Examples**: See [assets/examples.md](assets/examples.md) for DPD-first dlexa outputs (markdown, JSON, errors)
+- **Workflows**: See [assets/workflows.md](assets/workflows.md) for DPD consultation integration patterns

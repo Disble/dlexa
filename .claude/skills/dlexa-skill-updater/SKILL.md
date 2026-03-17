@@ -2,8 +2,8 @@
 name: dlexa-skill-updater
 description: >
   Automate maintenance of the dlexa-user skill by detecting CLI interface changes,
-  semantic output drift, and regenerating skill documentation.
-  Trigger: Load when CLI interface changes, parser/model/normalize/render/spec output contracts change, or before release.
+  semantic output drift, project-positioning drift, and regenerating skill documentation.
+  Trigger: Load when CLI interface changes, parser/model/normalize/render/spec output contracts change, project definition or skill-discovery semantics change, or before release.
 license: Apache-2.0
 metadata:
   author: Disble
@@ -17,9 +17,11 @@ metadata:
 - When `internal/parse/**/*.go` or `internal/normalize/**/*.go` changes alter DPD semantics
 - When `internal/model/types.go` request/response types change
 - When DPD specs, goldens, or sign-analysis docs change
+- When README / AGENTS / skill-registry wording changes the intended use of `dlexa`
 - Before tagging a release (pre-release checklist item)
 - When adding new commands or subcommands (e.g., `--doctor`, `--version`)
 - When `dlexa-user` examples fail validation
+- When mirrored skill trees under `skills/` and `.claude/skills/` drift semantically
 
 ## Source Map
 
@@ -34,18 +36,23 @@ metadata:
 | Help/usage text | internal/app/app.go | printUsage() method |
 | DPD contract | openspec/specs/dpd/spec.md, openspec/changes/archive/*/archive-report.md | Current accepted semantic contract and archived decisions |
 | DPD evidence fixtures | internal/parse/testdata/*.golden.md, testdata/dpd-signs-analysis/SIGN_ANALYSIS.md | Real article evidence and expected sign behavior |
+| Public project definition | README.md | Canonical statement of what `dlexa` is and is not |
+| Repo-local agent contract | AGENTS.md | In-repo routing, local skill descriptions, positioning guidance |
+| Fallback skill discovery | .atl/skill-registry.md | Active instruction surfaces and project-local skill discovery |
+| Skill mirrors | .claude/skills/** | Required semantic parity with canonical `skills/**` |
 
 ## Update Workflow
 
 ### Phase 1: Detect Drift Surface First
 
-**Purpose**: Identify whether the change is CLI drift, semantic-output drift, or both.
+**Purpose**: Identify whether the change is CLI drift, semantic-output drift, positioning drift, discovery drift, mirror drift, or a combination.
 
 Inspect changed files and classify them:
 
 - CLI surface: `internal/app/app.go`, `internal/version/version.go`
 - Output/model surface: `internal/model/types.go`, `internal/render/*.go`
 - DPD semantic surface: `internal/parse/**/*.go`, `internal/normalize/**/*.go`, DPD fixtures/goldens/specs
+- Positioning/discovery surface: `README.md`, `AGENTS.md`, `.atl/skill-registry.md`, `skills/**`, `.claude/skills/**`
 
 **Success criteria**: You know which documentation sections are at risk before editing anything.
 
@@ -59,6 +66,7 @@ Read, compare, and reconcile:
 - `internal/render/*.go` for JSON/markdown rendering behavior
 - `internal/parse/**/*.go` and `internal/normalize/**/*.go` for semantic preservation rules
 - `openspec/specs/dpd/spec.md` for accepted DPD contract
+- `README.md`, `AGENTS.md`, and `.atl/skill-registry.md` for intended-use and discovery wording
 - Latest archive/verify reports for completed change intent
 - Golden fixtures and `testdata/dpd-signs-analysis/SIGN_ANALYSIS.md` for concrete examples
 
@@ -75,12 +83,15 @@ Read, compare, and reconcile:
 - `internal/parse/**/*.go`, `internal/normalize/**/*.go` → DPD semantic preservation logic
 - `openspec/specs/dpd/spec.md` → validated vs speculative sign contract
 - `internal/version/version.go` → version constants
+- `README.md` → DPD-first project definition and non-goals
+- `AGENTS.md` → repo-local routing and skill descriptions
+- `.atl/skill-registry.md` → fallback discovery notes and active instruction surfaces
 
 **Success criteria**: You have the flag list, defaults, semantic kinds, and caveats needed to document behavior accurately.
 
 ### Phase 4: Update dlexa-user/SKILL.md
 
-**Purpose**: Synchronize the `dlexa-user` skill content with the current CLI and semantic output contract.
+**Purpose**: Synchronize the `dlexa-user` skill content with the current CLI, semantic output contract, and project-positioning contract.
 
 **Sections to update**:
 1. **Flags Reference** → Sync flag list, descriptions, defaults from `--help` and source
@@ -89,7 +100,8 @@ Read, compare, and reconcile:
 4. **Version Info** → Update version string format if changed
 5. **Doctor Command** → Update diagnostic output format if changed
 6. **DPD Semantics** → Document validated inline kinds, speculative kinds, markdown/plain-sign behavior, and archived exclusions
-7. **Validation Guidance** → Ensure maintenance checks cover bracket-context semantics and DPD sign preservation
+7. **Invocation Boundaries** → Teach when `dlexa` fits a DPD-style normative doubt and when it does not fit a generic dictionary task
+8. **Validation Guidance** → Ensure maintenance checks cover bracket-context semantics, DPD sign preservation, positioning drift, and non-goal enforcement
 
 **Mirror rule**: When `.claude/skills/...` and `skills/...` both exist, update both trees in the same task. Missing mirrors should be created when the paired file is required for parity.
 
@@ -104,6 +116,8 @@ Run the relevant checks for the change surface:
 
 - CLI drift: confirm documented flags/commands still match source and help output
 - Semantic drift: confirm documented inline kinds and markdown behavior still match source/spec/fixtures
+- Positioning drift: confirm docs still present `dlexa` as DPD-first and not as a universal dictionary replacement
+- Discovery drift: confirm registry and AGENTS still point to the real instruction surfaces and local skills
 - Example drift: confirm DPD examples still reflect current golden/spec evidence
 - Mirror drift: confirm `.claude/skills/...` and `skills/...` copies match
 
@@ -133,6 +147,9 @@ Verify these sources stay aligned:
 
 - `internal/model/types.go`
 - `openspec/specs/dpd/spec.md`
+- `README.md`
+- `AGENTS.md`
+- `.atl/skill-registry.md`
 - `internal/parse/testdata/*.golden.md`
 - `testdata/dpd-signs-analysis/SIGN_ANALYSIS.md`
 - `dlexa-user/SKILL.md`, `assets/examples.md`, and `validation.md`
@@ -143,6 +160,8 @@ Check specifically for:
 - Speculative-only kinds: `agrammatical`, `hypothetical`, `phoneme`
 - Markdown/plain authored sign preservation without synthetic bracket wrappers
 - Archived `<` and `>` exclusions remaining explicit
+- DPD-first positioning and explicit non-goal of generic-dictionary replacement
+- Contextual nuance language: current usage, cultured formal norm, register, geography, communicative context
 
 ### Example Validity Validation
 
@@ -190,6 +209,7 @@ Any semantic mismatch is drift and MUST be resolved in the same change.
 | Pre-release | **RECOMMENDED** | Ensures skill is accurate before tagging a version |
 | Post-flag-change | **RECOMMENDED** | Keeps skill synchronized immediately after interface changes |
 | Post-DPD semantic change | **RECOMMENDED** | Parser/normalize/render/spec drift can invalidate documentation even when flags stay unchanged |
+| Post-positioning/discovery change | **RECOMMENDED** | README / AGENTS / registry drift can break correct tool selection even if the CLI is stable |
 | Pre-commit | **NOT RECOMMENDED** | Too noisy, blocks development, skill updates are not commit blockers |
 | CI validation | **FUTURE ENHANCEMENT** | Automated drift detection in CI (out of scope for initial implementation) |
 
@@ -205,7 +225,7 @@ Before tagging a release (e.g., `v1.2.0`):
 ### Post-Change Workflow
 
 When committing changes that affect CLI or semantic output:
-1. Classify the drift surface (flags, render/model, parse/normalize, spec/fixtures)
+1. Classify the drift surface (flags, render/model, parse/normalize, spec/fixtures, positioning, discovery, mirrors)
 2. Re-read the affected authoritative sources
 3. Update `dlexa-user` docs/examples/validation guidance
 4. Update `dlexa-skill-updater` if the detection workflow itself needs broader coverage
@@ -223,6 +243,12 @@ When committing changes that affect CLI or semantic output:
 | `internal/parse/**/*.go` | **MUST** | DPD sign extraction and bracket-context detection |
 | `internal/normalize/**/*.go` | **MUST** | Semantic kind preservation into the structured model |
 | `openspec/specs/dpd/spec.md` | **MUST** | Accepted DPD semantic contract |
+| `README.md` | **MUST** | Canonical public positioning and non-goals |
+| `AGENTS.md` | **MUST** | Repo-local routing and local skill semantics |
+| `.atl/skill-registry.md` | **MUST** | Fallback discovery must reflect active instruction surfaces |
+| `skills/dlexa-user/**` | **MUST** | Canonical user-facing invocation contract |
+| `.claude/skills/dlexa-user/**` | **MUST** | Mirror parity for the user-facing invocation contract |
+| `.claude/skills/dlexa-skill-updater/**` | **MUST** | Mirror parity for the maintenance contract |
 | `openspec/changes/archive/*/archive-report.md` | **SHOULD** | Completed-change decisions and caveats |
 | `internal/parse/testdata/*.golden.md` | **SHOULD** | User-visible markdown evidence |
 | `testdata/dpd-signs-analysis/SIGN_ANALYSIS.md` | **SHOULD** | Validated vs speculative sign inventory |
@@ -233,7 +259,7 @@ When committing changes that affect CLI or semantic output:
 | `*_test.go` | **IGNORE** | Test files do not affect CLI interface |
 
 **Semantic vs Formatting Drift**:
-- **Semantic drift** (MUST update): New/removed/renamed flags, output structure changes, new commands, validated/speculative inline-kind changes, bracket-context behavior, markdown sign-presentation contract, archived sign policy
+- **Semantic drift** (MUST update): New/removed/renamed flags, output structure changes, new commands, validated/speculative inline-kind changes, bracket-context behavior, markdown sign-presentation contract, archived sign policy, project-positioning changes, discovery-surface drift, mirror-parity drift
 - **Formatting drift** (MAY ignore): Whitespace changes in help text, reordered flags (if all present), example line wrapping that does not change meaning
 
 ## Edge Cases and Troubleshooting
@@ -254,6 +280,10 @@ Do not update the skill based on a broken binary.
 ### DPD Semantics Changed Without Flag Changes
 
 This is exactly why this skill exists. If parser/model/normalize/render/spec changes alter sign preservation or bracket semantics while CLI flags stay identical, you STILL must update `dlexa-user` and its mirrors.
+
+### Project Positioning Changed Without CLI Changes
+
+Same rule. If `README.md`, `AGENTS.md`, or `.atl/skill-registry.md` changes what `dlexa` is for, that is actionable drift even when `--help` and runtime output remain identical.
 
 ### False Positive: Help Text Reformatted
 

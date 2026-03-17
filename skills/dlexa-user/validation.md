@@ -11,36 +11,59 @@ This document provides manual validation tests to verify the skill works correct
 
 ## Validation Tests
 
-### VT-1: Basic Invocation
+### VT-1: DPD-Fit Invocation
 
 **Test Prompt**:
 ```
-Look up the Spanish word 'casa' using dlexa
+Consult dlexa about whether "solo" should carry a tilde in this sentence.
 ```
 
 **Expected LLM Behavior**:
-- Invokes bash tool with command: `dlexa casa`
+- Recognizes this as a DPD-fit normative doubt
+- Invokes bash tool with a direct `dlexa` query about the doubt
 - Does NOT add unnecessary flags
 - Recognizes default output is markdown
 
 **Verification Method**:
-- [ ] Check bash tool call contains `dlexa casa`
+- [ ] Check bash tool call uses `dlexa` for the normative doubt
 - [ ] Verify no other unnecessary flags are added
+- [ ] Verify the explanation frames the task as DPD consultation, not generic dictionary lookup
 
 **Status**: ⬜ Not Tested | ✅ Passed | ❌ Failed
 
 ---
 
-### VT-2: Format Selection
+### VT-2: Generic Dictionary Redirect
 
 **Test Prompt**:
 ```
-Get the definition of 'casa' in a format I can parse programmatically
+Give me a generic dictionary definition and etymology for "casa" using dlexa.
+```
+
+**Expected LLM Behavior**:
+- Refuses to present `dlexa` as the right sole tool for this task
+- Explains the request is outside DPD-first scope
+- Redirects to a more appropriate dictionary/etymology source instead of forcing a `dlexa` call
+
+**Verification Method**:
+- [ ] LLM states `dlexa` is not a universal dictionary replacement
+- [ ] LLM identifies etymology/generic dictionary as out of scope
+- [ ] No `dlexa` command is proposed as the sole answer
+
+**Status**: ⬜ Not Tested | ✅ Passed | ❌ Failed
+
+---
+
+### VT-3: Format Selection
+
+**Test Prompt**:
+```
+Get the dlexa result for 'solo' in a format I can parse programmatically
 ```
 
 **Expected LLM Behavior**:
 - Recognizes "parse programmatically" means JSON
-- Uses command: `dlexa --format json casa`
+- Uses command: `dlexa --format json solo`
 - Explains why JSON is chosen
 
 **Verification Method**:
@@ -51,7 +74,7 @@ Get the definition of 'casa' in a format I can parse programmatically
 
 ---
 
-### VT-3: Markdown Parsing
+### VT-4: Markdown Parsing
 
 **Test Setup**:
 Provide this markdown output to the LLM:
@@ -83,7 +106,7 @@ Extract the definitions from this dlexa output
 
 ---
 
-### VT-4: JSON Navigation
+### VT-5: JSON Navigation
 
 **Test Setup**:
 Provide this JSON output to the LLM:
@@ -124,7 +147,7 @@ Extract the definition from this JSON output
 
 ---
 
-### VT-5: Error Interpretation
+### VT-6: Error Interpretation
 
 **Test Setup**:
 Provide this error scenario:
@@ -155,16 +178,16 @@ dlexa returned an error. What went wrong?
 
 ---
 
-### VT-6: Cache Bypass
+### VT-7: Cache Bypass
 
 **Test Prompt**:
 ```
-The data seems stale, get fresh results for 'casa'
+The DPD answer seems stale, get fresh results for 'solo'
 ```
 
 **Expected LLM Behavior**:
 - Recognizes "stale data" as cache issue
-- Uses command: `dlexa --no-cache casa`
+- Uses command: `dlexa --no-cache solo`
 - Explains that `--no-cache` bypasses the 24-hour cache
 
 **Verification Method**:
@@ -176,11 +199,11 @@ The data seems stale, get fresh results for 'casa'
 
 ---
 
-### VT-7: Script Integration
+### VT-8: Script Integration
 
 **Test Prompt**:
 ```
-Write a bash script that uses dlexa and handles errors
+Write a bash script that uses dlexa to automate DPD consultations and handles errors
 ```
 
 **Expected LLM Behavior**:
@@ -188,6 +211,7 @@ Write a bash script that uses dlexa and handles errors
 - Script captures stderr (using `2>&1` or similar)
 - Script has conditional logic for error handling
 - Uses `--format json` for parsing (recommended)
+- Frames the automation around DPD consultation, not generic dictionary replacement
 
 **Verification Method**:
 - [ ] Script includes exit code check: `if [ $? -eq 0 ]` or similar
@@ -199,7 +223,7 @@ Write a bash script that uses dlexa and handles errors
 
 ---
 
-### VT-8: Troubleshooting
+### VT-9: Troubleshooting
 
 **Test Prompt**:
 ```
@@ -221,7 +245,28 @@ When I run dlexa, I get: "dlexa: command not found"
 
 ---
 
-### VT-9: DPD Markdown Sign Preservation
+### VT-10: Contextual Normative Nuance
+
+**Test Prompt**:
+```
+Can I describe every dlexa answer as a rigid universal rule that ignores region, register, and current usage?
+```
+
+**Expected LLM Behavior**:
+- Rejects the oversimplification
+- Explains DPD guidance is normative but contextual
+- Names at least some of: current usage, norma culta formal, register, geography, communicative context
+
+**Verification Method**:
+- [ ] LLM rejects rigid one-size-fits-all framing
+- [ ] LLM names contextual factors
+- [ ] LLM keeps the answer within DPD guidance language
+
+**Status**: ⬜ Not Tested | ✅ Passed | ❌ Failed
+
+---
+
+### VT-11: DPD Markdown Sign Preservation
 
 **Test Setup**:
 Provide this DPD markdown excerpt to the LLM:
@@ -248,7 +293,7 @@ Explain what semantic signal is preserved here and what is still plain markdown.
 
 ---
 
-### VT-10: DPD JSON Bracket Context Semantics
+### VT-12: DPD JSON Bracket Context Semantics
 
 **Test Setup**:
 Provide this JSON excerpt to the LLM:
@@ -279,7 +324,7 @@ What semantic distinctions should I preserve from this DPD JSON?
 
 ---
 
-### VT-11: DPD Drift Guardrails
+### VT-13: DPD Drift Guardrails
 
 **Test Prompt**:
 ```
@@ -304,17 +349,19 @@ I found inline kinds agrammatical, hypothetical, phoneme, and I also want to sup
 
 | Test | Status | Notes |
 |------|--------|-------|
-| VT-1: Basic Invocation | ⬜ | |
-| VT-2: Format Selection | ⬜ | |
-| VT-3: Markdown Parsing | ⬜ | |
-| VT-4: JSON Navigation | ⬜ | |
-| VT-5: Error Interpretation | ⬜ | |
-| VT-6: Cache Bypass | ⬜ | |
-| VT-7: Script Integration | ⬜ | |
-| VT-8: Troubleshooting | ⬜ | |
-| VT-9: DPD Markdown Sign Preservation | ⬜ | |
-| VT-10: DPD JSON Bracket Context Semantics | ⬜ | |
-| VT-11: DPD Drift Guardrails | ⬜ | |
+| VT-1: DPD-Fit Invocation | ⬜ | |
+| VT-2: Generic Dictionary Redirect | ⬜ | |
+| VT-3: Format Selection | ⬜ | |
+| VT-4: Markdown Parsing | ⬜ | |
+| VT-5: JSON Navigation | ⬜ | |
+| VT-6: Error Interpretation | ⬜ | |
+| VT-7: Cache Bypass | ⬜ | |
+| VT-8: Script Integration | ⬜ | |
+| VT-9: Troubleshooting | ⬜ | |
+| VT-10: Contextual Normative Nuance | ⬜ | |
+| VT-11: DPD Markdown Sign Preservation | ⬜ | |
+| VT-12: DPD JSON Bracket Context Semantics | ⬜ | |
+| VT-13: DPD Drift Guardrails | ⬜ | |
 
 ---
 
@@ -372,7 +419,8 @@ I found inline kinds agrammatical, hypothetical, phoneme, and I also want to sup
   - [x] "parsing dlexa output"
   - [x] "troubleshooting dlexa"
   - [x] "integrating dlexa"
-  - [x] "automating dictionary lookups"
+  - [x] "DPD-covered normative doubts"
+  - [x] "DPD consultation workflows"
 
 ### Scope Boundaries
 
@@ -383,6 +431,15 @@ I found inline kinds agrammatical, hypothetical, phoneme, and I also want to sup
   - [x] No source adapter implementation
   - [x] No cache implementation details
   - [x] No development workflows (building, testing, linting)
+  - [x] Does not position `dlexa` as a universal dictionary replacement
+  - [x] Redirects translation, etymology, and encyclopedic tasks out of scope
+
+### Positioning Accuracy
+
+- [x] `dlexa` is described as DPD-first rather than dictionary-generic
+- [x] Supported doubt categories include orthographic, orthoepic/pronunciation, morphological, syntactic, and lexico-semantic questions
+- [x] Contextual nuance is explicit: current usage, norma culta formal, register, geography, communicative context
+- [x] Generic dictionary framing is treated as an error condition in validation prompts
 
 ### Examples Quality
 
@@ -402,6 +459,7 @@ I found inline kinds agrammatical, hypothetical, phoneme, and I also want to sup
 - [x] Retry logic examples included
 - [x] Multi-source query patterns shown
 - [x] Workflow quick reference table complete
+- [x] Automation examples stay within DPD consultation framing
 
 ---
 
@@ -410,7 +468,7 @@ I found inline kinds agrammatical, hypothetical, phoneme, and I also want to sup
 The skill is considered complete and validated when:
 
 1. ✅ All content validation checks pass
-2. ⬜ All 11 validation tests (VT-1 through VT-11) pass
+2. ⬜ All 13 validation tests (VT-1 through VT-13) pass
 3. ✅ Skill is registered and discoverable in AGENTS.md
 4. ✅ Mirror validation file exists where required
 5. ✅ No out-of-scope content is present

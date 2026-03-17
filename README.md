@@ -3,13 +3,39 @@
 [![Go Version](https://img.shields.io/badge/go-1.22%2B-00ADD8?logo=go)](go.mod)
 [![Status](https://img.shields.io/badge/status-alpha-orange)](#project-status)
 
-`dlexa` is a query-first Go CLI designed as a single binary with explicit architectural boundaries.
+`dlexa` is a query-first Go CLI for consulting **Diccionario panhispánico de dudas (DPD)** guidance on normative linguistic doubts in Spanish.
+
+It is aimed at questions the DPD actually resolves: orthographic, orthoepic/pronunciation, morphological, syntactic, and lexico-semantic doubts. It is **not** positioned as a generic dictionary replacement, an encyclopedic lookup tool, or a universal lexical search engine.
 
 ## Project Status
 
 > ⚠️ **Alpha / Bootstrap**
 >
-> The project is functional and tested as a foundation, but still evolving. Core architecture and lookup flow are in place; external-source behavior and terminal semantics are still being iterated.
+> The project is functional and tested as a foundation, but still evolving. Core architecture and DPD consultation flow are in place; external-source behavior and terminal semantics are still being iterated.
+
+## What dlexa is for
+
+Use `dlexa` when the question fits the DPD consultation model, for example:
+
+- whether a spelling, accent, or graphic form is recommended
+- whether a pronunciation or orthoepic variant is accepted
+- whether a morphological or syntactic construction is advisable
+- whether a usage recommendation depends on register, geography, or current usage
+- whether a lexical-semantic recommendation is framed as a normative doubt rather than a generic definition request
+
+DPD guidance is normative, but not brain-dead rigid. Recommendations can depend on **current usage**, **norma culta formal**, **register**, **geography**, and **communicative context**.
+
+## What dlexa is not
+
+`dlexa` is not meant to replace:
+
+- a general-purpose dictionary for arbitrary lexical lookup
+- an etymology resource
+- a translation tool
+- an encyclopedic reference
+- a broad lexical product that promises universal coverage outside DPD-resolved doubts
+
+If the task is outside DPD scope, use a more appropriate source instead of forcing `dlexa` into the wrong job.
 
 ## Prerequisites
 
@@ -48,16 +74,16 @@ go install github.com/Disble/dlexa/cmd/dlexa@latest
 
 ```bash
 # default format: markdown, default source: dpd
-dlexa palabra
+dlexa tilde
 
-# explicit output format
-dlexa --format json palabra
+# explicit output format for automation
+dlexa --format json solo
 
 # force source selection
-dlexa --source dpd palabra
+dlexa --source dpd adecua
 
 # skip cache reads/writes for this request
-dlexa --no-cache palabra
+dlexa --no-cache imprimido
 
 # health and version
 dlexa --doctor
@@ -79,6 +105,16 @@ Usage:
 ```text
 dlexa [--format markdown|json] [--source name1,name2] [--no-cache] <query>
 ```
+
+## DPD consultation model
+
+The CLI accepts free-text queries, but that does **not** mean every free-text request is a good fit. The intended use is consultation of DPD-style normative guidance.
+
+That means:
+
+- the same tool can answer doubts across spelling, pronunciation, morphology, syntax, and usage
+- some recommendations will be context-sensitive rather than absolute
+- answers should be read as DPD-backed normative guidance, not as universal dictionary coverage
 
 ## Development
 
@@ -109,13 +145,13 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for onboarding details, tooling requireme
 
 ## Architecture
 
-The repository starts with a real base for a dictionary/lookup CLI where the user asks a query and the system orchestrates the rest.
+The repository provides a real base for a DPD consultation CLI where the user asks a normative doubt and the system orchestrates retrieval, normalization, and rendering without collapsing the answer into a fake one-size-fits-all rule.
 
 Key principles encoded in the structure:
 
 - `cmd` is thin and only boots the application.
 - `internal/app` is the composition root where concrete adapters are wired.
-- `internal/query` orchestrates the lookup flow.
+- `internal/query` orchestrates the consultation flow.
 - `internal/model` holds the shared domain language.
 - `internal/source` composes `fetch -> parse -> normalize` for each source.
 - `internal/render` stays outside the domain so output concerns do not leak inward.
@@ -180,6 +216,7 @@ This gives every package a stable vocabulary without coupling domain behavior to
 - A full production source ecosystem is not complete yet; active work is tracked in OpenSpec changes.
 - Cache is local (filesystem with in-memory fallback), with no distributed backend.
 - `--doctor` currently reports baseline health checks and is intentionally lightweight.
+- The tool should not be read as a promise of universal lexical coverage outside DPD-backed normative doubts.
 
 ## Roadmap
 

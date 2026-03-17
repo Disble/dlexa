@@ -2,7 +2,9 @@
 
 <!-- Examples captured: 2026-03-15, dlexa version 0.1.0-dev -->
 
-This file contains real dlexa command outputs to help LLMs understand the structure and content of responses.
+This file contains real dlexa command outputs to help LLMs understand the structure and content of **DPD consultation** responses.
+
+Use these examples for normative doubts covered by the DPD. Do **not** treat them as proof that `dlexa` is a generic dictionary replacement with universal lexical coverage.
 
 ---
 
@@ -44,9 +46,10 @@ Diccionario panhispánico de dudas
 [...truncated: more content follows...]
 ```
 
-**Parsing guidance**: 
+**Parsing guidance**:
 - Headings mark entry start (`## tilde1`, `## tilde2`)
 - Content includes markdown formatting (*italic*, hyperlinks)
+- Body text carries DPD-backed normative guidance, sometimes with usage or register nuance
 - Citation metadata at end (Source, Dictionary, Edition, URL, Consulted)
 - Multiple entries appear as separate level-2 headings
 
@@ -144,13 +147,16 @@ Diccionario panhispánico de dudas
 ```
 
 **Navigation patterns**:
-- Definitions: `.Entries[].Content` (markdown-formatted)
+- Consultation content: `.Entries[].Content` (markdown-formatted)
 - Structured content: `.Entries[].Article.Sections[].Blocks[]`
 - Headwords: `.Entries[].Headword`
 - Sources: `.Entries[].Source`
 - Cache status: `.CacheHit`
 - Timestamp: `.GeneratedAt`
 - Problems: `.Problems[]` (empty on success)
+
+**Interpretation note**:
+- JSON gives structure, not permission to flatten context-sensitive DPD recommendations into fake universal rules.
 
 ---
 
@@ -208,12 +214,13 @@ Diccionario panhispánico de dudas
 - Validated kinds are `digital_edition`, `construction_marker`, `bracket_definition`, `bracket_pronunciation`, and `bracket_interpolation`
 - Speculative kinds `agrammatical`, `hypothetical`, and `phoneme` are non-authoritative/inferred only
 - Archived `<` and `>` signs remain intentionally unsupported
+- The same article may still carry contextual nuance about usage, register, or geography; do not over-prescribe beyond what the DPD says
 
 ---
 
 ## Error Output Example
 
-**Command**: `dlexa zkxjqwerty` (nonsense word to trigger "not found")
+**Command**: `dlexa zkxjqwerty` (nonsense query to trigger "not found")
 
 **Actual output**:
 
@@ -236,6 +243,7 @@ Diccionario panhispánico de dudas
 1. Returns exit code 0 (SUCCESS) because the lookup itself succeeded
 2. Shows empty results with a Problem entry explaining why
 3. Problem code `dpd_not_found` indicates the specific source had no match
+4. This may mean the query is absent from the DPD, not that `dlexa` failed as a generic dictionary
 
 **Handling pattern**:
 ```bash
@@ -297,6 +305,8 @@ fi
 
 **Key observation**: Empty `Entries` array with non-empty `Problems` array indicates the lookup found nothing. Exit code is still 0 (SUCCESS) because the command itself worked.
 
+If the request was really a generic dictionary or encyclopedic lookup, the better conclusion may be "wrong tool for the job," not "broken DPD consultation."
+
 ---
 
 ## Doctor Output Example
@@ -325,7 +335,7 @@ Extracted from `internal/model/types.go`:
 |------|-------------|-------------|
 | `source_lookup_failed` | General source connectivity or fetch failure | Check network, try `--doctor`, verify source is available |
 | `dpd_fetch_failed` | Failed to fetch data from DPD source | Check DPD source availability, try `--no-cache` |
-| `dpd_not_found` | DPD source returned 404 | Word not in DPD dictionary, try other sources |
+| `dpd_not_found` | DPD source returned 404 | The doubt may be absent from DPD scope; use another source if the task is broader than normative consultation |
 | `dpd_extract_failed` | Failed to extract content from DPD response | Data format issue, report if persistent |
 | `dpd_transform_failed` | Failed to transform DPD data to internal model | Data parsing issue, report if persistent |
 

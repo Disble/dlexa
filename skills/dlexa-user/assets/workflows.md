@@ -1,6 +1,8 @@
 # dlexa Integration Workflows
 
-This file provides copy-paste integration patterns for using dlexa in automation scripts.
+This file provides copy-paste integration patterns for using dlexa in automation scripts for **DPD consultation workflows**.
+
+These patterns assume the task is a DPD-fit normative doubt. If the job is generic dictionary lookup, etymology, translation, or encyclopedic retrieval, use a different source instead of cargo-culting these scripts.
 
 ---
 
@@ -11,14 +13,14 @@ This file provides copy-paste integration patterns for using dlexa in automation
 ```bash
 #!/bin/bash
 
-# Basic lookup with error handling
-result=$(dlexa --format json "palabra")
+# Basic DPD consultation with error handling
+result=$(dlexa --format json "solo")
 exit_code=$?
 
 if [ $exit_code -eq 0 ]; then
-  # Success - parse the result
-  definition=$(echo "$result" | jq -r '.Entries[0].Content')
-  echo "Definition: $definition"
+  # Success - parse the recommendation
+  recommendation=$(echo "$result" | jq -r '.Entries[0].Content')
+  echo "Recommendation: $recommendation"
 else
   # Error - log and exit
   echo "Error: dlexa command failed" >&2
@@ -33,7 +35,7 @@ fi
 #!/bin/bash
 
 # Capture both stdout and stderr separately
-result=$(dlexa --format json "palabra" 2>&1)
+result=$(dlexa --format json "tilde" 2>&1)
 exit_code=$?
 
 if [ $exit_code -ne 0 ]; then
@@ -43,7 +45,7 @@ if [ $exit_code -ne 0 ]; then
   exit 1
 fi
 
-# Extract definitions
+# Extract consultation content
 echo "$result" | jq -r '.Entries[] | "- \(.Headword): \(.Content)"'
 ```
 
@@ -62,7 +64,7 @@ result=$(dlexa --format json "$query")
 entry_count=$(echo "$result" | jq '.Entries | length')
 
 if [ "$entry_count" -eq 0 ]; then
-  echo "No definitions found for: $query" >&2
+  echo "No DPD guidance found for: $query" >&2
   exit 0  # Not an error, just empty
 fi
 
@@ -85,7 +87,8 @@ if [ $exit_code -ne 0 ]; then
     echo "Try again later or check --doctor" >&2
     exit 2
   elif echo "$result" | grep -q "dpd_not_found"; then
-    echo "Word not found in dictionary" >&2
+    echo "No matching DPD consultation result" >&2
+    echo "If the request was a generic dictionary or etymology task, use another source" >&2
     exit 3
   else
     echo "Unknown error: $result" >&2
@@ -104,12 +107,12 @@ fi
 #!/bin/bash
 
 # First attempt (may use cache)
-result=$(dlexa --format json "palabra")
+result=$(dlexa --format json "imprimido")
 
 # If it fails, retry with --no-cache
 if [ $? -ne 0 ]; then
   echo "First attempt failed, retrying with --no-cache..." >&2
-  result=$(dlexa --format json --no-cache "palabra")
+  result=$(dlexa --format json --no-cache "imprimido")
 fi
 
 # Process result
@@ -202,26 +205,26 @@ echo "$result" | jq -r '
 
 | Use Case | Command | Format | Notes |
 |----------|---------|--------|-------|
-| Quick lookup | `dlexa palabra` | markdown | Human-readable, default |
-| Script parsing | `dlexa --format json palabra` | json | Use with jq |
-| Force refresh | `dlexa --no-cache palabra` | markdown | Bypass 24h cache |
-| Specific source | `dlexa --source dpd palabra` | markdown | Query single source |
+| Quick DPD consultation | `dlexa tilde` | markdown | Human-readable, default |
+| Script parsing | `dlexa --format json solo` | json | Use with jq |
+| Force refresh | `dlexa --no-cache imprimido` | markdown | Bypass 24h cache |
+| Specific source | `dlexa --source dpd adecua` | markdown | Query single source |
 | Health check | `dlexa --doctor` | text | Exit 0 = healthy |
 | Version info | `dlexa --version` | text | Print version |
-| Error handling | `dlexa palabra 2>&1` | any | Capture both stdout/stderr |
-| Check cache status | `dlexa --format json palabra \| jq .CacheHit` | json | Boolean: true/false |
-| Extract headwords | `dlexa --format json palabra \| jq -r '.Entries[].Headword'` | json | Array of strings |
-| Count results | `dlexa --format json palabra \| jq '.Entries \| length'` | json | Integer |
+| Error handling | `dlexa solo 2>&1` | any | Capture both stdout/stderr |
+| Check cache status | `dlexa --format json solo \| jq .CacheHit` | json | Boolean: true/false |
+| Extract headwords | `dlexa --format json solo \| jq -r '.Entries[].Headword'` | json | Array of strings |
+| Count results | `dlexa --format json solo \| jq '.Entries \| length'` | json | Integer |
 
 ---
 
 ## Advanced Integration Examples
 
-### CI/CD Dictionary Validation
+### Editorial DPD Consultation Audit
 
 ```bash
 #!/bin/bash
-# Validate that a list of words exists in the dictionary
+# Validate that a list of queries resolves as DPD consultations
 
 words_file="$1"
 failed_words=()
@@ -238,7 +241,7 @@ while IFS= read -r word; do
   
   count=$(echo "$result" | jq '.Entries | length')
   if [ "$count" -eq 0 ]; then
-    echo "WARNING: No definitions for '$word'" >&2
+    echo "WARNING: No DPD guidance for '$word'" >&2
     failed_words+=("$word")
   else
     echo "✓ $word"
@@ -253,7 +256,7 @@ fi
 echo "All words validated successfully"
 ```
 
-### JSON to Markdown Converter
+### JSON to Markdown Consultation Summary
 
 ```bash
 #!/bin/bash
@@ -261,7 +264,7 @@ echo "All words validated successfully"
 
 result=$(dlexa --format json "$1")
 
-echo "# Definitions for: $1"
+echo "# DPD consultation for: $1"
 echo ""
 
 echo "$result" | jq -r '.Entries[] | "## \(.Headword) (\(.Source))\n\n\(.Content)\n"'
@@ -309,3 +312,4 @@ done
 - Always handle empty `Entries` arrays (not an error condition)
 - Problem codes in stderr indicate fatal errors (exit code 1)
 - Cache TTL is 24 hours (not configurable from CLI)
+- These workflows are for DPD consultation tasks, not generic dictionary replacement

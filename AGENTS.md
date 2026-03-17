@@ -1,11 +1,26 @@
+## Project Definition
+
+`dlexa` is a consultation interface for **DPD-covered normative linguistic doubts in Spanish**.
+
+- Use this repo and its skills when the task is about orthographic, orthoepic/pronunciation, morphological, syntactic, or lexico-semantic doubts that fit the DPD model.
+- Preserve DPD nuance: recommendations can depend on **norma culta formal**, **current usage**, **register**, **geography**, and **communicative context**.
+- Do **not** frame `dlexa` as a generic dictionary replacement, encyclopedic lookup tool, translation system, or universal lexical source.
+
 ## Project Skills
 
 | Skill | Description | Source |
 | --- | --- | --- |
 | `dlexa-go-cli-lint` | Run the repository's configured Go linters whenever Go/CLI code changes need validation, choosing focused or full lint based on scope without building. | [SKILL.md](skills/dlexa-go-cli-lint/SKILL.md) |
-| `dlexa-skill-updater` | Automate maintenance of the dlexa-user skill by detecting CLI interface changes and regenerating documentation | [SKILL.md](skills/dlexa-skill-updater/SKILL.md) |
+| `dlexa-skill-updater` | Maintain the `dlexa-user` skill and its mirrors by detecting CLI drift, semantic-output drift, project-positioning drift, discovery-surface drift, and mirror-parity drift. | [SKILL.md](skills/dlexa-skill-updater/SKILL.md) |
 | `dlexa-sonarqube-mcp` | Use the repository's SonarQube MCP workflow correctly, including analysis toggling, project-key lookup, and end-of-task file analysis. | [SKILL.md](skills/dlexa-sonarqube-mcp/SKILL.md) |
-| `dlexa-user` | Invoke and parse dlexa CLI (user manual for LLM agents that need to USE dlexa commands, parse outputs, and troubleshoot errors) | [SKILL.md](skills/dlexa-user/SKILL.md) |
+| `dlexa-user` | Teach other LLMs when to invoke `dlexa` for DPD-style normative doubts, how to parse outputs, and when to redirect out-of-scope generic dictionary tasks elsewhere. | [SKILL.md](skills/dlexa-user/SKILL.md) |
+
+## Agent Routing Notes
+
+- Load `dlexa-user` when the job is to **use** the CLI for a DPD-fit consultation.
+- Do not load `dlexa-user` just because a prompt contains a Spanish word; first verify the task is actually a DPD-style normative doubt.
+- If the task is generic lexical definition, translation, encyclopedic lookup, or etymology, `dlexa` is the wrong hammer.
+- When updating repo guidance or mirrored skills, keep `skills/` as canonical and `.claude/skills/` in semantic lockstep.
 
 ## Repo Workflow
 
