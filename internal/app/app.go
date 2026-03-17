@@ -3,6 +3,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"strings"
@@ -13,16 +14,19 @@ import (
 	"github.com/Disble/dlexa/internal/platform"
 	"github.com/Disble/dlexa/internal/query"
 	"github.com/Disble/dlexa/internal/render"
+	searchsvc "github.com/Disble/dlexa/internal/search"
 	"github.com/Disble/dlexa/internal/version"
 )
 
 // App wires together configuration, lookup, and rendering to drive the CLI.
 type App struct {
-	platform  platform.CLI
-	config    config.Loader
-	doctor    doctor.Runner
-	lookup    query.Looker
-	renderers render.RendererResolver
+	platform        platform.CLI
+	config          config.Loader
+	doctor          doctor.Runner
+	lookup          query.Looker
+	search          searchsvc.Searcher
+	renderers       render.RendererResolver
+	searchRenderers render.SearchRendererResolver
 }
 
 // Run parses CLI flags, performs the lookup, and writes rendered output.
@@ -52,8 +56,8 @@ func (a *App) Run(ctx context.Context) error {
 		return a.runDoctor(ctx)
 	}
 
-	queryText := strings.TrimSpace(strings.Join(flagSet.Args(), " "))
-	if queryText == "" {
+	positional := flagSet.Args()
+	if len(positional) == 0 {
 		return a.printUsage()
 	}
 
@@ -63,6 +67,11 @@ func (a *App) Run(ctx context.Context) error {
 	}
 
 	formatName := resolveFormat(*formatFlag, runtimeConfig.DefaultFormat)
+	if positional[0] == "search" {
+		return a.runSearch(ctx, positional[1:], formatName, *noCacheFlag || !runtimeConfig.CacheEnabled)
+	}
+
+	queryText := strings.TrimSpace(strings.Join(positional, " "))
 
 	request := model.LookupRequest{
 		Query:   queryText,
@@ -72,6 +81,35 @@ func (a *App) Run(ctx context.Context) error {
 	}
 
 	return a.runLookup(ctx, request, formatName)
+}
+
+func (a *App) runSearch(ctx context.Context, args []string, formatName string, noCache bool) error {
+	queryText := strings.TrimSpace(strings.Join(args, " "))
+	if queryText == "" {
+		if err := a.printSearchUsage(); err != nil {
+			return err
+		}
+		return errors.New("search command requires a query")
+	}
+
+	request := model.SearchRequest{Query: queryText, Format: formatName, NoCache: noCache}
+	result, err := a.search.Search(ctx, request)
+	if err != nil {
+		return err
+	}
+
+	renderer, err := a.searchRenderers.Renderer(formatName)
+	if err != nil {
+		return err
+	}
+	payload, err := renderer.Render(ctx, result)
+	if err != nil {
+		return err
+	}
+	if _, err := a.platform.Stdout().Write(payload); err != nil {
+		return err
+	}
+	return a.ensureTrailingNewline(payload)
 }
 
 // runLookup executes the lookup, renders the result, and writes the output.
@@ -142,9 +180,15 @@ func (a *App) runDoctor(ctx context.Context) error {
 func (a *App) printUsage() error {
 	_, err := fmt.Fprintf(
 		a.platform.Stderr(),
-		"usage: %s [--format markdown|json] [--source name1,name2] [--no-cache] <query>\n",
+		"usage: %s [--format markdown|json] [--source name1,name2] [--no-cache] <query>\n       %s [--format markdown|json] [--no-cache] search <query>\n",
+		version.BinaryName,
 		version.BinaryName,
 	)
+	return err
+}
+
+func (a *App) printSearchUsage() error {
+	_, err := fmt.Fprintf(a.platform.Stderr(), "usage: %s [--format markdown|json] [--no-cache] search <query>\n", version.BinaryName)
 	return err
 }
 

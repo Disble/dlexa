@@ -573,6 +573,6 @@ func accessProfileWarning(source string) model.Warning {
 	return model.Warning{
 		Code:    "dpd_access_profile",
 		Source:  source,
-		Message: "validated access method: direct GET /dpd/<term> with browser-like User-Agent reaches article HTML; low-profile/no-UA requests may trigger Cloudflare challenge pages; /srv/keys is not useful here; go-rae is not a direct DPD blueprint",
+		Message: "validated access method: direct GET /dpd/<term> with browser-like User-Agent reaches article HTML; low-profile/no-UA requests may trigger Cloudflare challenge pages; /srv/keys is useful for entry discovery only; search normalization owns conservative label interpretation and must stay format-neutral instead of emitting renderer-specific projections; go-rae is not a direct DPD blueprint",
 	}
 }

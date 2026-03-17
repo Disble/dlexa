@@ -8,11 +8,14 @@ import (
 
 // Problem codes, severity levels, and inline content kinds.
 const (
-	ProblemCodeSourceLookupFailed = "source_lookup_failed"
-	ProblemCodeDPDFetchFailed     = "dpd_fetch_failed"
-	ProblemCodeDPDNotFound        = "dpd_not_found"
-	ProblemCodeDPDExtractFailed   = "dpd_extract_failed"
-	ProblemCodeDPDTransformFailed = "dpd_transform_failed"
+	ProblemCodeSourceLookupFailed       = "source_lookup_failed"
+	ProblemCodeDPDFetchFailed           = "dpd_fetch_failed"
+	ProblemCodeDPDNotFound              = "dpd_not_found"
+	ProblemCodeDPDExtractFailed         = "dpd_extract_failed"
+	ProblemCodeDPDTransformFailed       = "dpd_transform_failed"
+	ProblemCodeDPDSearchFetchFailed     = "dpd_search_fetch_failed"
+	ProblemCodeDPDSearchParseFailed     = "dpd_search_parse_failed"
+	ProblemCodeDPDSearchNormalizeFailed = "dpd_search_normalize_failed"
 
 	ProblemSeverityError = "error"
 

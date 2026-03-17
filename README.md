@@ -76,8 +76,14 @@ go install github.com/Disble/dlexa/cmd/dlexa@latest
 # default format: markdown, default source: dpd
 dlexa tilde
 
+# discover DPD entry/index candidates before choosing an article key
+dlexa search abu dhabi
+
 # explicit output format for automation
 dlexa --format json solo
+
+# structured entry-search output for automation
+dlexa --format json search guion
 
 # force source selection
 dlexa --source dpd adecua
@@ -104,6 +110,53 @@ Usage:
 
 ```text
 dlexa [--format markdown|json] [--source name1,name2] [--no-cache] <query>
+dlexa [--format markdown|json] [--no-cache] search <query>
+```
+
+## DPD entry search command
+
+Use `dlexa search <query>` when you need to discover DPD entry terms or indexed expressions before doing a full article lookup.
+
+- It queries the DPD `/srv/keys` entry-discovery endpoint.
+- It returns candidate labels plus canonical article keys.
+- It does **not** search article body content.
+- It does **not** auto-fetch every candidate article.
+- It does **not** turn `dlexa` into a generic dictionary search engine.
+
+Examples:
+
+```bash
+# human-oriented candidate list
+dlexa search abu dhabi
+
+# json for scripts and follow-up automation
+dlexa --format json search alicuota
+```
+
+Example human output shape:
+
+```text
+Candidate DPD entries for "abu dhabi":
+- Abu Dhabi -> Abu Dabi
+```
+
+Example JSON candidate shape:
+
+```json
+{
+  "Request": {
+    "Query": "alicuota",
+    "Format": "json",
+    "NoCache": false
+  },
+  "Candidates": [
+    {
+      "raw_label_html": "<span class=\"bolaspa\">⊗</span>alicuota",
+      "display_text": "⊗ alicuota",
+      "article_key": "alícuoto"
+    }
+  ]
+}
 ```
 
 ## DPD consultation model

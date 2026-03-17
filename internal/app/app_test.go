@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"reflect"
 	"strings"
@@ -57,6 +58,60 @@ func TestRunConstructsLookupRequestAndDelegatesToQueryService(t *testing.T) {
 
 	if got := cli.stdout.String(); got != "rendered output\n" {
 		t.Fatalf("stdout = %q, want %q", got, "rendered output\n")
+	}
+}
+
+func TestRunDispatchesDedicatedSearchCommandWithoutLookupFlow(t *testing.T) {
+	cli := &fakeCLI{args: []string{"dlexa", "--format", "json", "search", "abu", "dhabi"}}
+	lookup := &capturingLookupService{}
+	search := &capturingSearchService{result: model.SearchResult{Candidates: []model.SearchCandidate{{DisplayText: "Abu Dhabi", ArticleKey: "Abu Dabi"}}}}
+	searchRenderer := &capturingSearchRenderer{format: "json", payload: []byte(`{"ok":true}`)}
+
+	application := &App{
+		platform:        cli,
+		config:          &staticLoader{cfg: config.RuntimeConfig{DefaultFormat: "markdown", CacheEnabled: true}},
+		lookup:          lookup,
+		search:          search,
+		renderers:       &capturingRegistry{renderer: &capturingRenderer{format: "json"}},
+		searchRenderers: &capturingSearchRegistry{renderer: searchRenderer},
+	}
+
+	if err := application.Run(context.Background()); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	if lookup.called {
+		t.Fatal("Lookup() was called for search command")
+	}
+	if !reflect.DeepEqual(search.request, model.SearchRequest{Query: "abu dhabi", Format: "json", NoCache: false}) {
+		t.Fatalf("Search() request = %#v", search.request)
+	}
+	if got := cli.stdout.String(); got != "{\"ok\":true}\n" {
+		t.Fatalf("stdout = %q", got)
+	}
+}
+
+func TestRunRejectsMissingSearchQueryLocally(t *testing.T) {
+	cli := &fakeCLI{args: []string{"dlexa", "search"}}
+	search := &capturingSearchService{}
+	application := &App{
+		platform:        cli,
+		config:          &staticLoader{cfg: config.RuntimeConfig{DefaultFormat: "markdown", CacheEnabled: true}},
+		lookup:          &capturingLookupService{},
+		search:          search,
+		renderers:       &capturingRegistry{renderer: &capturingRenderer{format: "markdown"}},
+		searchRenderers: &capturingSearchRegistry{renderer: &capturingSearchRenderer{format: "markdown"}},
+	}
+
+	err := application.Run(context.Background())
+	if err == nil || err.Error() != "search command requires a query" {
+		t.Fatalf("Run() error = %v, want missing-query error", err)
+	}
+	if search.called {
+		t.Fatal("Search() was called for missing query")
+	}
+	if !strings.Contains(cli.stderr.String(), "search <query>") {
+		t.Fatalf("stderr = %q", cli.stderr.String())
 	}
 }
 
@@ -132,9 +187,11 @@ func (l *staticLoader) Load(context.Context) (config.RuntimeConfig, error) {
 
 type capturingLookupService struct {
 	request model.LookupRequest
+	called  bool
 }
 
 func (s *capturingLookupService) Lookup(_ context.Context, request model.LookupRequest) (model.LookupResult, error) {
+	s.called = true
 	s.request = request
 	return model.LookupResult{Request: request}, nil
 }
@@ -160,6 +217,53 @@ func (r *capturingRenderer) Format() string {
 }
 
 func (r *capturingRenderer) Render(_ context.Context, result model.LookupResult) ([]byte, error) {
+	r.result = result
+	return r.payload, nil
+}
+
+type capturingSearchService struct {
+	request model.SearchRequest
+	result  model.SearchResult
+	err     error
+	called  bool
+}
+
+func (s *capturingSearchService) Search(_ context.Context, request model.SearchRequest) (model.SearchResult, error) {
+	s.called = true
+	s.request = request
+	if s.err != nil {
+		return model.SearchResult{}, s.err
+	}
+	if s.result.Request.Query == "" {
+		s.result.Request = request
+	}
+	return s.result, nil
+}
+
+type capturingSearchRegistry struct {
+	renderer        *capturingSearchRenderer
+	requestedFormat string
+}
+
+func (r *capturingSearchRegistry) Renderer(format string) (render.SearchRenderer, error) {
+	if r.renderer == nil {
+		return nil, errors.New("missing search renderer")
+	}
+	r.requestedFormat = format
+	return r.renderer, nil
+}
+
+type capturingSearchRenderer struct {
+	format  string
+	payload []byte
+	result  model.SearchResult
+}
+
+func (r *capturingSearchRenderer) Format() string {
+	return r.format
+}
+
+func (r *capturingSearchRenderer) Render(_ context.Context, result model.SearchResult) ([]byte, error) {
 	r.result = result
 	return r.payload, nil
 }
