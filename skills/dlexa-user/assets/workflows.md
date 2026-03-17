@@ -29,6 +29,30 @@ else
 fi
 ```
 
+### Search-Then-Lookup Pattern
+
+```bash
+#!/bin/bash
+
+query="abu dhabi"
+search_result=$(dlexa --format json search "$query")
+exit_code=$?
+
+if [ $exit_code -ne 0 ]; then
+  echo "Search failed" >&2
+  echo "$search_result" >&2
+  exit 1
+fi
+
+article_key=$(echo "$search_result" | jq -r '.Candidates[0].article_key // empty')
+if [ -z "$article_key" ]; then
+  echo "No DPD entry candidates for: $query" >&2
+  exit 0
+fi
+
+dlexa --format json "$article_key"
+```
+
 ### Robust Pattern with Stderr Capture
 
 ```bash
@@ -60,10 +84,15 @@ echo "$result" | jq -r '.Entries[] | "- \(.Headword): \(.Content)"'
 
 result=$(dlexa --format json "$query")
 
-# Check if Entries array is empty
+# Check entries first, then structured misses
 entry_count=$(echo "$result" | jq '.Entries | length')
+miss_count=$(echo "$result" | jq '.Misses // [] | length')
 
 if [ "$entry_count" -eq 0 ]; then
+  if [ "$miss_count" -gt 0 ]; then
+    echo "$result" | jq -r '.Misses[] | .suggestion.display_text // .next_action.command // "Structured lookup miss without follow-up metadata"'
+    exit 0
+  fi
   echo "No DPD guidance found for: $query" >&2
   exit 0  # Not an error, just empty
 fi
@@ -86,10 +115,6 @@ if [ $exit_code -ne 0 ]; then
     echo "Network or source connectivity issue" >&2
     echo "Try again later or check --doctor" >&2
     exit 2
-  elif echo "$result" | grep -q "dpd_not_found"; then
-    echo "No matching DPD consultation result" >&2
-    echo "If the request was a generic dictionary or etymology task, use another source" >&2
-    exit 3
   else
     echo "Unknown error: $result" >&2
     exit 1
@@ -207,6 +232,8 @@ echo "$result" | jq -r '
 |----------|---------|--------|-------|
 | Quick DPD consultation | `dlexa tilde` | markdown | Human-readable, default |
 | Script parsing | `dlexa --format json solo` | json | Use with jq |
+| Discover entry candidates | `dlexa search abu dhabi` | markdown | Candidate labels plus article keys |
+| Search for automation | `dlexa --format json search guion` | json | Parse `.Candidates[]` |
 | Force refresh | `dlexa --no-cache imprimido` | markdown | Bypass 24h cache |
 | Specific source | `dlexa --source dpd adecua` | markdown | Query single source |
 | Health check | `dlexa --doctor` | text | Exit 0 = healthy |
@@ -309,7 +336,8 @@ done
 - Exit code checking is MANDATORY in production scripts
 - Use `--no-cache` sparingly (increases source load)
 - `jq` is the recommended JSON parser for bash
-- Always handle empty `Entries` arrays (not an error condition)
+- Always handle empty `Entries` arrays together with `.Misses[]` before assuming there was no guidance
+- Always handle empty `Candidates` arrays for search (not an error condition)
 - Problem codes in stderr indicate fatal errors (exit code 1)
 - Cache TTL is 24 hours (not configurable from CLI)
 - These workflows are for DPD consultation tasks, not generic dictionary replacement

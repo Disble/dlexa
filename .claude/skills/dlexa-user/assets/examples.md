@@ -160,6 +160,71 @@ Diccionario panhispánico de dudas
 
 ---
 
+## Search Markdown Output Example
+
+**Command**: `dlexa search abu dhabi`
+
+**Validated output shape** (from `internal/render/search_markdown.go` and `internal/render/search_markdown_test.go`):
+
+```text
+Candidate DPD entries for "abu dhabi":
+- Abu Dhabi -> Abu Dabi
+- ⊗ alicuota -> alícuoto
+```
+
+**Parsing guidance**:
+- The heading line echoes the search query
+- Each bullet maps `display_text -> article_key`
+- The right-hand side is the canonical follow-up lookup term
+- Empty search state renders as: `No DPD entry candidates found for "zzz".`
+
+---
+
+## Search JSON Output Example
+
+**Command**: `dlexa --format json search guion`
+
+**Validated output shape** (from `internal/model/search.go`, `internal/render/search_json.go`, and renderer/service tests):
+
+```json
+{
+  "Request": {
+    "Query": "guion",
+    "Format": "json",
+    "NoCache": false
+  },
+  "Candidates": [
+    {
+      "raw_label_html": "guion<sup>1</sup>",
+      "display_text": "guion1",
+      "article_key": "guion"
+    },
+    {
+      "raw_label_html": "<span class=\"vers\">guion<sup>2</sup></span>",
+      "display_text": "var. guion2",
+      "article_key": "guion"
+    }
+  ],
+  "Warnings": [],
+  "Problems": [],
+  "CacheHit": false,
+  "GeneratedAt": "2026-03-17T..."
+}
+```
+
+**Navigation patterns**:
+- Candidate list: `.Candidates[]`
+- Normalized display label: `.Candidates[].display_text`
+- Canonical article key: `.Candidates[].article_key`
+- Preserved upstream label HTML: `.Candidates[].raw_label_html`
+- Cache status: `.CacheHit`
+
+**Interpretation note**:
+- Search JSON is an entry-discovery contract, not the full article consultation contract used by `.Entries[]`
+- `raw_label_html` deliberately preserves upstream markup; do not assume it is markdown
+
+---
+
 ## DPD Semantic Signs Example
 
 **Command**: `dlexa --source dpd --format json alícuota`
@@ -338,5 +403,8 @@ Extracted from `internal/model/types.go`:
 | `dpd_not_found` | DPD source returned 404 | The doubt may be absent from DPD scope; use another source if the task is broader than normative consultation |
 | `dpd_extract_failed` | Failed to extract content from DPD response | Data format issue, report if persistent |
 | `dpd_transform_failed` | Failed to transform DPD data to internal model | Data parsing issue, report if persistent |
+| `dpd_search_fetch_failed` | Failed to fetch DPD entry-search payload | Check upstream availability, try `--no-cache`, verify the query is not empty |
+| `dpd_search_parse_failed` | Failed to decode or split DPD entry-search payload | Upstream response format drift, report if persistent |
+| `dpd_search_normalize_failed` | Failed to normalize parsed DPD search candidates | Label normalization drift, report if persistent |
 
 **All Problem codes have severity `error`.** When a Problem appears in `.Problems[]` array (JSON) or stderr (any format), the exit code is 1.

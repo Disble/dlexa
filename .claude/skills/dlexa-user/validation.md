@@ -345,6 +345,60 @@ I found inline kinds agrammatical, hypothetical, phoneme, and I also want to sup
 
 ---
 
+### VT-14: Entry Search Command Selection
+
+**Test Prompt**:
+```
+I need the canonical DPD article key for "abu dhabi" before doing the lookup.
+```
+
+**Expected LLM Behavior**:
+- Recognizes this as entry discovery, not direct article consultation
+- Uses `dlexa search abu dhabi` or `dlexa --format json search abu dhabi`
+- Does NOT misuse `--source` with `search`
+
+**Verification Method**:
+- [ ] Command uses `search <query>`
+- [ ] No `--source` flag is added to the search command
+- [ ] LLM explains that search returns candidates/article keys, not full article content
+
+**Status**: ⬜ Not Tested | ✅ Passed | ❌ Failed
+
+---
+
+### VT-15: Search JSON Navigation
+
+**Test Setup**:
+Provide this JSON output to the LLM:
+```json
+{
+  "Request": { "Query": "guion", "Format": "json", "NoCache": false },
+  "Candidates": [
+    { "raw_label_html": "guion<sup>1</sup>", "display_text": "guion1", "article_key": "guion" },
+    { "raw_label_html": "<span class=\"vers\">guion<sup>2</sup></span>", "display_text": "var. guion2", "article_key": "guion" }
+  ]
+}
+```
+
+**Test Prompt**:
+```
+Extract the canonical article keys and explain which field is safe for human display.
+```
+
+**Expected LLM Behavior**:
+- Navigates `.Candidates[].article_key`
+- Uses `display_text` as the human-readable label
+- Explains that `raw_label_html` preserves upstream HTML and is not the safest direct display field
+
+**Verification Method**:
+- [ ] LLM extracts both `article_key` values
+- [ ] LLM identifies `display_text` as the display-safe field
+- [ ] LLM distinguishes `raw_label_html` from normalized display text
+
+**Status**: ⬜ Not Tested | ✅ Passed | ❌ Failed
+
+---
+
 ## Validation Summary
 
 | Test | Status | Notes |
@@ -362,6 +416,8 @@ I found inline kinds agrammatical, hypothetical, phoneme, and I also want to sup
 | VT-11: DPD Markdown Sign Preservation | ⬜ | |
 | VT-12: DPD JSON Bracket Context Semantics | ⬜ | |
 | VT-13: DPD Drift Guardrails | ⬜ | |
+| VT-14: Entry Search Command Selection | ⬜ | |
+| VT-15: Search JSON Navigation | ⬜ | |
 
 ---
 
@@ -390,10 +446,17 @@ I found inline kinds agrammatical, hypothetical, phoneme, and I also want to sup
   - [x] `--no-cache` (bool)
   - [x] `--doctor` (bool)
   - [x] `--version` (bool)
+  - [x] Dedicated `search <query>` subcommand usage
+  - [x] `search` excludes `--source` from its usage surface
 - [x] JSON structure documented matches `internal/model/types.go`:
   - [x] LookupResult structure
+  - [x] LookupMiss structure
   - [x] Entry structure
   - [x] Article structure (mentioned)
+- [x] Search JSON structure documented matches `internal/model/search.go`:
+  - [x] SearchResult structure
+  - [x] SearchCandidate structure
+  - [x] `raw_label_html` / `display_text` / `article_key` semantics
 - [x] DPD semantic inline kinds documented from `internal/model/types.go`:
   - [x] Validated: `digital_edition`
   - [x] Validated: `construction_marker`
@@ -410,7 +473,11 @@ I found inline kinds agrammatical, hypothetical, phoneme, and I also want to sup
   - [x] dpd_not_found
   - [x] dpd_extract_failed
   - [x] dpd_transform_failed
+  - [x] dpd_search_fetch_failed
+  - [x] dpd_search_parse_failed
+  - [x] dpd_search_normalize_failed
 - [x] Exit codes documented (0 = success, 1 = error)
+- [x] Structured lookup misses documented as success-path data rather than automatic fallback or fatal-only errors
 
 ### Trigger Keywords
 
@@ -447,6 +514,7 @@ I found inline kinds agrammatical, hypothetical, phoneme, and I also want to sup
 - [x] Truncation strategy explained in examples
 - [x] Both success and error cases covered
 - [x] Empty result scenario included
+- [x] Search candidate-list scenario included
 - [x] Problem codes reference table present
 - [x] DPD semantic-sign example reflects current validated behavior
 - [x] Bracket-context distinction is documented as JSON-only semantics
@@ -468,7 +536,7 @@ I found inline kinds agrammatical, hypothetical, phoneme, and I also want to sup
 The skill is considered complete and validated when:
 
 1. ✅ All content validation checks pass
-2. ⬜ All 13 validation tests (VT-1 through VT-13) pass
+2. ⬜ All 15 validation tests (VT-1 through VT-15) pass
 3. ✅ Skill is registered and discoverable in AGENTS.md
 4. ✅ Mirror validation file exists where required
 5. ✅ No out-of-scope content is present

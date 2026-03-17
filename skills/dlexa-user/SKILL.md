@@ -24,6 +24,7 @@ Load this skill when you need to:
 - Choose the right output format for your use case
 - Handle cache behavior and force fresh data retrieval
 - Query specific sources for normative guidance
+- Discover DPD entry candidates before choosing a lookup term
 
 Typical DPD-fit doubts include:
 
@@ -60,13 +61,22 @@ Do **not** use this skill to present `dlexa` as:
 
 ### Command Syntax Reference
 
+Primary command forms:
+
+```text
+dlexa [--format markdown|json] [--source name1,name2] [--no-cache] <query>
+dlexa [--format markdown|json] [--no-cache] search <query>
+```
+
 | Flag | Type | Values | Description | Example |
 |------|------|--------|-------------|---------|
 | `--format` | string | `markdown`, `json` | Output format (default: `markdown`) | `dlexa --format json tilde` |
-| `--source` | string | `dpd`, `demo`, etc. | Comma-separated source names (default: config) | `dlexa --source dpd solo` |
+| `--source` | string | `dpd`, `demo`, etc. | Comma-separated source names for article lookup only (default: config) | `dlexa --source dpd solo` |
 | `--no-cache` | bool | - | Skip cache read/write (default: false) | `dlexa --no-cache imprimido` |
 | `--doctor` | bool | - | Run diagnostic checks | `dlexa --doctor` |
 | `--version` | bool | - | Print version info | `dlexa --version` |
+
+**Search command rule**: `dlexa search <query>` uses the dedicated DPD entry-discovery flow. Its documented usage supports `--format` and `--no-cache`; source selection is irrelevant for search because this path is DPD-only.
 
 ### Format Selection Decision Tree
 
@@ -74,6 +84,7 @@ Do **not** use this skill to present `dlexa` as:
 |----------|--------|-----------|
 | Human asks for DPD guidance on a normative doubt | `markdown` (default) | Human-readable, no flag needed |
 | Script needs to parse structured recommendations | `--format json` | Structured data, easy to navigate with jq |
+| Need to discover candidate DPD article keys before lookup | `search` + `markdown` or `json` | Search is entry discovery, not article-body consultation |
 | Debugging unexpected DPD behavior | `markdown` | Easier to inspect visually |
 | Automation pipeline around DPD consultation | `--format json` | Programmatic parsing |
 
@@ -106,6 +117,18 @@ Diccionario panhispánico de dudas
 
 **Reading pattern**: headings mark entries, body text carries the recommendation, and citation metadata identifies the DPD source.
 
+### Search Markdown Structure
+
+The dedicated entry-discovery command renders a candidate list instead of full article content:
+
+```text
+Candidate DPD entries for "abu dhabi":
+- Abu Dhabi -> Abu Dabi
+- ⊗ alicuota -> alícuoto
+```
+
+**Reading pattern**: left side is the display label users saw in the DPD index, right side is the canonical `article_key` to feed into a follow-up lookup.
+
 ### JSON Structure
 
 Dlexa JSON output follows this structure (from `internal/model/types.go`):
@@ -114,11 +137,25 @@ Dlexa JSON output follows this structure (from `internal/model/types.go`):
 type LookupResult struct {
     Request     LookupRequest   // Original query params
     Entries     []Entry         // Array of dictionary entries
+    Misses      []LookupMiss    // Structured lookup misses when exact entry is unknown
     Warnings    []Warning       // Non-fatal issues
     Problems    []Problem       // Fatal errors (if any)
     Sources     []SourceResult  // Per-source metadata
     CacheHit    bool            // Whether result came from cache
     GeneratedAt time.Time       // Timestamp
+}
+
+type LookupMiss struct {
+    Kind       string            // generic_not_found | related_entry
+    Query      string            // Original lookup query used for the miss outcome
+    Suggestion *LookupSuggestion // Native DPD near-miss suggestion, if any
+    NextAction *LookupNextAction // Explicit next step, e.g. dlexa search <query>
+}
+
+type LookupNextAction struct {
+    Kind    string // search
+    Query   string
+    Command string
 }
 
 type Entry struct {
@@ -132,6 +169,39 @@ type Entry struct {
     Article  *Article           // Structured article (if available)
 }
 ```
+
+Search JSON uses a different contract (from `internal/model/search.go`):
+
+```go
+type SearchResult struct {
+    Request     SearchRequest
+    Candidates  []SearchCandidate
+    Warnings    []Warning
+    Problems    []Problem
+    CacheHit    bool
+    GeneratedAt time.Time
+}
+
+type SearchCandidate struct {
+    RawLabelHTML string `json:"raw_label_html"`
+    DisplayText  string `json:"display_text"`
+    ArticleKey   string `json:"article_key"`
+}
+```
+
+**Search JSON reading rule**:
+
+- Top-level search fields are `Request`, `Candidates`, `Warnings`, `Problems`, `CacheHit`, and `GeneratedAt`
+- Candidate objects expose `raw_label_html`, `display_text`, and `article_key`
+- `raw_label_html` preserves the upstream HTML label, while `display_text` is the normalized human-readable projection
+- Search returns entry candidates only; full DPD article structure still lives in lookup `.Entries[]`
+
+**Lookup miss reading rule**:
+
+- When `.Entries` is empty, inspect `.Misses[]` before assuming the lookup "failed"
+- A `related_entry` miss preserves native DPD near-miss guidance in `.Misses[].suggestion`
+- A `generic_not_found` miss can expose an explicit `.Misses[].next_action.command` such as `dlexa search <query>`
+- Structured lookup misses are successful lookup outcomes, not hidden auto-search fallback
 
 ### DPD Semantic Sign Contract
 
@@ -174,6 +244,16 @@ echo "$result" | jq -r '.Entries[0].Content'
 echo "$result" | jq -r '.Entries[].Headword'
 ```
 
+**Extract search candidate article keys**:
+```bash
+echo "$result" | jq -r '.Candidates[].article_key'
+```
+
+**Extract search candidate display labels**:
+```bash
+echo "$result" | jq -r '.Candidates[] | "\(.display_text) -> \(.article_key)"'
+```
+
 **Check if result came from cache**:
 ```bash
 echo "$result" | jq -r '.CacheHit'
@@ -204,7 +284,23 @@ dlexa --format json solo
 
 Returns structured JSON for programmatic parsing. Use with `jq` for extraction.
 
-### 3. Force Fresh Data
+### 3. Discover Candidate DPD Entries
+
+```bash
+dlexa search abu dhabi
+```
+
+Use this before a lookup when you know the expression or spelling neighborhood but need the canonical DPD article key first.
+
+### 4. Search JSON for Automation
+
+```bash
+dlexa --format json search guion
+```
+
+Use this in scripts when you need `article_key` values or want to preserve `raw_label_html` without scraping markdown bullets.
+
+### 5. Force Fresh Data
 
 ```bash
 dlexa --no-cache imprimido
@@ -212,7 +308,7 @@ dlexa --no-cache imprimido
 
 Bypasses cache (24-hour TTL), fetches from sources. Use when data seems stale or cache corruption is suspected.
 
-### 4. Restrict to DPD Source
+### 6. Restrict to DPD Source
 
 ```bash
 dlexa --source dpd adecua
@@ -220,7 +316,7 @@ dlexa --source dpd adecua
 
 Queries only specified sources (comma-separated for multiple). Source names are case-sensitive.
 
-### 5. Health Check
+### 7. Health Check
 
 ```bash
 dlexa --doctor
@@ -228,7 +324,7 @@ dlexa --doctor
 
 Runs diagnostic checks. Exit code 0 = healthy, exit code 1 = issues found.
 
-### 6. Inspect DPD Sign Semantics
+### 8. Inspect DPD Sign Semantics
 
 ```bash
 dlexa --source dpd --format json alícuota
@@ -246,7 +342,28 @@ Expected pattern:
 - Markdown/plain content still shows authored signs like `@` and `[alikuóto]`
 - Bracket meaning is differentiated in JSON, not by synthetic Markdown labels
 
-### 7. Redirect an Out-of-Scope Task
+### 9. Search Then Lookup
+
+```bash
+dlexa --format json search alicuota
+dlexa alícuoto
+```
+
+Do this when search returns the candidate label you wanted but the final article key differs from the raw query or carries normalization such as accents.
+
+### 10. Handle a Lookup Miss Explicitly
+
+```bash
+dlexa --format json alicuota
+```
+
+If `.Entries` is empty, inspect `.Misses[]`:
+
+- use `.Misses[].suggestion.display_text` when DPD returned a native related entry
+- use `.Misses[].next_action.command` when the result explicitly nudges `dlexa search <query>`
+- do **not** describe this as hidden rerouting; the user still ran one lookup command only
+
+### 11. Redirect an Out-of-Scope Task
 
 If the user asks for a generic dictionary definition, translation, or encyclopedic lookup, do **not** force `dlexa` into the answer. Say the task is outside the DPD consultation scope and use another tool/source instead.
 
@@ -258,10 +375,13 @@ If the user asks for a generic dictionary definition, translation, or encycloped
 |---------|-------|--------|
 | "dlexa: command not found" | Is dlexa in PATH? | Add binary location to PATH or use absolute path |
 | Output is markdown but expected JSON | Was `--format json` used? | Add `--format json` flag to command |
+| Search command fails with `search command requires a query` | Was any query text passed after `search`? | Use `dlexa search <query>` |
 | Empty results | Is the doubt actually covered by the DPD? | Try `--no-cache`, check with `--doctor`, verify spelling, and consider that the request may be out of DPD scope |
+| Search returns no candidates | Is the term really discoverable in the DPD index? | Try spelling variants, accents, or a broader nearby expression; search does not inspect article-body content |
 | Data seems stale | Cache TTL (24h) | Use `--no-cache` to force refresh |
 | DPD brackets lost their meaning in a script | Are you reading `.Content` only? | Parse `.Article...Inlines[].Kind`; bracket semantics live in JSON inline kinds |
 | DPD signs look plain in markdown | Is this a renderer bug or expected authored output? | Plain/authored Markdown is expected; use JSON to recover sign semantics |
+| Search JSON seems different from lookup JSON | Are you parsing `.Candidates[]` or `.Entries[]`? | Search emits `Candidates`, not article `Entries` |
 | Someone wants to use dlexa as a generic dictionary | Is the task asking for broad lexical coverage rather than a normative doubt? | Redirect to a more appropriate source; `dlexa` is not a universal dictionary replacement |
 | Exit code 1 with stderr | Check stderr for Problem code | See [Problem Codes Reference](assets/examples.md#problem-codes-reference) |
 
@@ -277,6 +397,12 @@ dlexa tilde
 
 # Consultation with JSON output
 dlexa --format json solo
+
+# Discover candidate entries before lookup
+dlexa search abu dhabi
+
+# Search JSON for scripts
+dlexa --format json search guion
 
 # Force fresh data (bypass cache)
 dlexa --no-cache imprimido

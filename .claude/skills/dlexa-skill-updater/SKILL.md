@@ -14,6 +14,7 @@ metadata:
 
 - When `internal/app/app.go` flag definitions change (new/removed/renamed flags)
 - When `internal/render/*.go` output formats change (JSON/markdown structure)
+- When `internal/render/search_*.go` or `internal/model/search.go` changes the entry-search contract
 - When `internal/parse/**/*.go` or `internal/normalize/**/*.go` changes alter DPD semantics
 - When `internal/model/types.go` request/response types change
 - When DPD specs, goldens, or sign-analysis docs change
@@ -28,10 +29,13 @@ metadata:
 | Component | File Path(s) | Where to Look |
 |-----------|--------------|---------------|
 | Flag definitions | internal/app/app.go | flagSet.String/Bool calls in Run() |
-| Command logic | internal/app/app.go | Run(), runDoctor(), runLookup() methods |
+| Command logic | internal/app/app.go | Run(), runDoctor(), runLookup(), runSearch() methods |
 | Output formats | internal/render/{json,markdown,semantic_terminal}.go | Renderer implementations |
+| Search output formats | internal/render/search_{json,markdown,registry,interfaces}.go | Entry-search renderer implementations |
 | DPD parsing/normalization | internal/parse/**/*.go, internal/normalize/**/*.go | Sign preservation, bracket semantics, normalization rules |
+| Search parsing/normalization | internal/fetch/dpd_search.go, internal/parse/dpd_search.go, internal/normalize/dpd_search.go, internal/search/service.go | `/srv/keys` fetch/parse/normalize/search pipeline |
 | Request/response | internal/model/types.go | LookupRequest, LookupResult types |
+| Search request/response | internal/model/search.go | SearchRequest, SearchResult, SearchCandidate |
 | Version info | internal/version/version.go | BinaryName, Version constants |
 | Help/usage text | internal/app/app.go | printUsage() method |
 | DPD contract | openspec/specs/dpd/spec.md, openspec/changes/archive/*/archive-report.md | Current accepted semantic contract and archived decisions |
@@ -63,8 +67,11 @@ Inspect changed files and classify them:
 Read, compare, and reconcile:
 
 - `internal/model/types.go` for inline kinds and structured output schema
+- `internal/model/search.go` for structured entry-search schema
 - `internal/render/*.go` for JSON/markdown rendering behavior
+- `internal/render/search_*.go` for candidate-list output behavior
 - `internal/parse/**/*.go` and `internal/normalize/**/*.go` for semantic preservation rules
+- `internal/fetch/dpd_search.go`, `internal/parse/dpd_search.go`, `internal/normalize/dpd_search.go`, and `internal/search/service.go` for `/srv/keys` entry-discovery behavior
 - `openspec/specs/dpd/spec.md` for accepted DPD contract
 - `README.md`, `AGENTS.md`, and `.atl/skill-registry.md` for intended-use and discovery wording
 - Latest archive/verify reports for completed change intent
@@ -79,8 +86,11 @@ Read, compare, and reconcile:
 **Files to read** (use Source Map above):
 - `internal/app/app.go` → flag definitions, default values, help text
 - `internal/model/types.go` → request/response structure
+- `internal/model/search.go` → search request/response structure
 - `internal/render/json.go`, `internal/render/markdown.go` → output format implementations
+- `internal/render/search_json.go`, `internal/render/search_markdown.go` → entry-search output implementations
 - `internal/parse/**/*.go`, `internal/normalize/**/*.go` → DPD semantic preservation logic
+- `internal/fetch/dpd_search.go`, `internal/parse/dpd_search.go`, `internal/normalize/dpd_search.go` → search payload transport and normalization behavior
 - `openspec/specs/dpd/spec.md` → validated vs speculative sign contract
 - `internal/version/version.go` → version constants
 - `README.md` → DPD-first project definition and non-goals
@@ -96,7 +106,7 @@ Read, compare, and reconcile:
 **Sections to update**:
 1. **Flags Reference** → Sync flag list, descriptions, defaults from `--help` and source
 2. **Command Examples** → Update examples with current flags and outputs
-3. **Output Formats** → Refresh JSON/markdown examples captured in Phase 2
+3. **Output Formats** → Refresh lookup and search JSON/markdown examples captured in Phase 2
 4. **Version Info** → Update version string format if changed
 5. **Doctor Command** → Update diagnostic output format if changed
 6. **DPD Semantics** → Document validated inline kinds, speculative kinds, markdown/plain-sign behavior, and archived exclusions
@@ -115,6 +125,7 @@ Read, compare, and reconcile:
 Run the relevant checks for the change surface:
 
 - CLI drift: confirm documented flags/commands still match source and help output
+- Search drift: confirm documented `search <query>` behavior, cache semantics, and candidate output contract still match source/tests
 - Semantic drift: confirm documented inline kinds and markdown behavior still match source/spec/fixtures
 - Positioning drift: confirm docs still present `dlexa` as DPD-first and not as a universal dictionary replacement
 - Discovery drift: confirm registry and AGENTS still point to the real instruction surfaces and local skills
@@ -139,6 +150,8 @@ dlexa --help
 
 Compare the flag list in help output with the "Flags Reference" section in `dlexa-user/SKILL.md`. Any flag in help but not in the skill indicates drift.
 
+Also compare the documented command forms against `printUsage()` / `printSearchUsage()` so `search <query>` remains documented with the correct supported flags.
+
 ### DPD Semantic Contract Validation
 
 **Purpose**: Detect silent drift in semantic DPD output.
@@ -146,6 +159,7 @@ Compare the flag list in help output with the "Flags Reference" section in `dlex
 Verify these sources stay aligned:
 
 - `internal/model/types.go`
+- `internal/model/search.go`
 - `openspec/specs/dpd/spec.md`
 - `README.md`
 - `AGENTS.md`
@@ -162,6 +176,7 @@ Check specifically for:
 - Archived `<` and `>` exclusions remaining explicit
 - DPD-first positioning and explicit non-goal of generic-dictionary replacement
 - Contextual nuance language: current usage, cultured formal norm, register, geography, communicative context
+- Search contract details: `Candidates` top-level array, `raw_label_html`/`display_text`/`article_key`, and `/srv/keys` as entry discovery only
 
 ### Example Validity Validation
 
@@ -181,7 +196,9 @@ dlexa.exe --format json "test query"
 dlexa --format json "test query"
 ```
 
-For JSON output, verify the structure contains expected top-level keys (`request`, `entries`, `sources`, etc.) by parsing the output.
+For lookup JSON, verify the structure contains expected top-level Go field names (`Request`, `Entries`, `Warnings`, `Problems`, `Sources`, `CacheHit`, `GeneratedAt`).
+
+For search JSON, verify the structure contains expected top-level Go field names (`Request`, `Candidates`, `Warnings`, `Problems`, `CacheHit`, `GeneratedAt`) and candidate keys (`raw_label_html`, `display_text`, `article_key`).
 
 Also verify DPD structured output assumptions when relevant:
 
