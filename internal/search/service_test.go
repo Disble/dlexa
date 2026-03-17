@@ -12,6 +12,8 @@ import (
 	"github.com/Disble/dlexa/internal/parse"
 )
 
+const searchErrFormat = "Search() error = %v"
+
 func TestServiceReturnsCachedResultAndRefreshesRequestFields(t *testing.T) {
 	request := model.SearchRequest{Query: " Abu Dhabi ", Format: "json"}
 	stored := model.SearchResult{
@@ -29,7 +31,7 @@ func TestServiceReturnsCachedResultAndRefreshesRequestFields(t *testing.T) {
 
 	result, err := service.Search(context.Background(), request)
 	if err != nil {
-		t.Fatalf("Search() error = %v", err)
+		t.Fatalf(searchErrFormat, err)
 	}
 
 	if !result.CacheHit {
@@ -58,7 +60,7 @@ func TestServiceFetchesParsesNormalizesAndCachesSearchResults(t *testing.T) {
 
 	result, err := service.Search(context.Background(), request)
 	if err != nil {
-		t.Fatalf("Search() error = %v", err)
+		t.Fatalf(searchErrFormat, err)
 	}
 
 	if fetcher.request.Query != request.Query {
@@ -97,7 +99,7 @@ func TestServiceTreatsEmptyCandidateSetAsSuccessfulSearch(t *testing.T) {
 
 	result, err := service.Search(context.Background(), model.SearchRequest{Query: "no existe"})
 	if err != nil {
-		t.Fatalf("Search() error = %v", err)
+		t.Fatalf(searchErrFormat, err)
 	}
 
 	if len(result.Candidates) != 0 {
@@ -112,6 +114,25 @@ func TestServicePreservesUpstreamFailures(t *testing.T) {
 	_, err := service.Search(context.Background(), model.SearchRequest{Query: "tilde"})
 	if !errors.Is(err, wantErr) {
 		t.Fatalf("Search() error = %v, want %v", err, wantErr)
+	}
+}
+
+func TestServicePropagatesCacheWriteFailures(t *testing.T) {
+	wantErr := errors.New("cache unavailable")
+	service := NewService(
+		model.SourceDescriptor{Name: "dpd"},
+		&stubFetcher{document: fetch.Document{Body: []byte(`[]`)}},
+		&stubParser{},
+		&stubNormalizer{},
+		&stubSearchStore{setErr: wantErr},
+	)
+
+	result, err := service.Search(context.Background(), model.SearchRequest{Query: "tilde"})
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("Search() error = %v, want %v", err, wantErr)
+	}
+	if !reflect.DeepEqual(result, model.SearchResult{}) {
+		t.Fatalf("Search() result = %#v, want zero value on cache write failure", result)
 	}
 }
 

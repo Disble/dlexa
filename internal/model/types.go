@@ -9,6 +9,7 @@ import (
 // Problem codes, severity levels, and inline content kinds.
 const (
 	ProblemCodeSourceLookupFailed       = "source_lookup_failed"
+	ProblemCodeSourcePipelineIncomplete = "source_pipeline_incomplete"
 	ProblemCodeDPDFetchFailed           = "dpd_fetch_failed"
 	ProblemCodeDPDNotFound              = "dpd_not_found"
 	ProblemCodeDPDExtractFailed         = "dpd_extract_failed"

@@ -4,8 +4,6 @@ import "strings"
 
 const (
 	defaultExampleIndent = "    "
-	ansiUnderlineStart   = "\x1b[4m"
-	ansiReset            = "\x1b[0m"
 )
 
 // TerminalProfile configures terminal output capabilities such as ANSI support and indentation.
@@ -25,35 +23,4 @@ func normalizeTerminalProfile(profile TerminalProfile) TerminalProfile {
 	}
 
 	return profile
-}
-
-func (p TerminalProfile) formatRun(run TerminalRun) string {
-	text := run.Text
-	switch run.Role {
-	case TerminalRunRoleEmphasis:
-		text = compactTerminalWhitespace(text)
-		if text == "" {
-			return ""
-		}
-		if p.ANSIEnabled {
-			return ansiUnderlineStart + text + ansiReset
-		}
-		return text
-	case TerminalRunRoleReference:
-		text = compactTerminalWhitespace(text)
-		if text == "" {
-			return ""
-		}
-		return "→ " + text
-	default:
-		return text
-	}
-}
-
-func (p TerminalProfile) formatExample(text string) string {
-	text = compactTerminalWhitespace(text)
-	if text == "" {
-		return ""
-	}
-	return text
 }

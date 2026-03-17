@@ -40,6 +40,17 @@ func NewService(descriptor model.SourceDescriptor, fetcher fetch.Fetcher, parser
 	return &Service{descriptor: descriptor, fetcher: fetcher, parser: parser, normalizer: normalizer, cache: store, now: func() time.Time { return time.Now().UTC() }}
 }
 
+func (s *Service) cacheResult(ctx context.Context, cacheKey string, request model.SearchRequest, result model.SearchResult) error {
+	if s.cache == nil || request.NoCache {
+		return nil
+	}
+
+	cacheCopy := result
+	cacheCopy.Request = model.SearchRequest{Query: cache.NormalizeSearchQuery(request.Query)}
+
+	return s.cache.Set(ctx, cacheKey, cacheCopy)
+}
+
 // Search runs a DPD entry search using a format-neutral cached normalized result when available.
 func (s *Service) Search(ctx context.Context, request model.SearchRequest) (model.SearchResult, error) {
 	cacheKey := cache.BuildSearchKey(request)
@@ -75,10 +86,8 @@ func (s *Service) Search(ctx context.Context, request model.SearchRequest) (mode
 		GeneratedAt: s.now(),
 	}
 
-	if s.cache != nil && !request.NoCache {
-		cacheCopy := result
-		cacheCopy.Request = model.SearchRequest{Query: cache.NormalizeSearchQuery(request.Query)}
-		_ = s.cache.Set(ctx, cacheKey, cacheCopy)
+	if err := s.cacheResult(ctx, cacheKey, request, result); err != nil {
+		return model.SearchResult{}, err
 	}
 
 	return result, nil

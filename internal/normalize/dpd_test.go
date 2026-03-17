@@ -16,11 +16,49 @@ const (
 	dpdDespues      = "Después"
 	dpdTildeURL     = "https://www.rae.es/dpd/tilde"
 	dpdConTilde     = "Con tilde"
+	dpdAlicuota     = "alícuota"
+	dpdAlicuotaURL  = "https://www.rae.es/dpd/alícuota"
 )
 
 func normalizeSingleParagraph(t *testing.T, raw string) string {
 	t.Helper()
 	return normalizeParagraphMarkdown(raw)
+}
+
+func assertNormalizedMissKind(t *testing.T, miss *model.LookupMiss, wantKind model.LookupMissKind) {
+	t.Helper()
+	if miss == nil {
+		t.Fatal("normalized miss = nil")
+	}
+	if miss.Kind != wantKind {
+		t.Fatalf("miss kind = %q, want %q", miss.Kind, wantKind)
+	}
+}
+
+func assertNormalizedSuggestion(t *testing.T, miss *model.LookupMiss, want *model.LookupSuggestion) {
+	t.Helper()
+	if want == nil {
+		if miss.Suggestion != nil {
+			t.Fatalf("suggestion = %#v, want nil", miss.Suggestion)
+		}
+		return
+	}
+	if miss.Suggestion == nil || *miss.Suggestion != *want {
+		t.Fatalf("suggestion = %#v, want %#v", miss.Suggestion, want)
+	}
+}
+
+func assertNormalizedNextAction(t *testing.T, miss *model.LookupMiss, want *model.LookupNextAction) {
+	t.Helper()
+	if want == nil {
+		if miss.NextAction != nil {
+			t.Fatalf("next action = %#v, want nil", miss.NextAction)
+		}
+		return
+	}
+	if miss.NextAction == nil || *miss.NextAction != *want {
+		t.Fatalf("next action = %#v, want %#v", miss.NextAction, want)
+	}
 }
 
 func TestDPDNormalizerBuildsMarkdownReadyArticle(t *testing.T) {
@@ -85,21 +123,21 @@ func TestDPDNormalizerPreservesStructuredLookupMisses(t *testing.T) {
 			parsedMiss: &parse.ParsedLookupMiss{
 				Kind:       parse.ParsedLookupMissKindRelatedEntry,
 				Query:      "alicuota",
-				NoticeText: "Quizá quiso decir alícuota.",
+				NoticeText: "Quizá quiso decir " + dpdAlicuota + ".",
 				RelatedEntry: &parse.ParsedRelatedEntry{
-					RawLabelHTML: `<span class="ment">alícuota</span>`,
-					DisplayText:  "alícuota",
-					EntryID:      "alícuota",
-					Href:         "https://www.rae.es/dpd/alícuota",
+					RawLabelHTML: `<span class="ment">` + dpdAlicuota + `</span>`,
+					DisplayText:  dpdAlicuota,
+					EntryID:      dpdAlicuota,
+					Href:         dpdAlicuotaURL,
 				},
 			},
 			wantKind: model.LookupMissKindRelatedEntry,
 			wantSuggestion: &model.LookupSuggestion{
 				Kind:         "related_entry",
-				DisplayText:  "alícuota",
-				EntryID:      "alícuota",
-				URL:          "https://www.rae.es/dpd/alícuota",
-				RawLabelHTML: `<span class="ment">alícuota</span>`,
+				DisplayText:  dpdAlicuota,
+				EntryID:      dpdAlicuota,
+				URL:          dpdAlicuotaURL,
+				RawLabelHTML: `<span class="ment">` + dpdAlicuota + `</span>`,
 			},
 		},
 		{
@@ -127,26 +165,9 @@ func TestDPDNormalizerPreservesStructuredLookupMisses(t *testing.T) {
 			if len(normalized.Entries) != 0 {
 				t.Fatalf("entries = %#v, want none for miss-only result", normalized.Entries)
 			}
-			if normalized.Miss == nil {
-				t.Fatal("normalized miss = nil")
-			}
-			if normalized.Miss.Kind != tt.wantKind {
-				t.Fatalf("miss kind = %q, want %q", normalized.Miss.Kind, tt.wantKind)
-			}
-			if tt.wantSuggestion == nil {
-				if normalized.Miss.Suggestion != nil {
-					t.Fatalf("suggestion = %#v, want nil", normalized.Miss.Suggestion)
-				}
-			} else if *normalized.Miss.Suggestion != *tt.wantSuggestion {
-				t.Fatalf("suggestion = %#v, want %#v", normalized.Miss.Suggestion, tt.wantSuggestion)
-			}
-			if tt.wantNextAction == nil {
-				if normalized.Miss.NextAction != nil {
-					t.Fatalf("next action = %#v, want nil", normalized.Miss.NextAction)
-				}
-			} else if *normalized.Miss.NextAction != *tt.wantNextAction {
-				t.Fatalf("next action = %#v, want %#v", normalized.Miss.NextAction, tt.wantNextAction)
-			}
+				assertNormalizedMissKind(t, normalized.Miss, tt.wantKind)
+				assertNormalizedSuggestion(t, normalized.Miss, tt.wantSuggestion)
+				assertNormalizedNextAction(t, normalized.Miss, tt.wantNextAction)
 		})
 	}
 }

@@ -3,6 +3,7 @@ package render
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -28,18 +29,29 @@ type dpdSignGoldenSnapshot struct {
 	InlineKinds []string `json:"inline_kinds"`
 }
 
-func parseNormalizeDPDFixtureFromPath(t *testing.T, term string, fixturePath string) []model.Entry {
+const (
+	termAbrogar = "abrogar"
+	termAcertar = "acertar"
+	termAlicuota = "alícuota"
+	termAndrofobia = "androfobia"
+	dpdTestBaseURL = "https://www.rae.es/dpd/"
+	dpdHTMLContentType = "text/html; charset=utf-8"
+	exclusionMarker = "⊗"
+	acertarReference = "→ [acertar](/dpd/ayuda/modelos-de-conjugacion-verbal#acertar)"
+)
+
+func dpdTestArticleURL(term string) string {
+	return dpdTestBaseURL + term
+}
+
+func parseNormalizeDPDEntries(t *testing.T, term string, body []byte) []model.Entry {
 	t.Helper()
-	body, err := os.ReadFile(fixturePath) //nolint:gosec // G304: controlled test fixture path
-	if err != nil {
-		t.Fatalf("ReadFile(%q) error = %v", fixturePath, err)
-	}
 
 	parser := parse.NewDPDArticleParser()
 	parsed, _, err := parser.Parse(context.Background(), model.SourceDescriptor{Name: "dpd", DisplayName: term}, fetch.Document{
-		URL:         "https://www.rae.es/dpd/" + term,
-		ContentType: "text/html; charset=utf-8",
-		StatusCode:  200,
+		URL:         dpdTestArticleURL(term),
+		ContentType: dpdHTMLContentType,
+		StatusCode:  http.StatusOK,
 		Body:        body,
 	})
 	if err != nil {
@@ -53,6 +65,23 @@ func parseNormalizeDPDFixtureFromPath(t *testing.T, term string, fixturePath str
 	}
 
 	return normalized.Entries
+}
+
+func dpdFixturePath(name string) string {
+	return filepath.Join("..", "parse", "testdata", name+".html")
+}
+
+func dpdGoldenPath(name string, extension string) string {
+	return filepath.Join("..", "parse", "testdata", name+".golden."+extension)
+}
+
+func parseNormalizeDPDFixtureFromPath(t *testing.T, term string, fixturePath string) []model.Entry {
+	t.Helper()
+	body, err := os.ReadFile(fixturePath) //nolint:gosec // G304: controlled test fixture path
+	if err != nil {
+		t.Fatalf("ReadFile(%q) error = %v", fixturePath, err)
+	}
+	return parseNormalizeDPDEntries(t, term, body)
 }
 
 func renderDPDFixtureOutputs(t *testing.T, term string, fixturePath string) dpdFixtureOutput {
@@ -91,25 +120,7 @@ func renderDPDEntries(t *testing.T, term string, entries []model.Entry) dpdFixtu
 
 func renderDPDRawHTMLOutputs(t *testing.T, term string, raw string) dpdFixtureOutput {
 	t.Helper()
-
-	parser := parse.NewDPDArticleParser()
-	parsed, _, err := parser.Parse(context.Background(), model.SourceDescriptor{Name: "dpd", DisplayName: term}, fetch.Document{
-		URL:         "https://www.rae.es/dpd/" + term,
-		ContentType: "text/html; charset=utf-8",
-		StatusCode:  200,
-		Body:        []byte(raw),
-	})
-	if err != nil {
-		t.Fatalf("Parse() error = %v", err)
-	}
-
-	normalizer := normalize.NewDPDNormalizer()
-	normalized, err := normalizer.Normalize(context.Background(), model.SourceDescriptor{Name: "dpd"}, parsed)
-	if err != nil {
-		t.Fatalf("Normalize() error = %v", err)
-	}
-
-	return renderDPDEntries(t, term, normalized.Entries)
+	return renderDPDEntries(t, term, parseNormalizeDPDEntries(t, term, []byte(raw)))
 }
 
 func requireJSONContainsInlineKind(t *testing.T, payload []byte, want string) {
@@ -210,22 +221,22 @@ func TestDPDSignsBracketSemanticTaggingUsesRealFixtures(t *testing.T) {
 	}{
 		{
 			name:          "definition brackets from abrogar",
-			term:          "abrogar",
-			fixturePath:   filepath.Join("..", "parse", "testdata", "abrogar.html"),
+			term:          termAbrogar,
+			fixturePath:   dpdFixturePath(termAbrogar),
 			wantKind:      model.InlineKindBracketDefinition,
 			wantBracketMD: "[una ley]",
 		},
 		{
 			name:          "pronunciation brackets from alícuota",
-			term:          "alícuota",
-			fixturePath:   filepath.Join("..", "parse", "testdata", "alícuota.html"),
+			term:          termAlicuota,
+			fixturePath:   dpdFixturePath(termAlicuota),
 			wantKind:      model.InlineKindBracketPronunciation,
 			wantBracketMD: "[alikuóto]",
 		},
 		{
 			name:          "interpolation brackets from androfobia",
-			term:          "androfobia",
-			fixturePath:   filepath.Join("..", "parse", "testdata", "androfobia.html"),
+			term:          termAndrofobia,
+			fixturePath:   dpdFixturePath(termAndrofobia),
 			wantKind:      model.InlineKindBracketInterpolation,
 			wantBracketMD: "[las feministas]",
 		},
@@ -266,25 +277,25 @@ func TestDPDSignsValidatedFixturesMatchGoldenOutputs(t *testing.T) {
 		jsonGolden string
 	}{
 		{
-			name:       "alícuota",
-			term:       "alícuota",
-			fixture:    filepath.Join("..", "parse", "testdata", "alícuota.html"),
-			mdGolden:   filepath.Join("..", "parse", "testdata", "alícuota.golden.md"),
-			jsonGolden: filepath.Join("..", "parse", "testdata", "alícuota.golden.json"),
+			name:       termAlicuota,
+			term:       termAlicuota,
+			fixture:    dpdFixturePath(termAlicuota),
+			mdGolden:   dpdGoldenPath(termAlicuota, "md"),
+			jsonGolden: dpdGoldenPath(termAlicuota, "json"),
 		},
 		{
-			name:       "acertar",
-			term:       "acertar",
-			fixture:    filepath.Join("..", "parse", "testdata", "acertar.html"),
-			mdGolden:   filepath.Join("..", "parse", "testdata", "acertar.golden.md"),
-			jsonGolden: filepath.Join("..", "parse", "testdata", "acertar.golden.json"),
+			name:       termAcertar,
+			term:       termAcertar,
+			fixture:    dpdFixturePath(termAcertar),
+			mdGolden:   dpdGoldenPath(termAcertar, "md"),
+			jsonGolden: dpdGoldenPath(termAcertar, "json"),
 		},
 		{
-			name:       "abrogar",
-			term:       "abrogar",
-			fixture:    filepath.Join("..", "parse", "testdata", "abrogar.html"),
-			mdGolden:   filepath.Join("..", "parse", "testdata", "abrogar.golden.md"),
-			jsonGolden: filepath.Join("..", "parse", "testdata", "abrogar.golden.json"),
+			name:       termAbrogar,
+			term:       termAbrogar,
+			fixture:    dpdFixturePath(termAbrogar),
+			mdGolden:   dpdGoldenPath(termAbrogar, "md"),
+			jsonGolden: dpdGoldenPath(termAbrogar, "json"),
 		},
 	}
 
@@ -302,17 +313,17 @@ func TestDPDSignsValidatedFixturesMatchGoldenOutputs(t *testing.T) {
 }
 
 func TestDPDSignsValidatedFixturesDoNotRegressExclusionAndReferenceMarkers(t *testing.T) {
-	alicuota := renderDPDFixtureOutputs(t, "alícuota", filepath.Join("..", "parse", "testdata", "alícuota.html"))
-	if !strings.Contains(alicuota.md, "⊗") {
+	alicuota := renderDPDFixtureOutputs(t, termAlicuota, dpdFixturePath(termAlicuota))
+	if !strings.Contains(alicuota.md, exclusionMarker) {
 		t.Fatalf("alícuota markdown lost exclusion marker\n%s", alicuota.md)
 	}
 	requireJSONContainsInlineKind(t, alicuota.json, model.InlineKindExclusion)
 
-	acertar := renderDPDFixtureOutputs(t, "acertar", filepath.Join("..", "parse", "testdata", "acertar.html"))
-	if !strings.Contains(acertar.md, "→ [acertar](/dpd/ayuda/modelos-de-conjugacion-verbal#acertar)") {
+	acertar := renderDPDFixtureOutputs(t, termAcertar, dpdFixturePath(termAcertar))
+	if !strings.Contains(acertar.md, acertarReference) {
 		t.Fatalf("acertar markdown lost canonical arrow reference\n%s", acertar.md)
 	}
-	if !strings.Contains(acertar.md, "⊗") {
+	if !strings.Contains(acertar.md, exclusionMarker) {
 		t.Fatalf("acertar markdown lost exclusion marker\n%s", acertar.md)
 	}
 	requireJSONContainsInlineKind(t, acertar.json, model.InlineKindReference)

@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/Disble/dlexa/internal/fetch"
 	"github.com/Disble/dlexa/internal/model"
@@ -747,8 +748,8 @@ func needsInlineTextSpace(current, next string) bool {
 	if current == "" || next == "" {
 		return false
 	}
-	last := rune(current[len(current)-1])
-	first := rune(next[0])
+	last, _ := utf8.DecodeLastRuneInString(current)
+	first, _ := utf8.DecodeRuneInString(next)
 	if (unicode.IsLetter(last) && unicode.IsDigit(first)) || (unicode.IsDigit(last) && unicode.IsLetter(first)) {
 		return false
 	}

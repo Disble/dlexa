@@ -2,6 +2,7 @@ package parse
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +11,31 @@ import (
 	"github.com/Disble/dlexa/internal/fetch"
 	"github.com/Disble/dlexa/internal/model"
 )
+
+const (
+	dpdTestBaseURL     = "https://www.rae.es/dpd/"
+	dpdHTMLContentType = "text/html; charset=utf-8"
+	dpdDictionaryLabel = "Diccionario panhispánico de dudas"
+)
+
+func dpdTestArticleURL(term string) string {
+	return dpdTestBaseURL + term
+}
+
+func parseFixtureResult(t *testing.T, descriptor model.SourceDescriptor, documentURL string, fixture string) Result {
+	t.Helper()
+	parser := NewDPDArticleParser()
+	result, _, err := parser.Parse(context.Background(), descriptor, fetch.Document{
+		URL:         documentURL,
+		ContentType: dpdHTMLContentType,
+		StatusCode:  http.StatusOK,
+		Body:        loadDPDFixtureHTML(t, fixture),
+	})
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	return result
+}
 
 func loadDPDFixtureHTML(t *testing.T, name string) []byte {
 	t.Helper()
@@ -22,16 +48,7 @@ func loadDPDFixtureHTML(t *testing.T, name string) []byte {
 
 func parseFixture(t *testing.T, name string) []ParsedArticle {
 	t.Helper()
-	parser := NewDPDArticleParser()
-	result, _, err := parser.Parse(context.Background(), model.SourceDescriptor{Name: "dpd", DisplayName: name}, fetch.Document{
-		URL:         "https://www.rae.es/dpd/" + name,
-		ContentType: "text/html; charset=utf-8",
-		StatusCode:  200,
-		Body:        loadDPDFixtureHTML(t, name),
-	})
-	if err != nil {
-		t.Fatalf("Parse() error = %v", err)
-	}
+	result := parseFixtureResult(t, model.SourceDescriptor{Name: "dpd", DisplayName: name}, dpdTestArticleURL(name), name)
 	return result.Articles
 }
 
@@ -40,7 +57,7 @@ func assertBienArticleMetadata(t *testing.T, article ParsedArticle) {
 	if article.EntryID != "bien" {
 		t.Fatalf("EntryID = %q", article.EntryID)
 	}
-	if article.Dictionary != "Diccionario panhispánico de dudas" {
+	if article.Dictionary != dpdDictionaryLabel {
 		t.Fatalf("Dictionary = %q", article.Dictionary)
 	}
 	if article.Edition != "2.ª edición" {
@@ -78,12 +95,85 @@ func assertBienFirstParagraph(t *testing.T, article ParsedArticle) {
 	}
 }
 
+func assertSearchResultArticleCount(t *testing.T, result Result, wantArticleCount int) {
+	t.Helper()
+	if got := len(result.Articles); got != wantArticleCount {
+		t.Fatalf("articles = %d, want %d", got, wantArticleCount)
+	}
+}
+
+func assertExactHitHasNoMiss(t *testing.T, result Result) {
+	t.Helper()
+	if result.Miss != nil {
+		t.Fatalf("result.Miss = %#v, want nil for exact hit", result.Miss)
+	}
+}
+
+func assertSearchMissResult(t *testing.T, result Result, wantKind ParsedLookupMissKind, wantQuery string) {
+	t.Helper()
+	if result.Miss == nil {
+		t.Fatal("result.Miss = nil, want structured miss")
+	}
+	if result.Miss.Kind != wantKind {
+		t.Fatalf("miss kind = %q, want %q", result.Miss.Kind, wantKind)
+	}
+	if result.Miss.Query != wantQuery {
+		t.Fatalf("miss query = %q, want %q", result.Miss.Query, wantQuery)
+	}
+}
+
+func assertRelatedEntrySuggestion(t *testing.T, result Result, wantText string, wantHref string) {
+	t.Helper()
+	if result.Miss == nil || result.Miss.RelatedEntry == nil {
+		t.Fatal("related entry = nil, want suggestion")
+	}
+	if result.Miss.RelatedEntry.DisplayText != wantText {
+		t.Fatalf("display text = %q, want %q", result.Miss.RelatedEntry.DisplayText, wantText)
+	}
+	if result.Miss.RelatedEntry.Href != wantHref {
+		t.Fatalf("href = %q, want %q", result.Miss.RelatedEntry.Href, wantHref)
+	}
+}
+
+func assertNoRelatedEntrySuggestion(t *testing.T, result Result) {
+	t.Helper()
+	if result.Miss != nil && result.Miss.RelatedEntry != nil {
+		t.Fatalf("related entry = %#v, want nil", result.Miss.RelatedEntry)
+	}
+}
+
+func assertExactHitOrMiss(t *testing.T, result Result, tt struct {
+	name               string
+	fixture            string
+	descriptor         model.SourceDescriptor
+	documentURL        string
+	wantArticleCount   int
+	wantMissKind       ParsedLookupMissKind
+	wantMissQuery      string
+	wantSuggestionText string
+	wantSuggestionHref string
+}) {
+	t.Helper()
+	assertSearchResultArticleCount(t, result, tt.wantArticleCount)
+	if tt.wantArticleCount > 0 {
+		assertExactHitHasNoMiss(t, result)
+		return
+	}
+
+	assertSearchMissResult(t, result, tt.wantMissKind, tt.wantMissQuery)
+	if tt.wantSuggestionText == "" {
+		assertNoRelatedEntrySuggestion(t, result)
+		return
+	}
+	assertRelatedEntrySuggestion(t, result, tt.wantSuggestionText, tt.wantSuggestionHref)
+}
+
 func TestDPDArticleParserExtractsBienArticleAndSkipsChrome(t *testing.T) {
 	parser := NewDPDArticleParser()
 	result, warnings, err := parser.Parse(context.Background(), model.SourceDescriptor{Name: "dpd", DisplayName: "bien"}, fetch.Document{
-		URL:         "https://www.rae.es/dpd/bien",
-		ContentType: "text/html; charset=utf-8",
-		StatusCode:  200,
+		URL:         dpdTestArticleURL("bien"),
+		ContentType: dpdHTMLContentType,
+		StatusCode:  http.StatusOK,
 		Body:        loadDPDFixtureHTML(t, "bien"),
 	})
 	if err != nil {
@@ -121,42 +211,42 @@ func TestDPDArticleParserClassifiesExactHitsAndMisses(t *testing.T) {
 			name:             "exact article hit remains article-only",
 			fixture:          "bien",
 			descriptor:       model.SourceDescriptor{Name: "dpd", DisplayName: "bien"},
-			documentURL:      "https://www.rae.es/dpd/bien",
+			documentURL:      dpdTestArticleURL("bien"),
 			wantArticleCount: 1,
 		},
 		{
 			name:               "suggestion bearing miss preserves native related entry",
 			fixture:            "alicuota",
 			descriptor:         model.SourceDescriptor{Name: "dpd", DisplayName: "alicuota"},
-			documentURL:        "https://www.rae.es/dpd/alicuota",
+			documentURL:        dpdTestArticleURL("alicuota"),
 			wantMissKind:       ParsedLookupMissKindRelatedEntry,
 			wantMissQuery:      "alicuota",
 			wantSuggestionText: "alícuota",
-			wantSuggestionHref: "https://www.rae.es/dpd/alícuota",
+			wantSuggestionHref: dpdTestArticleURL("alícuota"),
 		},
 		{
 			name:               "live abu shape preserves native related entry from single quoted relative href",
 			fixture:            "abu",
-			descriptor:         model.SourceDescriptor{Name: "dpd", DisplayName: "Diccionario panhispánico de dudas"},
-			documentURL:        "https://www.rae.es/dpd/abu",
+			descriptor:         model.SourceDescriptor{Name: "dpd", DisplayName: dpdDictionaryLabel},
+			documentURL:        dpdTestArticleURL("abu"),
 			wantMissKind:       ParsedLookupMissKindRelatedEntry,
 			wantMissQuery:      "abu",
 			wantSuggestionText: "agur",
-			wantSuggestionHref: "https://www.rae.es/dpd/agur",
+			wantSuggestionHref: dpdTestArticleURL("agur"),
 		},
 		{
 			name:          "generic miss without related entry stays structured",
 			fixture:       "zumbidoinexistente",
-			descriptor:    model.SourceDescriptor{Name: "dpd", DisplayName: "Diccionario panhispánico de dudas"},
-			documentURL:   "https://www.rae.es/dpd/zumbidoinexistente",
+			descriptor:    model.SourceDescriptor{Name: "dpd", DisplayName: dpdDictionaryLabel},
+			documentURL:   dpdTestArticleURL("zumbidoinexistente"),
 			wantMissKind:  ParsedLookupMissKindGenericNotFound,
 			wantMissQuery: "zumbidoinexistente",
 		},
 		{
 			name:          "generic miss with incidental resultados link stays generic not found",
 			fixture:       "zzzzz",
-			descriptor:    model.SourceDescriptor{Name: "dpd", DisplayName: "Diccionario panhispánico de dudas"},
-			documentURL:   "https://www.rae.es/dpd/zzzzz",
+			descriptor:    model.SourceDescriptor{Name: "dpd", DisplayName: dpdDictionaryLabel},
+			documentURL:   dpdTestArticleURL("zzzzz"),
 			wantMissKind:  ParsedLookupMissKindGenericNotFound,
 			wantMissQuery: "zzzzz",
 		},
@@ -164,53 +254,8 @@ func TestDPDArticleParserClassifiesExactHitsAndMisses(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			parser := NewDPDArticleParser()
-			result, _, err := parser.Parse(context.Background(), tt.descriptor, fetch.Document{
-				URL:         tt.documentURL,
-				ContentType: "text/html; charset=utf-8",
-				StatusCode:  200,
-				Body:        loadDPDFixtureHTML(t, tt.fixture),
-			})
-			if err != nil {
-				t.Fatalf("Parse() error = %v", err)
-			}
-
-			if got := len(result.Articles); got != tt.wantArticleCount {
-				t.Fatalf("articles = %d, want %d", got, tt.wantArticleCount)
-			}
-
-			if tt.wantArticleCount > 0 {
-				if result.Miss != nil {
-					t.Fatalf("result.Miss = %#v, want nil for exact hit", result.Miss)
-				}
-				return
-			}
-
-			if result.Miss == nil {
-				t.Fatal("result.Miss = nil, want structured miss")
-			}
-			if result.Miss.Kind != tt.wantMissKind {
-				t.Fatalf("miss kind = %q, want %q", result.Miss.Kind, tt.wantMissKind)
-			}
-			if result.Miss.Query != tt.wantMissQuery {
-				t.Fatalf("miss query = %q, want %q", result.Miss.Query, tt.wantMissQuery)
-			}
-			if tt.wantSuggestionText == "" {
-				if result.Miss.RelatedEntry != nil {
-					t.Fatalf("related entry = %#v, want nil", result.Miss.RelatedEntry)
-				}
-				return
-			}
-
-			if result.Miss.RelatedEntry == nil {
-				t.Fatal("related entry = nil, want suggestion")
-			}
-			if result.Miss.RelatedEntry.DisplayText != tt.wantSuggestionText {
-				t.Fatalf("display text = %q, want %q", result.Miss.RelatedEntry.DisplayText, tt.wantSuggestionText)
-			}
-			if result.Miss.RelatedEntry.Href != tt.wantSuggestionHref {
-				t.Fatalf("href = %q, want %q", result.Miss.RelatedEntry.Href, tt.wantSuggestionHref)
-			}
+			result := parseFixtureResult(t, tt.descriptor, tt.documentURL, tt.fixture)
+			assertExactHitOrMiss(t, result, tt)
 		})
 	}
 }
@@ -285,6 +330,42 @@ func TestParseTablePreservesRowAndColumnSpans(t *testing.T) {
 	}
 	if got := table.Rows[1].Cells[0].ColSpan; got != 2 {
 		t.Fatalf("colspan = %d, want 2", got)
+	}
+}
+
+func TestNeedsInlineTextSpaceHandlesUnicodeLetterDigitBoundaries(t *testing.T) {
+	tests := []struct {
+		name    string
+		current string
+		next    string
+		want    bool
+	}{
+		{
+			name:    "unicode letter followed by digit stays tight",
+			current: "canción",
+			next:    "2",
+			want:    false,
+		},
+		{
+			name:    "digit followed by unicode letter stays tight",
+			current: "2",
+			next:    "ámbitos",
+			want:    false,
+		},
+		{
+			name:    "plain words still get spacing",
+			current: "entrada",
+			next:    "relacionada",
+			want:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := needsInlineTextSpace(tt.current, tt.next); got != tt.want {
+				t.Fatalf("needsInlineTextSpace(%q, %q) = %v, want %v", tt.current, tt.next, got, tt.want)
+			}
+		})
 	}
 }
 

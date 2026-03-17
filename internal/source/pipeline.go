@@ -43,10 +43,10 @@ func (s *PipelineSource) Lookup(ctx context.Context, request model.LookupRequest
 
 	if s.fetcher == nil || s.parser == nil || s.normalizer == nil {
 		result.Problems = append(result.Problems, model.Problem{
-			Code:     "source_pipeline_incomplete",
+			Code:     model.ProblemCodeSourcePipelineIncomplete,
 			Message:  "source pipeline is missing one or more adapters",
 			Source:   s.descriptor.Name,
-			Severity: "error",
+			Severity: model.ProblemSeverityError,
 		})
 		return result, nil
 	}

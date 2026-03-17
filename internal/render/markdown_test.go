@@ -571,18 +571,22 @@ func TestMarkdownRendererRendersStructuredLookupMissGuidance(t *testing.T) {
 			if err != nil {
 				t.Fatalf(testErrRender, err)
 			}
-			text := string(payload)
-			for _, want := range tt.mustHave {
-				if !strings.Contains(text, want) {
-					t.Fatalf(testPayloadMissing, want, text)
-				}
-			}
-			for _, forbidden := range tt.mustNot {
-				if strings.Contains(text, forbidden) {
-					t.Fatalf("payload contains forbidden text %q\n%s", forbidden, text)
-				}
-			}
+			assertMarkdownPayloadGuidance(t, string(payload), tt.mustHave, tt.mustNot)
 		})
+	}
+}
+
+func assertMarkdownPayloadGuidance(t *testing.T, text string, mustHave []string, mustNot []string) {
+	t.Helper()
+	for _, want := range mustHave {
+		if !strings.Contains(text, want) {
+			t.Fatalf(testPayloadMissing, want, text)
+		}
+	}
+	for _, forbidden := range mustNot {
+		if strings.Contains(text, forbidden) {
+			t.Fatalf("payload contains forbidden text %q\n%s", forbidden, text)
+		}
 	}
 }
 

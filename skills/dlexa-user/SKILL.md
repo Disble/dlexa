@@ -383,7 +383,7 @@ If the user asks for a generic dictionary definition, translation, or encycloped
 | DPD signs look plain in markdown | Is this a renderer bug or expected authored output? | Plain/authored Markdown is expected; use JSON to recover sign semantics |
 | Search JSON seems different from lookup JSON | Are you parsing `.Candidates[]` or `.Entries[]`? | Search emits `Candidates`, not article `Entries` |
 | Someone wants to use dlexa as a generic dictionary | Is the task asking for broad lexical coverage rather than a normative doubt? | Redirect to a more appropriate source; `dlexa` is not a universal dictionary replacement |
-| Exit code 1 with stderr | Check stderr for Problem code | See [Problem Codes Reference](assets/examples.md#problem-codes-reference) |
+| Exit code 1 with stderr | Check stderr for Problem code | See [Problem Codes Reference](assets/examples.md) |
 
 ---
 

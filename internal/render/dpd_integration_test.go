@@ -227,45 +227,80 @@ func TestLookupMissMarkdownAndJSONStayInParity(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			markdownPayload, err := NewMarkdownRenderer().Render(context.Background(), tt.result)
-			if err != nil {
-				t.Fatalf(renderErrFmt, err)
-			}
-			if !strings.Contains(string(markdownPayload), tt.wantText) {
-				t.Fatalf("markdown missing %q\n%s", tt.wantText, markdownPayload)
-			}
-
-			jsonPayload, err := NewJSONRenderer().Render(context.Background(), tt.result)
-			if err != nil {
-				t.Fatalf("JSON Render() error = %v", err)
-			}
-			var decoded struct {
-				Misses []struct {
-					Kind       string `json:"kind"`
-					Suggestion *struct {
-						DisplayText string `json:"display_text"`
-					} `json:"suggestion"`
-					NextAction *struct {
-						Command string `json:"command"`
-					} `json:"next_action"`
-				} `json:"misses"`
-			}
-			if err := json.Unmarshal(jsonPayload, &decoded); err != nil {
-				t.Fatalf("json.Unmarshal() error = %v", err)
-			}
-			if len(decoded.Misses) != 1 || decoded.Misses[0].Kind != tt.wantKind {
-				t.Fatalf("decoded misses = %#v, want kind %q", decoded.Misses, tt.wantKind)
-			}
-			if tt.wantCommand != "" {
-				if decoded.Misses[0].NextAction == nil || decoded.Misses[0].NextAction.Command != tt.wantCommand {
-					t.Fatalf("decoded next action = %#v, want %q", decoded.Misses[0].NextAction, tt.wantCommand)
-				}
-				return
-			}
-			if decoded.Misses[0].Suggestion == nil || decoded.Misses[0].Suggestion.DisplayText != tt.wantDisplay {
-				t.Fatalf("decoded suggestion = %#v, want %q", decoded.Misses[0].Suggestion, tt.wantDisplay)
-			}
+			assertLookupMissMarkdownParity(t, tt.result, tt.wantText)
+			decoded := decodeLookupMissJSON(t, tt.result)
+			assertDecodedLookupMiss(t, decoded, tt.wantKind, tt.wantCommand, tt.wantDisplay)
 		})
+	}
+}
+
+func assertLookupMissMarkdownParity(t *testing.T, result model.LookupResult, wantText string) {
+	t.Helper()
+	markdownPayload, err := NewMarkdownRenderer().Render(context.Background(), result)
+	if err != nil {
+		t.Fatalf(renderErrFmt, err)
+	}
+	if !strings.Contains(string(markdownPayload), wantText) {
+		t.Fatalf("markdown missing %q\n%s", wantText, markdownPayload)
+	}
+}
+
+func decodeLookupMissJSON(t *testing.T, result model.LookupResult) struct {
+	Misses []struct {
+		Kind       string `json:"kind"`
+		Suggestion *struct {
+			DisplayText string `json:"display_text"`
+		} `json:"suggestion"`
+		NextAction *struct {
+			Command string `json:"command"`
+		} `json:"next_action"`
+	} `json:"misses"`
+} {
+	t.Helper()
+	jsonPayload, err := NewJSONRenderer().Render(context.Background(), result)
+	if err != nil {
+		t.Fatalf("JSON Render() error = %v", err)
+	}
+	var decoded struct {
+		Misses []struct {
+			Kind       string `json:"kind"`
+			Suggestion *struct {
+				DisplayText string `json:"display_text"`
+			} `json:"suggestion"`
+			NextAction *struct {
+				Command string `json:"command"`
+			} `json:"next_action"`
+		} `json:"misses"`
+	}
+	if err := json.Unmarshal(jsonPayload, &decoded); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	return decoded
+}
+
+func assertDecodedLookupMiss(t *testing.T, decoded struct {
+	Misses []struct {
+		Kind       string `json:"kind"`
+		Suggestion *struct {
+			DisplayText string `json:"display_text"`
+		} `json:"suggestion"`
+		NextAction *struct {
+			Command string `json:"command"`
+		} `json:"next_action"`
+	} `json:"misses"`
+}, wantKind string, wantCommand string, wantDisplay string) {
+	t.Helper()
+	if len(decoded.Misses) != 1 || decoded.Misses[0].Kind != wantKind {
+		t.Fatalf("decoded misses = %#v, want kind %q", decoded.Misses, wantKind)
+	}
+	if wantCommand != "" {
+		if decoded.Misses[0].NextAction == nil || decoded.Misses[0].NextAction.Command != wantCommand {
+			t.Fatalf("decoded next action = %#v, want %q", decoded.Misses[0].NextAction, wantCommand)
+		}
+		return
+	}
+	if decoded.Misses[0].Suggestion == nil || decoded.Misses[0].Suggestion.DisplayText != wantDisplay {
+		t.Fatalf("decoded suggestion = %#v, want %q", decoded.Misses[0].Suggestion, wantDisplay)
 	}
 }
 

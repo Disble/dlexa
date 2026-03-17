@@ -14,6 +14,8 @@ import (
 	"github.com/Disble/dlexa/internal/render"
 )
 
+const runErrFormat = "Run() error = %v"
+
 func TestRunConstructsLookupRequestAndDelegatesToQueryService(t *testing.T) {
 	cli := &fakeCLI{
 		args: []string{"dlexa", "--format", "json", "--source", "demo, extra ", "--no-cache", "hola", "mundo"},
@@ -34,7 +36,7 @@ func TestRunConstructsLookupRequestAndDelegatesToQueryService(t *testing.T) {
 	}
 
 	if err := application.Run(context.Background()); err != nil {
-		t.Fatalf("Run() error = %v", err)
+		t.Fatalf(runErrFormat, err)
 	}
 
 	wantRequest := model.LookupRequest{
@@ -77,7 +79,7 @@ func TestRunDispatchesDedicatedSearchCommandWithoutLookupFlow(t *testing.T) {
 	}
 
 	if err := application.Run(context.Background()); err != nil {
-		t.Fatalf("Run() error = %v", err)
+		t.Fatalf(runErrFormat, err)
 	}
 
 	if lookup.called {
@@ -136,7 +138,7 @@ func TestRunWritesRendererProducedStdoutPayloadForDPDSemantics(t *testing.T) {
 	}
 
 	if err := application.Run(context.Background()); err != nil {
-		t.Fatalf("Run() error = %v", err)
+		t.Fatalf(runErrFormat, err)
 	}
 
 	stdout := cli.stdout.String()
@@ -165,7 +167,7 @@ func TestRunPrintsSearchFirstUsageGuidanceWithoutImplyingFallback(t *testing.T) 
 
 	err := application.Run(context.Background())
 	if err != nil {
-		t.Fatalf("Run() error = %v", err)
+		t.Fatalf(runErrFormat, err)
 	}
 	usage := cli.stderr.String()
 	for _, want := range []string{

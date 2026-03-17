@@ -312,5 +312,5 @@ This skill assumes `dlexa-user` exists. If it does not, the update workflow cann
 
 ## Resources
 
-- **Skill Creator**: See [skill-creator](~/.config/opencode/skills/skill-creator/SKILL.md) for how to structure the dlexa-user skill
+- **Skill Creator**: Use the `skill-creator` skill to structure the dlexa-user skill
 - **Project Conventions**: See [AGENTS.md](../../../AGENTS.md) for repo workflow and lint patterns
