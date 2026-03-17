@@ -43,3 +43,4 @@ desktop.ini
 
 # MCP local config
 .mcp.json
+scripts/testdata/*
