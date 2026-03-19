@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
 	"testing"
 	"time"
 
@@ -406,36 +405,5 @@ func TestFilesystemStoreEnvelopeFormat(t *testing.T) {
 func TestFilesystemStoreConcurrentReadWrite(t *testing.T) {
 	dir := t.TempDir()
 	store := NewFilesystemStore(dir, 24*time.Hour)
-	ctx := context.Background()
-
-	const writers = 10
-	const readers = 10
-	const iterations = 50
-
-	var wg sync.WaitGroup
-	wg.Add(writers + readers)
-
-	// Writer goroutines: each writes to shared and unique keys.
-	for w := 0; w < writers; w++ {
-		go runConcurrentWriter(t, store, w, iterations, &wg)
-	}
-
-	// Reader goroutines: each reads from shared key and random unique keys.
-	for r := 0; r < readers; r++ {
-		go runConcurrentReader(t, store, r, iterations, writers, &wg)
-	}
-
-	wg.Wait()
-
-	// Verify the shared key was written at least once.
-	result, ok, err := store.Get(ctx, keyShared)
-	if err != nil {
-		t.Fatalf("final Get(shared) error = %v", err)
-	}
-	if !ok {
-		t.Fatal("final Get(shared) ok = false, want true")
-	}
-	if len(result.Entries) == 0 {
-		t.Fatal("final Get(shared) entries = 0, want > 0")
-	}
+	runConcurrentStoreTest(t, store, 10, 10, 50)
 }

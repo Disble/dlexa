@@ -71,25 +71,28 @@ func parseNormalizeDPDMiss(t *testing.T, term string) *model.LookupMiss {
 	return normalized.Miss
 }
 
-func TestDPDParseNormalizeRenderMatchesBienGolden(t *testing.T) {
-	entries := parseNormalizeDPD(t, "bien")
+func assertMarkdownMatchesGolden(t *testing.T, term string, entries []model.Entry) {
+	t.Helper()
 	renderer := NewMarkdownRenderer()
 	payload, err := renderer.Render(context.Background(), model.LookupResult{
-		Request: model.LookupRequest{Query: "bien", Format: "markdown"},
+		Request: model.LookupRequest{Query: term, Format: "markdown"},
 		Entries: entries,
 	})
 	if err != nil {
 		t.Fatalf(renderErrFmt, err)
 	}
-
-	want, err := os.ReadFile(filepath.Join("..", "..", "testdata", "dpd", "bien.md.golden"))
+	want, err := os.ReadFile(filepath.Join("..", "..", "testdata", "dpd", term+".md.golden")) //nolint:gosec // G304: test fixture path from controlled input
 	if err != nil {
 		t.Fatalf("ReadFile() golden error = %v", err)
 	}
-
 	if stripANSITestOutput(string(payload)) != string(want) {
 		t.Fatalf("Pipeline markdown mismatch\n--- got ---\n%s\n--- want ---\n%s", payload, want)
 	}
+}
+
+func TestDPDParseNormalizeRenderMatchesBienGolden(t *testing.T) {
+	entries := parseNormalizeDPD(t, "bien")
+	assertMarkdownMatchesGolden(t, "bien", entries)
 }
 
 func TestDPDParseNormalizeRenderMatchesTildeGoldenAndJSONContract(t *testing.T) {
@@ -98,21 +101,7 @@ func TestDPDParseNormalizeRenderMatchesTildeGoldenAndJSONContract(t *testing.T) 
 		t.Fatalf("entries = %d, want 2", len(entries))
 	}
 
-	renderer := NewMarkdownRenderer()
-	payload, err := renderer.Render(context.Background(), model.LookupResult{
-		Request: model.LookupRequest{Query: "tilde", Format: "markdown"},
-		Entries: entries,
-	})
-	if err != nil {
-		t.Fatalf(renderErrFmt, err)
-	}
-	want, err := os.ReadFile(filepath.Join("..", "..", "testdata", "dpd", "tilde.md.golden"))
-	if err != nil {
-		t.Fatalf("ReadFile() golden error = %v", err)
-	}
-	if stripANSITestOutput(string(payload)) != string(want) {
-		t.Fatalf("Pipeline markdown mismatch\n--- got ---\n%s\n--- want ---\n%s", payload, want)
-	}
+	assertMarkdownMatchesGolden(t, "tilde", entries)
 
 	jsonRenderer := NewJSONRenderer()
 	jsonPayload, err := jsonRenderer.Render(context.Background(), model.LookupResult{

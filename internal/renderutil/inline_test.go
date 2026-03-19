@@ -9,7 +9,80 @@ import (
 const (
 	testSingleText = "single text"
 	testBienRef1   = "bien#ref1"
+	renderInlineMarkdownWantFmt = "RenderInlineMarkdown() = %q, want %q"
 )
+
+// sharedStyledInlineVariants contains test cases where RenderInlineMarkdown
+// and RenderMarkdownInlines produce identical output.
+var sharedStyledInlineVariants = []struct {
+	name    string
+	inlines []model.Inline
+	want    string
+}{
+	{
+		"emphasis with text children wraps",
+		[]model.Inline{{
+			Kind: model.InlineKindEmphasis,
+			Children: []model.Inline{
+				{Kind: model.InlineKindText, Text: "hello world"},
+			},
+		}},
+		"*hello world*",
+	},
+	{
+		"mention with multiple text children",
+		[]model.Inline{{
+			Kind: model.InlineKindMention,
+			Children: []model.Inline{
+				{Kind: model.InlineKindText, Text: "first"},
+				{Kind: model.InlineKindText, Text: " second"},
+			},
+		}},
+		"*first second*",
+	},
+	{
+		"emphasis with empty scaffold child",
+		[]model.Inline{{
+			Kind: model.InlineKindEmphasis,
+			Children: []model.Inline{
+				{Kind: model.InlineKindText, Text: "abc"},
+				{Kind: model.InlineKindScaffold, Text: ""},
+			},
+		}},
+		"*abc*",
+	},
+	{
+		"mention with scaffold that has children",
+		[]model.Inline{{
+			Kind: model.InlineKindMention,
+			Children: []model.Inline{
+				{Kind: model.InlineKindText, Text: "abc"},
+				{Kind: model.InlineKindScaffold, Children: []model.Inline{
+					{Kind: model.InlineKindText, Text: "def"},
+				}},
+			},
+		}},
+		"*abc*def",
+	},
+}
+
+// emphasisWithMentionChildCase is an inline test case where both
+// RenderInlineMarkdown and RenderMarkdownInlines produce the same output.
+var emphasisWithMentionChildCase = struct {
+	name    string
+	inlines []model.Inline
+	want    string
+}{
+	"emphasis with mention child unwraps",
+	[]model.Inline{{
+		Kind: model.InlineKindEmphasis,
+		Children: []model.Inline{{
+			Kind: model.InlineKindMention,
+			Text: "tilde",
+		}},
+	}},
+	"*tilde*",
+}
 
 func TestNeedsInlineSpace(t *testing.T) {
 	tests := []struct {
@@ -178,132 +251,39 @@ func TestFirstInlineWordRune(t *testing.T) {
 }
 
 func TestRenderStyledInlineMarkdownVariants(t *testing.T) {
-	tests := []struct {
+	tests := make([]struct {
+		name    string
+		inlines []model.Inline
+		want    string
+	}, 0, len(sharedStyledInlineVariants)+1)
+	tests = append(tests, sharedStyledInlineVariants...)
+	tests = append(tests, struct {
 		name    string
 		inlines []model.Inline
 		want    string
 	}{
-		{
-			"emphasis with text children wraps",
-			[]model.Inline{{
-				Kind: model.InlineKindEmphasis,
-				Children: []model.Inline{
-					{Kind: model.InlineKindText, Text: "hello world"},
-				},
-			}},
-			"*hello world*",
-		},
-		{
-			"mention with multiple text children",
-			[]model.Inline{{
-				Kind: model.InlineKindMention,
-				Children: []model.Inline{
-					{Kind: model.InlineKindText, Text: "first"},
-					{Kind: model.InlineKindText, Text: " second"},
-				},
-			}},
-			"*first second*",
-		},
-		{
-			"emphasis with empty scaffold child",
-			[]model.Inline{{
-				Kind: model.InlineKindEmphasis,
-				Children: []model.Inline{
-					{Kind: model.InlineKindText, Text: "abc"},
-					{Kind: model.InlineKindScaffold, Text: ""},
-				},
-			}},
-			"*abc*",
-		},
-		{
-			"mention with scaffold that has children",
-			[]model.Inline{{
-				Kind: model.InlineKindMention,
-				Children: []model.Inline{
-					{Kind: model.InlineKindText, Text: "abc"},
-					{Kind: model.InlineKindScaffold, Children: []model.Inline{
-						{Kind: model.InlineKindText, Text: "def"},
-					}},
-				},
-			}},
-			"*abc*def",
-		},
-		{
-			"work title with children",
-			[]model.Inline{{
-				Kind: model.InlineKindWorkTitle,
-				Children: []model.Inline{
-					{Kind: model.InlineKindText, Text: "Don Quijote"},
-				},
-			}},
-			"*Don Quijote*",
-		},
-	}
+		"work title with children",
+		[]model.Inline{{
+			Kind: model.InlineKindWorkTitle,
+			Children: []model.Inline{
+				{Kind: model.InlineKindText, Text: "Don Quijote"},
+			},
+		}},
+		"*Don Quijote*",
+	})
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := RenderInlineMarkdown(tt.inlines)
 			if got != tt.want {
-				t.Fatalf("RenderInlineMarkdown() = %q, want %q", got, tt.want)
+					t.Fatalf(renderInlineMarkdownWantFmt, got, tt.want)
 			}
 		})
 	}
 }
 
 func TestRenderStyledMarkdownInlineVariants(t *testing.T) {
-	tests := []struct {
-		name    string
-		inlines []model.Inline
-		want    string
-	}{
-		{
-			"emphasis with text children wraps",
-			[]model.Inline{{
-				Kind: model.InlineKindEmphasis,
-				Children: []model.Inline{
-					{Kind: model.InlineKindText, Text: "hello world"},
-				},
-			}},
-			"*hello world*",
-		},
-		{
-			"mention with multiple text children",
-			[]model.Inline{{
-				Kind: model.InlineKindMention,
-				Children: []model.Inline{
-					{Kind: model.InlineKindText, Text: "first"},
-					{Kind: model.InlineKindText, Text: " second"},
-				},
-			}},
-			"*first second*",
-		},
-		{
-			"emphasis with empty scaffold child",
-			[]model.Inline{{
-				Kind: model.InlineKindEmphasis,
-				Children: []model.Inline{
-					{Kind: model.InlineKindText, Text: "abc"},
-					{Kind: model.InlineKindScaffold, Text: ""},
-				},
-			}},
-			"*abc*",
-		},
-		{
-			"mention with scaffold that has children",
-			[]model.Inline{{
-				Kind: model.InlineKindMention,
-				Children: []model.Inline{
-					{Kind: model.InlineKindText, Text: "abc"},
-					{Kind: model.InlineKindScaffold, Children: []model.Inline{
-						{Kind: model.InlineKindText, Text: "def"},
-					}},
-				},
-			}},
-			"*abc*def",
-		},
-	}
-
-	for _, tt := range tests {
+	for _, tt := range sharedStyledInlineVariants {
 		t.Run(tt.name, func(t *testing.T) {
 			got := RenderMarkdownInlines(tt.inlines)
 			if got != tt.want {
@@ -384,24 +364,14 @@ func TestRenderInlineMarkdown(t *testing.T) {
 			},
 			"El comparativo es *mejor*. ‹Cierra bien la ventana›.",
 		},
-		{
-			"emphasis with mention child unwraps",
-			[]model.Inline{{
-				Kind: model.InlineKindEmphasis,
-				Children: []model.Inline{{
-					Kind: model.InlineKindMention,
-					Text: "tilde",
-				}},
-			}},
-			"*tilde*",
-		},
+		emphasisWithMentionChildCase,
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := RenderInlineMarkdown(tt.inlines)
 			if got != tt.want {
-				t.Fatalf("RenderInlineMarkdown() = %q, want %q", got, tt.want)
+					t.Fatalf(renderInlineMarkdownWantFmt, got, tt.want)
 			}
 		})
 	}
@@ -442,17 +412,7 @@ func TestRenderMarkdownInlines(t *testing.T) {
 			},
 			"El comparativo es *mejor*. *Cierra bien la ventana*.",
 		},
-		{
-			"emphasis with mention child unwraps",
-			[]model.Inline{{
-				Kind: model.InlineKindEmphasis,
-				Children: []model.Inline{{
-					Kind: model.InlineKindMention,
-					Text: "tilde",
-				}},
-			}},
-			"*tilde*",
-		},
+		emphasisWithMentionChildCase,
 		{
 			"scaffold children with mention word fragments glue",
 			[]model.Inline{{
@@ -530,7 +490,7 @@ func TestRenderInlineMarkdownSpeculativeSignsSynthetic(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := RenderInlineMarkdown([]model.Inline{tt.inline}); got != tt.want {
-				t.Fatalf("RenderInlineMarkdown() = %q, want %q", got, tt.want)
+					t.Fatalf(renderInlineMarkdownWantFmt, got, tt.want)
 			}
 		})
 	}

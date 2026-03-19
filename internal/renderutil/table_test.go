@@ -13,6 +13,22 @@ const (
 	testABrB      = "a<br>b"
 )
 
+func runStringTransformTest(t *testing.T, fn func(string) string, fnName string, cases []struct {
+	name string
+	raw  string
+	want string
+}) {
+	t.Helper()
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			got := fn(tt.raw)
+			if got != tt.want {
+				t.Fatalf("%s(%q) = %q, want %q", fnName, tt.raw, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestRenderTableMarkdownSimple(t *testing.T) {
 	table := model.Table{
 		Headers: []model.TableRow{{Cells: []model.TableCell{{Text: testConTilde}, {Text: "Sin tilde"}}}},
@@ -172,7 +188,7 @@ func TestRenderTableMarkdownWithInlineCells(t *testing.T) {
 }
 
 func TestRenderHTMLFromMarkdownSubset(t *testing.T) {
-	tests := []struct {
+	runStringTransformTest(t, RenderHTMLFromMarkdownSubset, "RenderHTMLFromMarkdownSubset", []struct {
 		name string
 		raw  string
 		want string
@@ -192,20 +208,11 @@ func TestRenderHTMLFromMarkdownSubset(t *testing.T) {
 		{"reference in text", "see → [link](http://example.com) here", `see &rarr; <a href="http://example.com"> [link</a> here`},
 		{"unclosed reference bracket", "→ [incomplete", "→ [incomplete"},
 		{"reference without close paren", "→ [label](url", "→ [label](url"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := RenderHTMLFromMarkdownSubset(tt.raw)
-			if got != tt.want {
-				t.Fatalf("RenderHTMLFromMarkdownSubset(%q) = %q, want %q", tt.raw, got, tt.want)
-			}
-		})
-	}
+	})
 }
 
 func TestNormalizeMarkdownTableCellText(t *testing.T) {
-	tests := []struct {
+	runStringTransformTest(t, NormalizeMarkdownTableCellText, "NormalizeMarkdownTableCellText", []struct {
 		name string
 		raw  string
 		want string
@@ -217,14 +224,5 @@ func TestNormalizeMarkdownTableCellText(t *testing.T) {
 		{"with cr", "a\rb", testABrB},
 		{"with surrounding spaces", "  hello  ", "hello"},
 		{"empty", "", ""},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := NormalizeMarkdownTableCellText(tt.raw)
-			if got != tt.want {
-				t.Fatalf("NormalizeMarkdownTableCellText(%q) = %q, want %q", tt.raw, got, tt.want)
-			}
-		})
-	}
+	})
 }

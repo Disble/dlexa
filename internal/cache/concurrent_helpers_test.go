@@ -52,3 +52,30 @@ func runConcurrentReader(t *testing.T, store Store, id, iterations, writers int,
 		}
 	}
 }
+
+func runConcurrentStoreTest(t *testing.T, store Store, writers, readers, iterations int) {
+	t.Helper()
+	ctx := context.Background()
+	var wg sync.WaitGroup
+	wg.Add(writers + readers)
+
+	for w := 0; w < writers; w++ {
+		go runConcurrentWriter(t, store, w, iterations, &wg)
+	}
+	for r := 0; r < readers; r++ {
+		go runConcurrentReader(t, store, r, iterations, writers, &wg)
+	}
+
+	wg.Wait()
+
+	result, ok, err := store.Get(ctx, keyShared)
+	if err != nil {
+		t.Fatalf("final Get(shared) error = %v", err)
+	}
+	if !ok {
+		t.Fatal("final Get(shared) ok = false, want true")
+	}
+	if len(result.Entries) == 0 {
+		t.Fatal("final Get(shared) entries = 0, want > 0")
+	}
+}

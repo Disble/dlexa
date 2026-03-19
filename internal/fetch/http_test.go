@@ -78,14 +78,8 @@ func TestDPDFetcherClassifiesTransportOutcomesAndCapturesDocuments(t *testing.T)
 			},
 		},
 		{
-			name: "404 becomes not found problem",
-			client: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-				return &http.Response{
-					StatusCode: http.StatusNotFound,
-					Body:       io.NopCloser(strings.NewReader("missing")),
-					Request:    req,
-				}, nil
-			}),
+			name:   "404 becomes not found problem",
+			client: httpResponse(http.StatusNotFound, "missing"),
 			wantProblem: &model.Problem{
 				Code:     model.ProblemCodeDPDNotFound,
 				Message:  "DPD entry not found for \"bien compuesto\"",
@@ -94,14 +88,8 @@ func TestDPDFetcherClassifiesTransportOutcomesAndCapturesDocuments(t *testing.T)
 			},
 		},
 		{
-			name: "challenge page becomes fetch problem",
-			client: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-				return &http.Response{
-					StatusCode: http.StatusForbidden,
-					Body:       io.NopCloser(strings.NewReader("<html><title>Just a moment...</title><div>Cloudflare challenge</div></html>")),
-					Request:    req,
-				}, nil
-			}),
+			name:   "challenge page becomes fetch problem",
+			client: httpResponse(http.StatusForbidden, "<html><title>Just a moment...</title><div>Cloudflare challenge</div></html>"),
 			wantProblem: &model.Problem{
 				Code:     model.ProblemCodeDPDFetchFailed,
 				Message:  "DPD request was challenged by upstream; browser-like profile still rejected",
@@ -110,14 +98,8 @@ func TestDPDFetcherClassifiesTransportOutcomesAndCapturesDocuments(t *testing.T)
 			},
 		},
 		{
-			name: "non success transport handling becomes fetch problem",
-			client: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-				return &http.Response{
-					StatusCode: http.StatusForbidden,
-					Body:       io.NopCloser(strings.NewReader("blocked")),
-					Request:    req,
-				}, nil
-			}),
+			name:   "non success transport handling becomes fetch problem",
+			client: httpResponse(http.StatusForbidden, "blocked"),
 			wantProblem: &model.Problem{
 				Code:     model.ProblemCodeDPDFetchFailed,
 				Message:  "DPD request failed with status 403",
@@ -292,6 +274,17 @@ func TestIsChallengeBodyEdgeCases(t *testing.T) {
 			}
 		})
 	}
+}
+
+// httpResponse returns a Doer that always responds with the given status code and body.
+func httpResponse(statusCode int, body string) roundTripFunc {
+	return roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: statusCode,
+			Body:       io.NopCloser(strings.NewReader(body)),
+			Request:    req,
+		}, nil
+	})
 }
 
 type roundTripFunc func(req *http.Request) (*http.Response, error)
