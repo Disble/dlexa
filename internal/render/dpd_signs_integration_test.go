@@ -71,7 +71,7 @@ func dpdFixturePath(name string) string {
 	return filepath.Join("..", "parse", "testdata", name+".html")
 }
 
-func dpdGoldenPath(name string, extension string) string {
+func dpdGoldenPath(name, extension string) string {
 	return filepath.Join("..", "parse", "testdata", name+".golden."+extension)
 }
 
