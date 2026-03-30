@@ -34,22 +34,32 @@ func resolveClient(client Doer) Doer {
 	return &http.Client{Timeout: 10 * time.Second}
 }
 
-func buildDocument(nowFn func() time.Time, resp *http.Response, body []byte, fallbackURL string) Document {
+func buildDocument(nowFn func() time.Time, resp *http.Response, body []byte, lookupURL string) Document {
 	retrievedAt := time.Now().UTC()
 	if nowFn != nil {
 		retrievedAt = nowFn()
 	}
-	finalURL := fallbackURL
+	// resp.Request.URL is the final URL after the Go HTTP client followed any
+	// server-side redirects (e.g. /dpd/solo → /dpd/tilde). We surface both
+	// URLs so the parser can derive the correct user query term from the original
+	// URL and warn the user that a redirect occurred.
+	finalURL := lookupURL
 	if resp.Request != nil && resp.Request.URL != nil {
-		finalURL = resp.Request.URL.String()
+		if u := resp.Request.URL.String(); u != "" {
+			finalURL = u
+		}
 	}
-	return Document{
+	doc := Document{
 		URL:         finalURL,
 		ContentType: resp.Header.Get("Content-Type"),
 		StatusCode:  resp.StatusCode,
 		Body:        body,
 		RetrievedAt: retrievedAt,
 	}
+	if finalURL != lookupURL {
+		doc.RedirectedFrom = lookupURL
+	}
+	return doc
 }
 
 func setDefaultHeader(req *http.Request, key, value string) {

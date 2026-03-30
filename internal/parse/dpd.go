@@ -67,7 +67,14 @@ func (p *DPDArticleParser) Parse(ctx context.Context, descriptor model.SourceDes
 		}, nil)
 	}
 
-	query := lookupQuery(descriptor, document.URL)
+	// When the server redirected (e.g. /dpd/solo → /dpd/tilde), RedirectedFrom
+	// holds the original URL the user requested. Use it to derive the query term
+	// so it reflects what the user actually typed, not the redirect target.
+	queryURL := document.URL
+	if document.RedirectedFrom != "" {
+		queryURL = document.RedirectedFrom
+	}
+	query := lookupQuery(descriptor, queryURL)
 
 	articles := collectArticles(body, document.URL)
 	if len(articles) == 0 {
@@ -84,6 +91,13 @@ func (p *DPDArticleParser) Parse(ctx context.Context, descriptor model.SourceDes
 	}
 
 	warnings := []model.Warning{accessWarning(descriptor.Name)}
+	if document.RedirectedFrom != "" {
+		warnings = append(warnings, model.Warning{
+			Code:    model.WarningCodeDPDRedirected,
+			Message: document.RedirectedFrom + " → " + document.URL,
+			Source:  descriptor.Name,
+		})
+	}
 	return Result{Articles: articles}, warnings, nil
 }
 

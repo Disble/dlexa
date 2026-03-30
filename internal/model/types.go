@@ -18,6 +18,12 @@ const (
 	ProblemCodeDPDSearchParseFailed     = "dpd_search_parse_failed"
 	ProblemCodeDPDSearchNormalizeFailed = "dpd_search_normalize_failed"
 
+	// WarningCodeDPDRedirected is emitted when the DPD server transparently redirects
+	// a lookup URL to a different entry (e.g. /dpd/solo → /dpd/tilde).
+	// The redirect is an upstream decision; dlexa cannot override it, but informs
+	// the user so the displayed content is not mistaken for the queried entry.
+	WarningCodeDPDRedirected = "dpd_redirected"
+
 	ProblemSeverityError = "error"
 
 	InlineKindText           = "text"
@@ -231,17 +237,17 @@ type SourceResult struct {
 
 // Warning represents a non-fatal issue encountered during lookup.
 type Warning struct {
-	Code    string
-	Message string
-	Source  string
+	Code    string `json:"code"`
+	Message string `json:"message"`
+	Source  string `json:"source,omitempty"`
 }
 
 // Problem describes a categorized error with source attribution and severity.
 type Problem struct {
-	Code     string
-	Message  string
-	Source   string
-	Severity string
+	Code     string `json:"code"`
+	Message  string `json:"message"`
+	Source   string `json:"source,omitempty"`
+	Severity string `json:"severity"`
 }
 
 // ProblemError wraps a Problem as a Go error for use in error chains.

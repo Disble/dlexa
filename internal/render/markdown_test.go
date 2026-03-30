@@ -590,6 +590,116 @@ func assertMarkdownPayloadGuidance(t *testing.T, text string, mustHave []string,
 	}
 }
 
+func TestMarkdownRendererShowsRedirectWarningAboveArticle(t *testing.T) {
+	result := model.LookupResult{
+		Request: model.LookupRequest{Query: "solo"},
+		Warnings: []model.Warning{
+			{Code: model.WarningCodeDPDRedirected, Message: "https://www.rae.es/dpd/solo → https://www.rae.es/dpd/tilde", Source: "dpd"},
+		},
+		Entries: []model.Entry{
+			{
+				ID:       "tilde1",
+				Headword: "tilde1",
+				Article: &model.Article{
+					Dictionary: testDictionary,
+					Edition:    testEdition,
+					Lemma:      "tilde1",
+					Sections: []model.Section{
+						{Blocks: []model.Block{paragraphBlock("Definición de tilde.")}},
+					},
+				},
+			},
+		},
+	}
+
+	payload, err := NewMarkdownRenderer().Render(context.Background(), result)
+	if err != nil {
+		t.Fatalf(testErrRender, err)
+	}
+	text := string(payload)
+
+	// Warning must appear before the article content
+	warnIdx := strings.Index(text, "⚠")
+	articleIdx := strings.Index(text, "tilde1")
+	if warnIdx == -1 {
+		t.Fatal("redirect warning block missing from output")
+	}
+	if articleIdx == -1 {
+		t.Fatal("article content missing from output")
+	}
+	if warnIdx > articleIdx {
+		t.Fatalf("redirect warning appears after article content (warn at %d, article at %d)\n%s", warnIdx, articleIdx, text)
+	}
+
+	mustHave := []string{
+		"https://www.rae.es/dpd/solo → https://www.rae.es/dpd/tilde",
+		"\"solo\"",
+		"tilde1",
+	}
+	mustNot := []string{"solo\n"}
+	assertMarkdownPayloadGuidance(t, text, mustHave, mustNot)
+}
+
+func TestMarkdownRendererDoesNotShowRedirectBlockWhenNoRedirect(t *testing.T) {
+	result := model.LookupResult{
+		Request: model.LookupRequest{Query: "bien"},
+		Entries: []model.Entry{
+			{
+				ID:       "bien",
+				Headword: "bien",
+				Article: &model.Article{
+					Dictionary: testDictionary,
+					Edition:    testEdition,
+					Lemma:      "bien",
+					Sections: []model.Section{
+						{Blocks: []model.Block{paragraphBlock("Definición de bien.")}},
+					},
+				},
+			},
+		},
+	}
+
+	payload, err := NewMarkdownRenderer().Render(context.Background(), result)
+	if err != nil {
+		t.Fatalf(testErrRender, err)
+	}
+	assertMarkdownPayloadGuidance(t, string(payload), []string{"bien"}, []string{"⚠", "redirige"})
+}
+
 func stripANSITestOutput(text string) string {
 	return reANSITest.ReplaceAllString(text, "")
+}
+
+func TestMarkdownRendererShowsRedirectURLInCitation(t *testing.T) {
+	result := model.LookupResult{
+		Request: model.LookupRequest{Query: "solo"},
+		Warnings: []model.Warning{
+			{Code: model.WarningCodeDPDRedirected, Message: "https://www.rae.es/dpd/solo → https://www.rae.es/dpd/tilde", Source: "dpd"},
+		},
+		Entries: []model.Entry{
+			{
+				ID:       "tilde1",
+				Headword: "tilde1",
+				Article: &model.Article{
+					Dictionary: testDictionary,
+					Citation: model.Citation{
+						SourceLabel:  testSourceLabel,
+						Edition:      testEdition,
+						CanonicalURL: "https://www.rae.es/dpd/tilde",
+						ConsultedAt:  testConsultedAt,
+					},
+				},
+			},
+		},
+	}
+
+	payload, err := NewMarkdownRenderer().Render(context.Background(), result)
+	if err != nil {
+		t.Fatalf(testErrRender, err)
+	}
+	text := string(payload)
+	assertMarkdownPayloadGuidance(t, text,
+		[]string{"URL: https://www.rae.es/dpd/solo → https://www.rae.es/dpd/tilde"},
+		[]string{"URL: https://www.rae.es/dpd/tilde\n"}, // must NOT appear alone
+	)
 }

@@ -54,6 +54,35 @@ func TestDPDFetcherClassifiesTransportOutcomesAndCapturesDocuments(t *testing.T)
 			},
 		},
 		{
+			// When the DPD server redirects /dpd/solo → /dpd/tilde, the Go HTTP client
+			// updates resp.Request.URL to the final (redirected) URL. Document.URL must
+			// reflect the final URL (canonical page), while Document.RedirectedFrom
+			// preserves the original lookup URL so the parser can derive the correct
+			// query term ("bien compuesto", not whatever the redirect target is).
+			name: "server redirect populates RedirectedFrom and URL reflects final target",
+			client: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				redirectedURL, _ := req.URL.Parse("https://example.invalid/dpd/redirected-target")
+				redirectedReq := req.Clone(req.Context())
+				redirectedReq.URL = redirectedURL
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Header: http.Header{
+						"Content-Type": []string{"text/html; charset=utf-8"},
+					},
+					Body:    io.NopCloser(strings.NewReader("<html>redirected content</html>")),
+					Request: redirectedReq,
+				}, nil
+			}),
+			wantDocument: Document{
+				URL:            "https://example.invalid/dpd/redirected-target", // final URL after redirect
+				RedirectedFrom: testLookupURL,                                   // original URL the user requested
+				ContentType:    "text/html; charset=utf-8",
+				StatusCode:     http.StatusOK,
+				Body:           []byte("<html>redirected content</html>"),
+				RetrievedAt:    fixedNow,
+			},
+		},
+		{
 			name: "timeout failure becomes fetch problem",
 			client: roundTripFunc(func(_ *http.Request) (*http.Response, error) {
 				return nil, context.DeadlineExceeded

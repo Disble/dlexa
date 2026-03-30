@@ -141,11 +141,27 @@ func (r *MarkdownRenderer) renderArticleGroupMarkdown(result model.LookupResult)
 		fmt.Fprintf(&builder, mdFmtH1, heading)
 	}
 
+	for _, w := range result.Warnings {
+		if w.Code == model.WarningCodeDPDRedirected {
+			fmt.Fprintf(&builder, "> ⚠ El DPD redirige %s\n>\n> El contenido mostrado corresponde a la entrada de destino, no a \"%s\".\n\n", w.Message, result.Request.Query)
+		}
+	}
+
+	var redirectedFromURL string
+	for _, w := range result.Warnings {
+		if w.Code == model.WarningCodeDPDRedirected {
+			if parts := strings.SplitN(w.Message, " → ", 2); len(parts) == 2 {
+				redirectedFromURL = strings.TrimSpace(parts[0])
+			}
+			break
+		}
+	}
+
 	for idx, entry := range result.Entries {
 		if idx > 0 {
 			builder.WriteString("\n")
 		}
-		builder.Write(r.renderEntryArticleMarkdown(entry, multiple))
+		builder.Write(r.renderEntryArticleMarkdown(entry, multiple, redirectedFromURL))
 		if idx < len(result.Entries)-1 {
 			builder.WriteString("\n")
 		}
@@ -154,7 +170,7 @@ func (r *MarkdownRenderer) renderArticleGroupMarkdown(result model.LookupResult)
 	return []byte(strings.TrimSpace(builder.String()) + "\n")
 }
 
-func (r *MarkdownRenderer) renderEntryArticleMarkdown(entry model.Entry, grouped bool) []byte {
+func (r *MarkdownRenderer) renderEntryArticleMarkdown(entry model.Entry, grouped bool, redirectedFromURL string) []byte {
 	article := entry.Article
 	var builder strings.Builder
 	if grouped {
@@ -185,7 +201,7 @@ func (r *MarkdownRenderer) renderEntryArticleMarkdown(entry model.Entry, grouped
 		}
 		builder.WriteString(sectionText)
 	}
-	if citation := strings.TrimSpace(renderCitationMarkdown(article)); citation != "" {
+	if citation := strings.TrimSpace(renderCitationMarkdown(article, redirectedFromURL)); citation != "" {
 		builder.WriteString("\n\n")
 		builder.WriteString(citation)
 	}
@@ -333,7 +349,7 @@ func indentLines(text, indent string) string {
 	return strings.Join(lines, "\n")
 }
 
-func renderCitationMarkdown(article *model.Article) string {
+func renderCitationMarkdown(article *model.Article, redirectedFromURL string) string {
 	if article == nil {
 		return ""
 	}
@@ -351,7 +367,11 @@ func renderCitationMarkdown(article *model.Article) string {
 			lines = append(lines, "Edition: "+value)
 		}
 		if value := strings.TrimSpace(citation.CanonicalURL); value != "" {
-			lines = append(lines, "URL: "+value)
+			if redirectedFromURL != "" {
+				lines = append(lines, "URL: "+redirectedFromURL+" → "+value)
+			} else {
+				lines = append(lines, "URL: "+value)
+			}
 		}
 		if value := strings.TrimSpace(citation.ConsultedAt); value != "" {
 			lines = append(lines, "Consulted: "+value)

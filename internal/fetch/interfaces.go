@@ -15,11 +15,12 @@ type Request struct {
 
 // Document represents a fetched document with its metadata and body.
 type Document struct {
-	URL         string
-	ContentType string
-	StatusCode  int
-	Body        []byte
-	RetrievedAt time.Time
+	URL            string
+	RedirectedFrom string // non-empty when the server redirected the original request
+	ContentType    string
+	StatusCode     int
+	Body           []byte
+	RetrievedAt    time.Time
 }
 
 // Fetcher retrieves documents from a dictionary source.

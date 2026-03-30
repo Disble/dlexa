@@ -195,6 +195,69 @@ func TestDPDArticleParserExtractsBienArticleAndSkipsChrome(t *testing.T) {
 	}
 }
 
+func TestDPDArticleParserEmitsRedirectWarningAndUsesOriginalQueryTerm(t *testing.T) {
+	// Simulates the DPD redirect /dpd/solo → /dpd/tilde.
+	// Document.URL is the final (redirect target) URL; Document.RedirectedFrom is the original.
+	// The parser must:
+	//   (1) emit a dpd_redirected warning with the chain "original → final"
+	//   (2) use the original URL (RedirectedFrom) to derive the query term — NOT the redirect target
+	//   (3) set article CanonicalURL to the final URL
+	parser := NewDPDArticleParser()
+	originalURL := dpdTestArticleURL("solo")
+	finalURL := dpdTestArticleURL("bien") // reuse bien fixture as stand-in for the redirect target
+
+	result, warnings, err := parser.Parse(context.Background(), model.SourceDescriptor{Name: "dpd", DisplayName: "solo"}, fetch.Document{
+		URL:            finalURL,
+		RedirectedFrom: originalURL,
+		ContentType:    dpdHTMLContentType,
+		StatusCode:     http.StatusOK,
+		Body:           loadDPDFixtureHTML(t, "bien"),
+	})
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	if len(result.Articles) != 1 {
+		t.Fatalf("Parse() articles = %d, want 1", len(result.Articles))
+	}
+
+	// Must have access warning + redirect warning
+	var redirectWarn *model.Warning
+	for i := range warnings {
+		if warnings[i].Code == model.WarningCodeDPDRedirected {
+			redirectWarn = &warnings[i]
+		}
+	}
+	if redirectWarn == nil {
+		t.Fatalf("Parse() warnings = %#v, want dpd_redirected warning", warnings)
+	}
+	if redirectWarn.Message != originalURL+" → "+finalURL {
+		t.Fatalf("redirect warning message = %q, want %q", redirectWarn.Message, originalURL+" → "+finalURL)
+	}
+
+	// CanonicalURL must point to the final (redirect-target) URL
+	if got := result.Articles[0].CanonicalURL; got != finalURL {
+		t.Fatalf("article CanonicalURL = %q, want %q (final URL)", got, finalURL)
+	}
+}
+
+func TestDPDArticleParserNoRedirectWarningWhenNoRedirect(t *testing.T) {
+	parser := NewDPDArticleParser()
+	_, warnings, err := parser.Parse(context.Background(), model.SourceDescriptor{Name: "dpd", DisplayName: "bien"}, fetch.Document{
+		URL:         dpdTestArticleURL("bien"),
+		ContentType: dpdHTMLContentType,
+		StatusCode:  http.StatusOK,
+		Body:        loadDPDFixtureHTML(t, "bien"),
+	})
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	for _, w := range warnings {
+		if w.Code == model.WarningCodeDPDRedirected {
+			t.Fatalf("Parse() emitted unexpected dpd_redirected warning: %#v", w)
+		}
+	}
+}
+
 func TestDPDArticleParserClassifiesExactHitsAndMisses(t *testing.T) {
 	tests := []struct {
 		name               string
