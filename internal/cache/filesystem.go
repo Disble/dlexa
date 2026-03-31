@@ -74,7 +74,7 @@ func (s *FilesystemStore) Set(ctx context.Context, key string, result model.Look
 	_ = ctx
 
 	// Ensure directory exists.
-	if os.MkdirAll(s.dir, 0750) != nil {
+	if os.MkdirAll(s.dir, 0o750) != nil {
 		return nil // graceful degradation: silent failure
 	}
 

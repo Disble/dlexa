@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	testSingleText = "single text"
-	testBienRef1   = "bien#ref1"
+	testSingleText              = "single text"
+	testBienRef1                = "bien#ref1"
 	renderInlineMarkdownWantFmt = "RenderInlineMarkdown() = %q, want %q"
 )
 
@@ -276,7 +276,7 @@ func TestRenderStyledInlineMarkdownVariants(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := RenderInlineMarkdown(tt.inlines)
 			if got != tt.want {
-					t.Fatalf(renderInlineMarkdownWantFmt, got, tt.want)
+				t.Fatalf(renderInlineMarkdownWantFmt, got, tt.want)
 			}
 		})
 	}
@@ -371,7 +371,7 @@ func TestRenderInlineMarkdown(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := RenderInlineMarkdown(tt.inlines)
 			if got != tt.want {
-					t.Fatalf(renderInlineMarkdownWantFmt, got, tt.want)
+				t.Fatalf(renderInlineMarkdownWantFmt, got, tt.want)
 			}
 		})
 	}
@@ -490,7 +490,7 @@ func TestRenderInlineMarkdownSpeculativeSignsSynthetic(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := RenderInlineMarkdown([]model.Inline{tt.inline}); got != tt.want {
-					t.Fatalf(renderInlineMarkdownWantFmt, got, tt.want)
+				t.Fatalf(renderInlineMarkdownWantFmt, got, tt.want)
 			}
 		})
 	}

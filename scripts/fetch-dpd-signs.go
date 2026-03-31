@@ -33,7 +33,7 @@ func main() {
 	ctx := context.Background()
 
 	outputDir := filepath.Join("testdata", "dpd-signs-analysis")
-	if err := os.MkdirAll(outputDir, 0750); err != nil {
+	if err := os.MkdirAll(outputDir, 0o750); err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating output dir: %v\n", err)
 		os.Exit(1)
 	}
@@ -56,7 +56,7 @@ func main() {
 
 		// Save HTML
 		htmlPath := filepath.Join(outputDir, word+".html")
-		if err := os.WriteFile(htmlPath, doc.Body, 0600); err != nil {
+		if err := os.WriteFile(htmlPath, doc.Body, 0o600); err != nil {
 			fmt.Fprintf(os.Stderr, "Error writing %s: %v\n", htmlPath, err)
 			continue
 		}

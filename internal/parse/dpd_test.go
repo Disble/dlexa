@@ -152,7 +152,8 @@ func assertExactHitOrMiss(t *testing.T, result Result, tt struct {
 	wantMissQuery      string
 	wantSuggestionText string
 	wantSuggestionHref string
-}) {
+},
+) {
 	t.Helper()
 	assertSearchResultArticleCount(t, result, tt.wantArticleCount)
 	if tt.wantArticleCount > 0 {

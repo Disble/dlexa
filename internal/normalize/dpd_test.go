@@ -165,9 +165,9 @@ func TestDPDNormalizerPreservesStructuredLookupMisses(t *testing.T) {
 			if len(normalized.Entries) != 0 {
 				t.Fatalf("entries = %#v, want none for miss-only result", normalized.Entries)
 			}
-				assertNormalizedMissKind(t, normalized.Miss, tt.wantKind)
-				assertNormalizedSuggestion(t, normalized.Miss, tt.wantSuggestion)
-				assertNormalizedNextAction(t, normalized.Miss, tt.wantNextAction)
+			assertNormalizedMissKind(t, normalized.Miss, tt.wantKind)
+			assertNormalizedSuggestion(t, normalized.Miss, tt.wantSuggestion)
+			assertNormalizedNextAction(t, normalized.Miss, tt.wantNextAction)
 		})
 	}
 }

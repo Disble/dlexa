@@ -120,7 +120,6 @@ func TestLookupOneSourceFailsOthersSucceed(t *testing.T) {
 	request := model.LookupRequest{Query: "partial", Sources: []string{"ok-a", "failing-b", "ok-c"}, NoCache: true}
 
 	result, err := service.Lookup(context.Background(), request)
-
 	// No top-level error.
 	if err != nil {
 		t.Fatalf("Lookup() error = %v, want nil", err)
@@ -170,7 +169,6 @@ func TestLookupAllSourcesFail(t *testing.T) {
 	request := model.LookupRequest{Query: "allfail", Sources: []string{"fail-a", "fail-b"}, NoCache: true}
 
 	result, err := service.Lookup(context.Background(), request)
-
 	// No top-level error — problems are reported in-band.
 	if err != nil {
 		t.Fatalf("Lookup() error = %v, want nil", err)

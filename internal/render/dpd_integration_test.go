@@ -277,7 +277,8 @@ func assertDecodedLookupMiss(t *testing.T, decoded struct {
 			Command string `json:"command"`
 		} `json:"next_action"`
 	} `json:"misses"`
-}, wantKind string, wantCommand string, wantDisplay string) {
+}, wantKind string, wantCommand string, wantDisplay string,
+) {
 	t.Helper()
 	if len(decoded.Misses) != 1 || decoded.Misses[0].Kind != wantKind {
 		t.Fatalf("decoded misses = %#v, want kind %q", decoded.Misses, wantKind)

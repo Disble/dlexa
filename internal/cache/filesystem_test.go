@@ -240,7 +240,7 @@ func TestFilesystemStoreCorruptFile(t *testing.T) {
 	filename := fmt.Sprintf(fmtFilename, hash)
 	corruptPath := filepath.Join(dir, filename)
 
-	if err := os.WriteFile(corruptPath, []byte("this is not valid json{{{"), 0600); err != nil {
+	if err := os.WriteFile(corruptPath, []byte("this is not valid json{{{"), 0o600); err != nil {
 		t.Fatalf("failed to write corrupt file: %v", err)
 	}
 

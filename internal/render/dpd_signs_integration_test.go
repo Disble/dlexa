@@ -30,14 +30,14 @@ type dpdSignGoldenSnapshot struct {
 }
 
 const (
-	termAbrogar = "abrogar"
-	termAcertar = "acertar"
-	termAlicuota = "alícuota"
-	termAndrofobia = "androfobia"
-	dpdTestBaseURL = "https://www.rae.es/dpd/"
+	termAbrogar        = "abrogar"
+	termAcertar        = "acertar"
+	termAlicuota       = "alícuota"
+	termAndrofobia     = "androfobia"
+	dpdTestBaseURL     = "https://www.rae.es/dpd/"
 	dpdHTMLContentType = "text/html; charset=utf-8"
-	exclusionMarker = "⊗"
-	acertarReference = "→ [acertar](/dpd/ayuda/modelos-de-conjugacion-verbal#acertar)"
+	exclusionMarker    = "⊗"
+	acertarReference   = "→ [acertar](/dpd/ayuda/modelos-de-conjugacion-verbal#acertar)"
 )
 
 func dpdTestArticleURL(term string) string {

@@ -58,7 +58,7 @@ func (s *SearchFilesystemStore) Get(ctx context.Context, key string) (model.Sear
 // Set writes the search result to a JSON file with an expiry envelope.
 func (s *SearchFilesystemStore) Set(ctx context.Context, key string, result model.SearchResult) error {
 	_ = ctx
-	if os.MkdirAll(s.dir, 0750) != nil {
+	if os.MkdirAll(s.dir, 0o750) != nil {
 		return nil
 	}
 
