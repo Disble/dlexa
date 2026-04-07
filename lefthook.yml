@@ -1,0 +1,14 @@
+pre-commit:
+  commands:
+    gofmt:
+      glob: "*.go"
+      run: gofmt -w {staged_files}
+      stage_fixed: true
+
+    go-build:
+      glob: "*.go"
+      run: go build ./...
+
+    golangci-lint:
+      glob: "*.go"
+      run: go tool --modfile=golangci-lint.mod golangci-lint run --new-from-rev=HEAD

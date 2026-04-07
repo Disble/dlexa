@@ -1,14 +1,27 @@
 # Contributing
 
-## Pre-commit Setup
+## Lefthook Setup
 
-This repository checks Go changes with a local `pre-commit` hook that runs the repo-pinned `golangci-lint` toolchain.
+This repository checks Go changes with a `pre-commit` hook managed by [lefthook](https://github.com/evilmartians/lefthook) that runs the repo-pinned `golangci-lint` toolchain.
 
 ### What you need installed
 
 - `git`
-- `pre-commit` 4.x
+- `lefthook`
 - `go` with toolchain support enabled
+
+Install lefthook via your preferred method:
+
+```bash
+# Go
+go install github.com/evilmartians/lefthook@latest
+
+# Homebrew (macOS / Linux)
+brew install lefthook
+
+# npm / pnpm / yarn (if Node is already present)
+npm install -g @evilmartians/lefthook
+```
 
 The application module targets Go 1.22, but the lint tool module in `golangci-lint.mod` is currently declared with `go 1.26.1`.
 
@@ -29,7 +42,7 @@ Use the first command for the diff-based pre-commit behavior and the second for 
 Run this once from the repository root:
 
 ```bash
-pre-commit install
+lefthook install
 ```
 
 That writes `.git/hooks/pre-commit` for your local clone. Hooks do not auto-install on clone.
@@ -37,7 +50,7 @@ That writes `.git/hooks/pre-commit` for your local clone. Hooks do not auto-inst
 ### Validate the setup
 
 ```bash
-pre-commit validate-config
+lefthook run pre-commit
 go tool --modfile=golangci-lint.mod golangci-lint version
 ```
 
@@ -48,11 +61,8 @@ The hook runs automatically on `git commit` and checks changed Go code against `
 You can run the same hook manually:
 
 ```bash
-pre-commit run golangci-lint --files path/to/file.go
-pre-commit run golangci-lint --all-files
+lefthook run pre-commit
 ```
-
-`pre-commit run golangci-lint --all-files` still invokes the same diff-based hook entry; it is not the canonical full-repo lint command.
 
 ### Full manual lint
 
@@ -71,9 +81,9 @@ go tool --modfile=golangci-lint.mod golangci-lint run ./cmd/dlexa/...
 
 ## Limitations and Tradeoffs
 
-- The hook is `language: system`, so each contributor still needs local `pre-commit` and `go` installed.
+- Each contributor still needs local `lefthook` and `go` installed.
 - The hook does not install tooling for you; it only uses the toolchain already available on your machine.
 - The hook runs `go tool --modfile=golangci-lint.mod golangci-lint run --new-from-rev=HEAD`, so it is optimized for commit-time feedback on changes, not for auditing the whole repository.
-- `pre-commit run golangci-lint --all-files` still executes the same diff-oriented hook entry. For a true full-repo check, use `go tool --modfile=golangci-lint.mod golangci-lint run ./...`.
+- `lefthook run pre-commit` runs the same diff-oriented entry. For a true full-repo check, use `go tool --modfile=golangci-lint.mod golangci-lint run ./...`.
 - The first lint run on a new machine may download the pinned `golangci-lint` toolchain and its modules through the Go toolchain.
-- Because the repo uses a local hook instead of a mirrored remote hook, reproducibility comes from the checked-in Go module and config, not from `pre-commit` managing an isolated hook environment.
+- Because the hook relies on a local tool module, reproducibility comes from the checked-in Go module and config, not from lefthook managing an isolated environment.
