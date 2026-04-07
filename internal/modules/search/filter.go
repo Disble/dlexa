@@ -20,7 +20,13 @@ func curateCandidates(query string, candidates []model.SearchCandidate) []model.
 
 func shouldDropCandidate(candidate model.SearchCandidate) bool {
 	url := strings.TrimSpace(candidate.URL)
-	return strings.Contains(url, "/institucion/")
+	if strings.Contains(url, "/institucion/") {
+		return true
+	}
+	if strings.Contains(url, "/noticia/") {
+		return !isRescuedNoticia(candidate)
+	}
+	return false
 }
 
 func enrichCandidate(query string, candidate model.SearchCandidate) model.SearchCandidate {
@@ -53,15 +59,22 @@ func firstNonEmpty(values ...string) string {
 
 func classifyCandidate(candidate model.SearchCandidate) string {
 	url := strings.TrimSpace(candidate.URL)
-	title := strings.TrimSpace(candidate.Title)
-	if strings.Contains(url, "/noticia/") && strings.HasPrefix(strings.ToLower(title), strings.ToLower("Preguntas frecuentes:")) {
+	if strings.Contains(url, "/noticia/") && isRescuedNoticia(candidate) {
 		return "faq"
 	}
 	if strings.Contains(url, "/espanol-al-dia/") {
 		return "linguistic-article"
 	}
+	if strings.Contains(url, "/dpd/") {
+		return "dpd-entry"
+	}
 	if candidate.ArticleKey != "" {
 		return "dpd-entry"
 	}
 	return "unknown"
+}
+
+func isRescuedNoticia(candidate model.SearchCandidate) bool {
+	title := strings.ToLower(strings.TrimSpace(candidate.Title))
+	return strings.HasPrefix(title, strings.ToLower("Preguntas frecuentes:")) || strings.Contains(title, "tilde") || strings.Contains(title, "normativa")
 }

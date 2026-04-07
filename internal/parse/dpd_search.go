@@ -14,6 +14,9 @@ import (
 type ParsedSearchRecord struct {
 	RawLabelHTML string
 	ArticleKey   string
+	Title        string
+	Snippet      string
+	URL          string
 }
 
 // DPDSearchParser decodes the remote /dpd/srv/keys JSON payload and splits first-pipe records.

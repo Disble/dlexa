@@ -28,33 +28,54 @@ func TestModuleFiltersNoiseRescuesFAQAndMapsCommands(t *testing.T) {
 	}
 
 	decoded := renderer.result
-	if len(decoded.Candidates) != 3 {
-		t.Fatalf("Candidates len = %d, want 3 after filtering institutional noise", len(decoded.Candidates))
+	if len(decoded.Candidates) != 4 {
+		t.Fatalf("Candidates len = %d, want 4 after filtering institutional noise", len(decoded.Candidates))
 	}
 
-	assertCandidate(t, decoded.Candidates[0], "espanol-al-dia", "la-conjuncion-o-siempre-sin-tilde", "dlexa espanol-al-dia la-conjuncion-o-siempre-sin-tilde")
-	assertCandidate(t, decoded.Candidates[1], "noticia", "preguntas-frecuentes-sobre-la-tilde", "dlexa noticia preguntas-frecuentes-sobre-la-tilde")
-	if decoded.Candidates[1].Classification != "faq" {
-		t.Fatalf("faq candidate classification = %q, want faq", decoded.Candidates[1].Classification)
+	assertCandidate(t, decoded.Candidates[0], "dpd", "bien", "dlexa dpd bien")
+	assertCandidate(t, decoded.Candidates[1], "espanol-al-dia", "la-conjuncion-o-siempre-sin-tilde", "dlexa espanol-al-dia la-conjuncion-o-siempre-sin-tilde")
+	assertCandidate(t, decoded.Candidates[2], "noticia", "preguntas-frecuentes-sobre-la-tilde", "dlexa noticia preguntas-frecuentes-sobre-la-tilde")
+	if decoded.Candidates[2].Classification != "faq" {
+		t.Fatalf("faq candidate classification = %q, want faq", decoded.Candidates[2].Classification)
 	}
-	if decoded.Candidates[2].NextCommand == "" || !strings.Contains(decoded.Candidates[2].NextCommand, "dlexa search") {
-		t.Fatalf("unknown candidate next command = %q, want safe fallback", decoded.Candidates[2].NextCommand)
+	if decoded.Candidates[3].NextCommand == "" || !strings.Contains(decoded.Candidates[3].NextCommand, "dlexa search") {
+		t.Fatalf("unknown candidate next command = %q, want safe fallback", decoded.Candidates[3].NextCommand)
 	}
-	if decoded.Candidates[2].Module != "unknown" {
-		t.Fatalf("unknown candidate module = %q, want unknown", decoded.Candidates[2].Module)
+	if decoded.Candidates[3].Module != "unknown" {
+		t.Fatalf("unknown candidate module = %q, want unknown", decoded.Candidates[3].Module)
 	}
 }
 
-func TestModuleReturnsNotFoundFallbackWhenCuratedResultsAreEmpty(t *testing.T) {
+func TestModuleReturnsExplicitNoResultsWhenCuratedResultsAreEmpty(t *testing.T) {
 	searcher := &searchStub{result: model.SearchResult{Request: model.SearchRequest{Query: "zzz", Format: "markdown"}, Candidates: []model.SearchCandidate{{Title: "Institucional", URL: "https://www.rae.es/institucion/discurso"}}}}
+	renderer := &searchRendererStub{payload: []byte("sin resultados")}
+	module := New(searcher, &searchRenderersStub{renderer: renderer})
+
+	response, err := module.Execute(context.Background(), modules.Request{Query: "zzz", Format: "markdown"})
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+	if response.Fallback != nil {
+		t.Fatalf("fallback = %#v, want nil", response.Fallback)
+	}
+	if got := renderer.result.Outcome; got != model.SearchOutcomeNoResults {
+		t.Fatalf("Outcome = %q, want %q", got, model.SearchOutcomeNoResults)
+	}
+	if string(response.Body) != "sin resultados" {
+		t.Fatalf("Body = %q, want renderer payload", string(response.Body))
+	}
+}
+
+func TestModuleKeepsFailuresOnExplicitFallbackPath(t *testing.T) {
+	searcher := &searchStub{err: model.NewProblemError(model.Problem{Code: model.ProblemCodeDPDSearchParseFailed, Message: "markup changed", Source: "search", Severity: model.ProblemSeverityError}, nil)}
 	module := New(searcher, &searchRenderersStub{renderer: &searchRendererStub{payload: []byte("unused")}})
 
 	response, err := module.Execute(context.Background(), modules.Request{Query: "zzz", Format: "markdown"})
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
 	}
-	if response.Fallback == nil || response.Fallback.Kind != model.FallbackKindNotFound || response.Fallback.NextCommand != "dlexa search zzz" {
-		t.Fatalf("fallback = %#v", response.Fallback)
+	if response.Fallback == nil || response.Fallback.Kind != model.FallbackKindParseFailure {
+		t.Fatalf("Fallback = %#v, want parse failure", response.Fallback)
 	}
 }
 

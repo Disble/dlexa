@@ -32,6 +32,9 @@ func (m *Module) Name() string { return moduleName }
 // Command returns the public CLI command.
 func (m *Module) Command() string { return moduleName }
 
+// SearcherForTesting exposes the wired searcher for black-box wiring tests.
+func (m *Module) SearcherForTesting() searchsvc.Searcher { return m.searcher }
+
 // Execute curates the upstream search result and maps semantic URLs into actionable commands.
 func (m *Module) Execute(ctx context.Context, req modules.Request) (modules.Response, error) {
 	searchReq := model.SearchRequest{Query: strings.TrimSpace(req.Query), Format: strings.TrimSpace(req.Format), NoCache: req.NoCache}
@@ -40,6 +43,11 @@ func (m *Module) Execute(ctx context.Context, req modules.Request) (modules.Resp
 		return modules.Response{Title: searchReq.Query, Source: moduleSource, CacheState: modules.CacheState(false), Format: searchReq.Format, Fallback: modules.FallbackFromError(moduleName, searchReq.Query, searchReq.Format, err)}, nil
 	}
 	result.Candidates = curateCandidates(searchReq.Query, result.Candidates)
+	if len(result.Candidates) == 0 {
+		result.Outcome = model.SearchOutcomeNoResults
+	} else {
+		result.Outcome = model.SearchOutcomeResults
+	}
 	renderer, err := m.renderers.Renderer(searchReq.Format)
 	if err != nil {
 		return modules.Response{}, err
@@ -48,9 +56,5 @@ func (m *Module) Execute(ctx context.Context, req modules.Request) (modules.Resp
 	if err != nil {
 		return modules.Response{}, err
 	}
-	response := modules.Response{Title: searchReq.Query, Source: moduleSource, CacheState: modules.CacheState(result.CacheHit), Format: searchReq.Format, Body: body}
-	if len(result.Candidates) == 0 {
-		response.Fallback = modules.NotFoundFallback(moduleName, searchReq.Query, "dlexa search "+searchReq.Query)
-	}
-	return response, nil
+	return modules.Response{Title: searchReq.Query, Source: moduleSource, CacheState: modules.CacheState(result.CacheHit), Format: searchReq.Format, Body: body}, nil
 }

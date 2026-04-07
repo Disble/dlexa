@@ -26,9 +26,9 @@ func (r *SearchMarkdownRenderer) Render(ctx context.Context, result model.Search
 	_ = ctx
 	var builder strings.Builder
 	query := strings.TrimSpace(result.Request.Query)
-	if len(result.Candidates) == 0 {
+	if result.Outcome == model.SearchOutcomeNoResults || len(result.Candidates) == 0 {
 		fmt.Fprintf(&builder, "## Resultado semántico para %q\n\n", query)
-		fmt.Fprintf(&builder, "No se encontraron rutas normativas accionables para %q.\n\n", query)
+		fmt.Fprintf(&builder, "No se encontraron resultados normativos útiles para %q.\n\n", query)
 		builder.WriteString("- siguiente_paso: `dlexa search <consulta más específica>`")
 		return []byte(builder.String()), nil
 	}
@@ -46,7 +46,14 @@ func (r *SearchMarkdownRenderer) Render(ctx context.Context, result model.Search
 		if sourceHint := strings.TrimSpace(candidate.SourceHint); sourceHint != "" {
 			fmt.Fprintf(&builder, "- fuente: %s\n", sourceHint)
 		}
-		fmt.Fprintf(&builder, "- next_command: `%s`\n", searchNextCommand(candidate, query))
+		if strings.TrimSpace(candidate.Module) == "unknown" {
+			if url := strings.TrimSpace(candidate.URL); url != "" {
+				fmt.Fprintf(&builder, "- url: %s\n", url)
+			}
+			fmt.Fprintf(&builder, "- fallback_command: `%s`\n", searchNextCommand(candidate, query))
+			continue
+		}
+		fmt.Fprintf(&builder, "- sugerencia: `%s`\n", searchNextCommand(candidate, query))
 	}
 	return []byte(strings.TrimRight(builder.String(), "\n")), nil
 }

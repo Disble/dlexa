@@ -10,22 +10,22 @@ import (
 	"github.com/Disble/dlexa/internal/parse"
 )
 
-// Searcher defines the contract for performing DPD entry searches.
+// Searcher defines the contract for performing semantic search queries.
 type Searcher interface {
 	Search(ctx context.Context, request model.SearchRequest) (model.SearchResult, error)
 }
 
-// Parser decodes fetched entry-search payloads into parsed records.
+// Parser decodes fetched search payloads into parsed records.
 type Parser interface {
 	Parse(ctx context.Context, descriptor model.SourceDescriptor, document fetch.Document) ([]parse.ParsedSearchRecord, []model.Warning, error)
 }
 
-// Normalizer converts parsed entry-search records into normalized search candidates.
+// Normalizer converts parsed search records into normalized search candidates.
 type Normalizer interface {
 	Normalize(ctx context.Context, descriptor model.SourceDescriptor, records []parse.ParsedSearchRecord) ([]model.SearchCandidate, []model.Warning, error)
 }
 
-// Service orchestrates cache-aside DPD entry search execution.
+// Service orchestrates cache-aside semantic search execution.
 type Service struct {
 	descriptor model.SourceDescriptor
 	fetcher    fetch.Fetcher
@@ -40,6 +40,15 @@ func NewService(descriptor model.SourceDescriptor, fetcher fetch.Fetcher, parser
 	return &Service{descriptor: descriptor, fetcher: fetcher, parser: parser, normalizer: normalizer, cache: store, now: func() time.Time { return time.Now().UTC() }}
 }
 
+// FetcherForTesting exposes the wired fetcher for app wiring tests.
+func (s *Service) FetcherForTesting() fetch.Fetcher { return s.fetcher }
+
+// ParserForTesting exposes the wired parser for app wiring tests.
+func (s *Service) ParserForTesting() Parser { return s.parser }
+
+// NormalizerForTesting exposes the wired normalizer for app wiring tests.
+func (s *Service) NormalizerForTesting() Normalizer { return s.normalizer }
+
 func (s *Service) cacheResult(ctx context.Context, cacheKey string, request model.SearchRequest, result model.SearchResult) error {
 	if s.cache == nil || request.NoCache {
 		return nil
@@ -51,7 +60,7 @@ func (s *Service) cacheResult(ctx context.Context, cacheKey string, request mode
 	return s.cache.Set(ctx, cacheKey, cacheCopy)
 }
 
-// Search runs a DPD entry search using a format-neutral cached normalized result when available.
+// Search runs a semantic search using a format-neutral cached normalized result when available.
 func (s *Service) Search(ctx context.Context, request model.SearchRequest) (model.SearchResult, error) {
 	cacheKey := cache.BuildSearchKey(request)
 	if s.cache != nil && !request.NoCache {

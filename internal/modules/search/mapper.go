@@ -26,6 +26,9 @@ func mapURLToCommand(query string, candidate model.SearchCandidate) (string, str
 	slug := segments[len(segments)-1]
 	switch moduleName {
 	case "espanol-al-dia", "noticia", "duda-linguistica", "dpd":
+		if moduleName == "dpd" {
+			return moduleName, slug, fmt.Sprintf("dlexa dpd %s", slug)
+		}
 		return moduleName, slug, fmt.Sprintf("dlexa %s %s", moduleName, slug)
 	default:
 		return "unknown", slug, fmt.Sprintf("dlexa search %s", strings.TrimSpace(query))

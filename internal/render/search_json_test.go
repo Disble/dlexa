@@ -11,7 +11,7 @@ import (
 
 func TestSearchJSONRendererPreservesRawHTMLAndOrderWithoutMarkdownProjection(t *testing.T) {
 	renderer := NewSearchJSONRenderer()
-	result := model.SearchResult{Request: model.SearchRequest{Query: "abu dhabi", Format: "json"}, Candidates: []model.SearchCandidate{{RawLabelHTML: `<em>Abu Dhabi</em>`, DisplayText: "Abu Dhabi", ArticleKey: "Abu Dabi"}, {RawLabelHTML: `<span class="bolaspa">⊗</span>alicuota`, DisplayText: "⊗ alicuota", ArticleKey: "alícuoto"}}}
+	result := model.SearchResult{Request: model.SearchRequest{Query: "abu dhabi", Format: "json"}, Outcome: model.SearchOutcomeNoResults, Candidates: []model.SearchCandidate{{RawLabelHTML: `<em>Abu Dhabi</em>`, DisplayText: "Abu Dhabi", ArticleKey: "Abu Dabi"}, {RawLabelHTML: `<span class="bolaspa">⊗</span>alicuota`, DisplayText: "⊗ alicuota", ArticleKey: "alícuoto", Module: "unknown", URL: "https://www.rae.es/archivo/ruta-rara", NextCommand: "dlexa search abu dhabi"}}}
 
 	payload, err := renderer.Render(context.Background(), result)
 	if err != nil {
@@ -21,7 +21,7 @@ func TestSearchJSONRendererPreservesRawHTMLAndOrderWithoutMarkdownProjection(t *
 	if !strings.Contains(text, `<em>Abu Dhabi</em>`) {
 		t.Fatalf("payload = %s, want raw html unescaped", text)
 	}
-	if !strings.Contains(text, `"Request": {`) || !strings.Contains(text, `"Candidates": [`) {
+	if !strings.Contains(text, `"Request": {`) || !strings.Contains(text, `"Candidates": [`) || !strings.Contains(text, `"Outcome": "no_results"`) {
 		t.Fatalf("payload = %s, want current top-level Go field names", text)
 	}
 	if strings.Contains(text, "->") {

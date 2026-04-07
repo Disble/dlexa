@@ -74,10 +74,10 @@ func New(cli platform.CLI) *App {
 	registry := source.NewStaticRegistry(dpdSource, demoSource)
 	lookupService := query.NewService(registry, cacheStore)
 	searchService := searchsvc.NewService(
-		model.SourceDescriptor{Name: "dpd", DisplayName: "Diccionario panhispánico de dudas", Kind: "remote-json", Priority: 1, Cacheable: true},
-		fetch.NewDPDSearchFetcher(runtimeConfig.DPD.BaseURL, runtimeConfig.DPD.Timeout, runtimeConfig.DPD.UserAgent),
-		parse.NewDPDSearchParser(),
-		normalize.NewDPDSearchNormalizer(),
+		model.SourceDescriptor{Name: "search", DisplayName: "Búsqueda general RAE", Kind: "remote-html", Priority: 1, Cacheable: true},
+		fetch.NewLiveSearchFetcher(runtimeConfig.DPD.BaseURL, runtimeConfig.DPD.Timeout, runtimeConfig.DPD.UserAgent),
+		parse.NewLiveSearchParser(),
+		normalize.NewLiveSearchNormalizer(),
 		searchCacheStore,
 	)
 	rendererRegistry := render.NewRegistry(

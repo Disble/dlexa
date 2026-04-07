@@ -1,0 +1,32 @@
+change: live-semantic-search-gateway
+phase: archive
+status: archived
+artifact_store: hybrid
+archived_at: "2026-04-07"
+archive_path: openspec/changes/archive/2026-04-07-live-semantic-search-gateway
+artifacts:
+  proposal: true
+  spec: true
+  design: true
+  tasks: true
+  apply_progress: true
+  verify_report: true
+  archive_report: true
+specs:
+  - openspec/changes/archive/2026-04-07-live-semantic-search-gateway/specs/search/spec.md
+  - openspec/changes/archive/2026-04-07-live-semantic-search-gateway/specs/cli/spec.md
+notes:
+  scope_decision: "Implement the live search gateway contract and safe command suggestions now; defer new executable destination commands to later focused SDD changes."
+  cobra_surface: "No new subcommands in this change; existing search command behavior expands materially while root default-to-dpd remains unchanged."
+  archive_summary: "Delta specs synced into openspec/specs/search/spec.md and openspec/specs/cli/spec.md before archiving the completed change."
+completed_phases:
+  - proposal
+  - spec
+  - design
+  - tasks
+  - apply
+  - verify
+  - archive
+next: none
+last_completed_phase: archive
+last_updated: 2026-04-07T23:59:00Z

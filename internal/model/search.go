@@ -2,6 +2,16 @@ package model
 
 import "time"
 
+// SearchOutcome classifies the final semantic-search outcome after curation.
+type SearchOutcome string
+
+const (
+	// SearchOutcomeResults indicates the search completed with visible curated candidates.
+	SearchOutcomeResults SearchOutcome = "results"
+	// SearchOutcomeNoResults indicates the search succeeded but no curated candidates remained.
+	SearchOutcomeNoResults SearchOutcome = "no_results"
+)
+
 // SearchRequest holds the parameters for a DPD entry-search query.
 type SearchRequest struct {
 	Query   string
@@ -13,6 +23,7 @@ type SearchRequest struct {
 type SearchResult struct {
 	Request     SearchRequest
 	Candidates  []SearchCandidate
+	Outcome     SearchOutcome
 	Warnings    []Warning
 	Problems    []Problem
 	CacheHit    bool
