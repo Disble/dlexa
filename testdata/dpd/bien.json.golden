@@ -1,0 +1,1148 @@
+{
+  "Request": {
+    "Query": "bien",
+    "Format": "json",
+    "Sources": null,
+    "NoCache": false
+  },
+  "Entries": [
+    {
+      "ID": "dpd:bien#bien",
+      "Headword": "bien",
+      "Summary": "Diccionario panhispánico de dudas",
+      "Content": "1. Como adverbio de modo significa 'correcta y adecuadamente': *Cierra bien la ventana, por favor*; 'satisfactoriamente': *No he dormido bien esta noche*. El comparativo es *mejor*. No debe usarse *más bien* como comparativo. Este uso incorrecto no debe confundirse con los usos correctos de la locución adverbial *más bien* (→ [6](bien#S1590507271213267522)).\n\n2. Antepuesto a un adjetivo o a otro adverbio, funciona como intensificador enfático, con valor equivalente a *muy*.\n\n3. Repetido ante dos o más elementos de una oración, señala distintas posibilidades.\n\n4. Como adjetivo invariable significa 'de buena posición social'.\n\n5. bien que. Locución conjuntiva concesiva equivalente a 'aunque'. Con este mismo sentido, se emplea más frecuentemente la locución *si bien* (→ [7](bien#S1590507271244936818)).\n\n6. más bien. Locución adverbial que se usa con distintos valores:\n\n  a) Para introducir una rectificación o una matización.\n\n  b) Con el sentido de 'en cierto modo, de alguna manera'.\n\n  c) También significa 'mejor o preferentemente'.\n\n7. si bien. Locución conjuntiva concesiva equivalente a 'aunque'. Con este mismo sentido, se emplea también, aunque con menos frecuencia, la locución *bien que* (→ [5](bien#S1590507271206059324)).",
+      "Source": "dpd",
+      "URL": "https://www.rae.es/dpd/bien",
+      "Metadata": {
+        "access_profile": "browser-like direct /dpd/<term>",
+        "entry_id": "bien",
+        "normalized_by": "dpd"
+      },
+      "Article": {
+        "Dictionary": "Diccionario panhispánico de dudas",
+        "Edition": "2.ª edición",
+        "Lemma": "bien",
+        "CanonicalURL": "https://www.rae.es/dpd/bien",
+        "Sections": [
+          {
+            "Label": "1.",
+            "Title": "",
+            "Blocks": [
+              {
+                "kind": "paragraph",
+                "paragraph": {
+                  "Markdown": "Como adverbio de modo significa 'correcta y adecuadamente': ‹Cierra bien la ventana, por favor›; 'satisfactoriamente': ‹No he dormido bien esta noche›. El comparativo es *mejor*. No debe usarse *más bien* como comparativo. Este uso incorrecto no debe confundirse con los usos correctos de la locución adverbial *más bien* (→ [6](bien#S1590507271213267522)).",
+                  "Inlines": [
+                    {
+                      "Kind": "text",
+                      "Variant": "",
+                      "Text": "Como adverbio de modo significa ",
+                      "Target": "",
+                      "Children": null
+                    },
+                    {
+                      "Kind": "bracket_definition",
+                      "Variant": "",
+                      "Text": "'correcta y adecuadamente'",
+                      "Target": "",
+                      "Children": [
+                        {
+                          "Kind": "text",
+                          "Variant": "",
+                          "Text": "'correcta y adecuadamente'",
+                          "Target": "",
+                          "Children": null
+                        }
+                      ]
+                    },
+                    {
+                      "Kind": "text",
+                      "Variant": "",
+                      "Text": ": ",
+                      "Target": "",
+                      "Children": null
+                    },
+                    {
+                      "Kind": "example",
+                      "Variant": "ejemplo",
+                      "Text": "Cierra bien la ventana, por favor",
+                      "Target": "",
+                      "Children": [
+                        {
+                          "Kind": "text",
+                          "Variant": "",
+                          "Text": "Cierra bien la ventana, por favor",
+                          "Target": "",
+                          "Children": null
+                        }
+                      ]
+                    },
+                    {
+                      "Kind": "text",
+                      "Variant": "",
+                      "Text": "; ",
+                      "Target": "",
+                      "Children": null
+                    },
+                    {
+                      "Kind": "bracket_definition",
+                      "Variant": "",
+                      "Text": "'satisfactoriamente'",
+                      "Target": "",
+                      "Children": [
+                        {
+                          "Kind": "text",
+                          "Variant": "",
+                          "Text": "'satisfactoriamente'",
+                          "Target": "",
+                          "Children": null
+                        }
+                      ]
+                    },
+                    {
+                      "Kind": "text",
+                      "Variant": "",
+                      "Text": ": ",
+                      "Target": "",
+                      "Children": null
+                    },
+                    {
+                      "Kind": "example",
+                      "Variant": "ejemplo",
+                      "Text": "No he dormido bien esta noche",
+                      "Target": "",
+                      "Children": [
+                        {
+                          "Kind": "text",
+                          "Variant": "",
+                          "Text": "No he dormido bien esta noche",
+                          "Target": "",
+                          "Children": null
+                        }
+                      ]
+                    },
+                    {
+                      "Kind": "text",
+                      "Variant": "",
+                      "Text": ". El comparativo es ",
+                      "Target": "",
+                      "Children": null
+                    },
+                    {
+                      "Kind": "mention",
+                      "Variant": "ment",
+                      "Text": "mejor",
+                      "Target": "",
+                      "Children": [
+                        {
+                          "Kind": "text",
+                          "Variant": "",
+                          "Text": "mejor",
+                          "Target": "",
+                          "Children": null
+                        }
+                      ]
+                    },
+                    {
+                      "Kind": "text",
+                      "Variant": "",
+                      "Text": ". No debe usarse ",
+                      "Target": "",
+                      "Children": null
+                    },
+                    {
+                      "Kind": "mention",
+                      "Variant": "ment",
+                      "Text": "más bien",
+                      "Target": "",
+                      "Children": [
+                        {
+                          "Kind": "text",
+                          "Variant": "",
+                          "Text": "más bien",
+                          "Target": "",
+                          "Children": null
+                        }
+                      ]
+                    },
+                    {
+                      "Kind": "text",
+                      "Variant": "",
+                      "Text": " como comparativo. Este uso incorrecto no debe confundirse con los usos correctos de la locución adverbial ",
+                      "Target": "",
+                      "Children": null
+                    },
+                    {
+                      "Kind": "mention",
+                      "Variant": "ment",
+                      "Text": "más bien",
+                      "Target": "",
+                      "Children": [
+                        {
+                          "Kind": "text",
+                          "Variant": "",
+                          "Text": "más bien",
+                          "Target": "",
+                          "Children": null
+                        }
+                      ]
+                    },
+                    {
+                      "Kind": "text",
+                      "Variant": "",
+                      "Text": " (",
+                      "Target": "",
+                      "Children": null
+                    },
+                    {
+                      "Kind": "reference",
+                      "Variant": "MismaEntrada",
+                      "Text": "6",
+                      "Target": "bien#S1590507271213267522",
+                      "Children": [
+                        {
+                          "Kind": "text",
+                          "Variant": "",
+                          "Text": "6",
+                          "Target": "",
+                          "Children": null
+                        }
+                      ]
+                    },
+                    {
+                      "Kind": "text",
+                      "Variant": "",
+                      "Text": ").",
+                      "Target": "",
+                      "Children": null
+                    }
+                  ]
+                }
+              }
+            ],
+            "Paragraphs": [
+              {
+                "Markdown": "Como adverbio de modo significa 'correcta y adecuadamente': ‹Cierra bien la ventana, por favor›; 'satisfactoriamente': ‹No he dormido bien esta noche›. El comparativo es *mejor*. No debe usarse *más bien* como comparativo. Este uso incorrecto no debe confundirse con los usos correctos de la locución adverbial *más bien* (→ [6](bien#S1590507271213267522)).",
+                "Inlines": [
+                  {
+                    "Kind": "text",
+                    "Variant": "",
+                    "Text": "Como adverbio de modo significa ",
+                    "Target": "",
+                    "Children": null
+                  },
+                  {
+                    "Kind": "bracket_definition",
+                    "Variant": "",
+                    "Text": "'correcta y adecuadamente'",
+                    "Target": "",
+                    "Children": [
+                      {
+                        "Kind": "text",
+                        "Variant": "",
+                        "Text": "'correcta y adecuadamente'",
+                        "Target": "",
+                        "Children": null
+                      }
+                    ]
+                  },
+                  {
+                    "Kind": "text",
+                    "Variant": "",
+                    "Text": ": ",
+                    "Target": "",
+                    "Children": null
+                  },
+                  {
+                    "Kind": "example",
+                    "Variant": "ejemplo",
+                    "Text": "Cierra bien la ventana, por favor",
+                    "Target": "",
+                    "Children": [
+                      {
+                        "Kind": "text",
+                        "Variant": "",
+                        "Text": "Cierra bien la ventana, por favor",
+                        "Target": "",
+                        "Children": null
+                      }
+                    ]
+                  },
+                  {
+                    "Kind": "text",
+                    "Variant": "",
+                    "Text": "; ",
+                    "Target": "",
+                    "Children": null
+                  },
+                  {
+                    "Kind": "bracket_definition",
+                    "Variant": "",
+                    "Text": "'satisfactoriamente'",
+                    "Target": "",
+                    "Children": [
+                      {
+                        "Kind": "text",
+                        "Variant": "",
+                        "Text": "'satisfactoriamente'",
+                        "Target": "",
+                        "Children": null
+                      }
+                    ]
+                  },
+                  {
+                    "Kind": "text",
+                    "Variant": "",
+                    "Text": ": ",
+                    "Target": "",
+                    "Children": null
+                  },
+                  {
+                    "Kind": "example",
+                    "Variant": "ejemplo",
+                    "Text": "No he dormido bien esta noche",
+                    "Target": "",
+                    "Children": [
+                      {
+                        "Kind": "text",
+                        "Variant": "",
+                        "Text": "No he dormido bien esta noche",
+                        "Target": "",
+                        "Children": null
+                      }
+                    ]
+                  },
+                  {
+                    "Kind": "text",
+                    "Variant": "",
+                    "Text": ". El comparativo es ",
+                    "Target": "",
+                    "Children": null
+                  },
+                  {
+                    "Kind": "mention",
+                    "Variant": "ment",
+                    "Text": "mejor",
+                    "Target": "",
+                    "Children": [
+                      {
+                        "Kind": "text",
+                        "Variant": "",
+                        "Text": "mejor",
+                        "Target": "",
+                        "Children": null
+                      }
+                    ]
+                  },
+                  {
+                    "Kind": "text",
+                    "Variant": "",
+                    "Text": ". No debe usarse ",
+                    "Target": "",
+                    "Children": null
+                  },
+                  {
+                    "Kind": "mention",
+                    "Variant": "ment",
+                    "Text": "más bien",
+                    "Target": "",
+                    "Children": [
+                      {
+                        "Kind": "text",
+                        "Variant": "",
+                        "Text": "más bien",
+                        "Target": "",
+                        "Children": null
+                      }
+                    ]
+                  },
+                  {
+                    "Kind": "text",
+                    "Variant": "",
+                    "Text": " como comparativo. Este uso incorrecto no debe confundirse con los usos correctos de la locución adverbial ",
+                    "Target": "",
+                    "Children": null
+                  },
+                  {
+                    "Kind": "mention",
+                    "Variant": "ment",
+                    "Text": "más bien",
+                    "Target": "",
+                    "Children": [
+                      {
+                        "Kind": "text",
+                        "Variant": "",
+                        "Text": "más bien",
+                        "Target": "",
+                        "Children": null
+                      }
+                    ]
+                  },
+                  {
+                    "Kind": "text",
+                    "Variant": "",
+                    "Text": " (",
+                    "Target": "",
+                    "Children": null
+                  },
+                  {
+                    "Kind": "reference",
+                    "Variant": "MismaEntrada",
+                    "Text": "6",
+                    "Target": "bien#S1590507271213267522",
+                    "Children": [
+                      {
+                        "Kind": "text",
+                        "Variant": "",
+                        "Text": "6",
+                        "Target": "",
+                        "Children": null
+                      }
+                    ]
+                  },
+                  {
+                    "Kind": "text",
+                    "Variant": "",
+                    "Text": ").",
+                    "Target": "",
+                    "Children": null
+                  }
+                ]
+              }
+            ],
+            "Children": null
+          },
+          {
+            "Label": "2.",
+            "Title": "",
+            "Blocks": [
+              {
+                "kind": "paragraph",
+                "paragraph": {
+                  "Markdown": "Antepuesto a un adjetivo o a otro adverbio, funciona como intensificador enfático, con valor equivalente a *muy*.",
+                  "Inlines": [
+                    {
+                      "Kind": "text",
+                      "Variant": "",
+                      "Text": "Antepuesto a un adjetivo o a otro adverbio, funciona como intensificador enfático, con valor equivalente a ",
+                      "Target": "",
+                      "Children": null
+                    },
+                    {
+                      "Kind": "mention",
+                      "Variant": "ment",
+                      "Text": "muy",
+                      "Target": "",
+                      "Children": [
+                        {
+                          "Kind": "text",
+                          "Variant": "",
+                          "Text": "muy",
+                          "Target": "",
+                          "Children": null
+                        }
+                      ]
+                    },
+                    {
+                      "Kind": "text",
+                      "Variant": "",
+                      "Text": ".",
+                      "Target": "",
+                      "Children": null
+                    }
+                  ]
+                }
+              }
+            ],
+            "Paragraphs": [
+              {
+                "Markdown": "Antepuesto a un adjetivo o a otro adverbio, funciona como intensificador enfático, con valor equivalente a *muy*.",
+                "Inlines": [
+                  {
+                    "Kind": "text",
+                    "Variant": "",
+                    "Text": "Antepuesto a un adjetivo o a otro adverbio, funciona como intensificador enfático, con valor equivalente a ",
+                    "Target": "",
+                    "Children": null
+                  },
+                  {
+                    "Kind": "mention",
+                    "Variant": "ment",
+                    "Text": "muy",
+                    "Target": "",
+                    "Children": [
+                      {
+                        "Kind": "text",
+                        "Variant": "",
+                        "Text": "muy",
+                        "Target": "",
+                        "Children": null
+                      }
+                    ]
+                  },
+                  {
+                    "Kind": "text",
+                    "Variant": "",
+                    "Text": ".",
+                    "Target": "",
+                    "Children": null
+                  }
+                ]
+              }
+            ],
+            "Children": null
+          },
+          {
+            "Label": "3.",
+            "Title": "",
+            "Blocks": [
+              {
+                "kind": "paragraph",
+                "paragraph": {
+                  "Markdown": "Repetido ante dos o más elementos de una oración, señala distintas posibilidades.",
+                  "Inlines": null
+                }
+              }
+            ],
+            "Paragraphs": [
+              {
+                "Markdown": "Repetido ante dos o más elementos de una oración, señala distintas posibilidades.",
+                "Inlines": null
+              }
+            ],
+            "Children": null
+          },
+          {
+            "Label": "4.",
+            "Title": "",
+            "Blocks": [
+              {
+                "kind": "paragraph",
+                "paragraph": {
+                  "Markdown": "Como adjetivo invariable significa 'de buena posición social'.",
+                  "Inlines": [
+                    {
+                      "Kind": "text",
+                      "Variant": "",
+                      "Text": "Como adjetivo invariable significa ",
+                      "Target": "",
+                      "Children": null
+                    },
+                    {
+                      "Kind": "bracket_definition",
+                      "Variant": "",
+                      "Text": "'de buena posición social'",
+                      "Target": "",
+                      "Children": [
+                        {
+                          "Kind": "text",
+                          "Variant": "",
+                          "Text": "'de buena posición social'",
+                          "Target": "",
+                          "Children": null
+                        }
+                      ]
+                    },
+                    {
+                      "Kind": "text",
+                      "Variant": "",
+                      "Text": ".",
+                      "Target": "",
+                      "Children": null
+                    }
+                  ]
+                }
+              }
+            ],
+            "Paragraphs": [
+              {
+                "Markdown": "Como adjetivo invariable significa 'de buena posición social'.",
+                "Inlines": [
+                  {
+                    "Kind": "text",
+                    "Variant": "",
+                    "Text": "Como adjetivo invariable significa ",
+                    "Target": "",
+                    "Children": null
+                  },
+                  {
+                    "Kind": "bracket_definition",
+                    "Variant": "",
+                    "Text": "'de buena posición social'",
+                    "Target": "",
+                    "Children": [
+                      {
+                        "Kind": "text",
+                        "Variant": "",
+                        "Text": "'de buena posición social'",
+                        "Target": "",
+                        "Children": null
+                      }
+                    ]
+                  },
+                  {
+                    "Kind": "text",
+                    "Variant": "",
+                    "Text": ".",
+                    "Target": "",
+                    "Children": null
+                  }
+                ]
+              }
+            ],
+            "Children": null
+          },
+          {
+            "Label": "5.",
+            "Title": "bien que.",
+            "Blocks": [
+              {
+                "kind": "paragraph",
+                "paragraph": {
+                  "Markdown": "Locución conjuntiva concesiva equivalente a 'aunque'. Con este mismo sentido, se emplea más frecuentemente la locución *si bien* (→ [7](bien#S1590507271244936818)).",
+                  "Inlines": [
+                    {
+                      "Kind": "text",
+                      "Variant": "",
+                      "Text": "Locución conjuntiva concesiva equivalente a ",
+                      "Target": "",
+                      "Children": null
+                    },
+                    {
+                      "Kind": "bracket_definition",
+                      "Variant": "",
+                      "Text": "'aunque'",
+                      "Target": "",
+                      "Children": [
+                        {
+                          "Kind": "text",
+                          "Variant": "",
+                          "Text": "'aunque'",
+                          "Target": "",
+                          "Children": null
+                        }
+                      ]
+                    },
+                    {
+                      "Kind": "text",
+                      "Variant": "",
+                      "Text": ". Con este mismo sentido, se emplea más frecuentemente la locución ",
+                      "Target": "",
+                      "Children": null
+                    },
+                    {
+                      "Kind": "mention",
+                      "Variant": "ment",
+                      "Text": "si bien",
+                      "Target": "",
+                      "Children": [
+                        {
+                          "Kind": "text",
+                          "Variant": "",
+                          "Text": "si bien",
+                          "Target": "",
+                          "Children": null
+                        }
+                      ]
+                    },
+                    {
+                      "Kind": "text",
+                      "Variant": "",
+                      "Text": " (",
+                      "Target": "",
+                      "Children": null
+                    },
+                    {
+                      "Kind": "reference",
+                      "Variant": "MismaEntrada",
+                      "Text": "7",
+                      "Target": "bien#S1590507271244936818",
+                      "Children": [
+                        {
+                          "Kind": "text",
+                          "Variant": "",
+                          "Text": "7",
+                          "Target": "",
+                          "Children": null
+                        }
+                      ]
+                    },
+                    {
+                      "Kind": "text",
+                      "Variant": "",
+                      "Text": ").",
+                      "Target": "",
+                      "Children": null
+                    }
+                  ]
+                }
+              }
+            ],
+            "Paragraphs": [
+              {
+                "Markdown": "Locución conjuntiva concesiva equivalente a 'aunque'. Con este mismo sentido, se emplea más frecuentemente la locución *si bien* (→ [7](bien#S1590507271244936818)).",
+                "Inlines": [
+                  {
+                    "Kind": "text",
+                    "Variant": "",
+                    "Text": "Locución conjuntiva concesiva equivalente a ",
+                    "Target": "",
+                    "Children": null
+                  },
+                  {
+                    "Kind": "bracket_definition",
+                    "Variant": "",
+                    "Text": "'aunque'",
+                    "Target": "",
+                    "Children": [
+                      {
+                        "Kind": "text",
+                        "Variant": "",
+                        "Text": "'aunque'",
+                        "Target": "",
+                        "Children": null
+                      }
+                    ]
+                  },
+                  {
+                    "Kind": "text",
+                    "Variant": "",
+                    "Text": ". Con este mismo sentido, se emplea más frecuentemente la locución ",
+                    "Target": "",
+                    "Children": null
+                  },
+                  {
+                    "Kind": "mention",
+                    "Variant": "ment",
+                    "Text": "si bien",
+                    "Target": "",
+                    "Children": [
+                      {
+                        "Kind": "text",
+                        "Variant": "",
+                        "Text": "si bien",
+                        "Target": "",
+                        "Children": null
+                      }
+                    ]
+                  },
+                  {
+                    "Kind": "text",
+                    "Variant": "",
+                    "Text": " (",
+                    "Target": "",
+                    "Children": null
+                  },
+                  {
+                    "Kind": "reference",
+                    "Variant": "MismaEntrada",
+                    "Text": "7",
+                    "Target": "bien#S1590507271244936818",
+                    "Children": [
+                      {
+                        "Kind": "text",
+                        "Variant": "",
+                        "Text": "7",
+                        "Target": "",
+                        "Children": null
+                      }
+                    ]
+                  },
+                  {
+                    "Kind": "text",
+                    "Variant": "",
+                    "Text": ").",
+                    "Target": "",
+                    "Children": null
+                  }
+                ]
+              }
+            ],
+            "Children": null
+          },
+          {
+            "Label": "6.",
+            "Title": "más bien.",
+            "Blocks": [
+              {
+                "kind": "paragraph",
+                "paragraph": {
+                  "Markdown": "Locución adverbial que se usa con distintos valores:",
+                  "Inlines": null
+                }
+              }
+            ],
+            "Paragraphs": [
+              {
+                "Markdown": "Locución adverbial que se usa con distintos valores:",
+                "Inlines": null
+              }
+            ],
+            "Children": [
+              {
+                "Label": "a)",
+                "Title": "",
+                "Blocks": [
+                  {
+                    "kind": "paragraph",
+                    "paragraph": {
+                      "Markdown": "Para introducir una rectificación o una matización.",
+                      "Inlines": null
+                    }
+                  }
+                ],
+                "Paragraphs": [
+                  {
+                    "Markdown": "Para introducir una rectificación o una matización.",
+                    "Inlines": null
+                  }
+                ],
+                "Children": null
+              },
+              {
+                "Label": "b)",
+                "Title": "",
+                "Blocks": [
+                  {
+                    "kind": "paragraph",
+                    "paragraph": {
+                      "Markdown": "Con el sentido de 'en cierto modo, de alguna manera'.",
+                      "Inlines": [
+                        {
+                          "Kind": "text",
+                          "Variant": "",
+                          "Text": "Con el sentido de ",
+                          "Target": "",
+                          "Children": null
+                        },
+                        {
+                          "Kind": "bracket_definition",
+                          "Variant": "",
+                          "Text": "'en cierto modo, de alguna manera'",
+                          "Target": "",
+                          "Children": [
+                            {
+                              "Kind": "text",
+                              "Variant": "",
+                              "Text": "'en cierto modo, de alguna manera'",
+                              "Target": "",
+                              "Children": null
+                            }
+                          ]
+                        },
+                        {
+                          "Kind": "text",
+                          "Variant": "",
+                          "Text": ".",
+                          "Target": "",
+                          "Children": null
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "Paragraphs": [
+                  {
+                    "Markdown": "Con el sentido de 'en cierto modo, de alguna manera'.",
+                    "Inlines": [
+                      {
+                        "Kind": "text",
+                        "Variant": "",
+                        "Text": "Con el sentido de ",
+                        "Target": "",
+                        "Children": null
+                      },
+                      {
+                        "Kind": "bracket_definition",
+                        "Variant": "",
+                        "Text": "'en cierto modo, de alguna manera'",
+                        "Target": "",
+                        "Children": [
+                          {
+                            "Kind": "text",
+                            "Variant": "",
+                            "Text": "'en cierto modo, de alguna manera'",
+                            "Target": "",
+                            "Children": null
+                          }
+                        ]
+                      },
+                      {
+                        "Kind": "text",
+                        "Variant": "",
+                        "Text": ".",
+                        "Target": "",
+                        "Children": null
+                      }
+                    ]
+                  }
+                ],
+                "Children": null
+              },
+              {
+                "Label": "c)",
+                "Title": "",
+                "Blocks": [
+                  {
+                    "kind": "paragraph",
+                    "paragraph": {
+                      "Markdown": "También significa 'mejor o preferentemente'.",
+                      "Inlines": [
+                        {
+                          "Kind": "text",
+                          "Variant": "",
+                          "Text": "También significa ",
+                          "Target": "",
+                          "Children": null
+                        },
+                        {
+                          "Kind": "bracket_definition",
+                          "Variant": "",
+                          "Text": "'mejor o preferentemente'",
+                          "Target": "",
+                          "Children": [
+                            {
+                              "Kind": "text",
+                              "Variant": "",
+                              "Text": "'mejor o preferentemente'",
+                              "Target": "",
+                              "Children": null
+                            }
+                          ]
+                        },
+                        {
+                          "Kind": "text",
+                          "Variant": "",
+                          "Text": ".",
+                          "Target": "",
+                          "Children": null
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "Paragraphs": [
+                  {
+                    "Markdown": "También significa 'mejor o preferentemente'.",
+                    "Inlines": [
+                      {
+                        "Kind": "text",
+                        "Variant": "",
+                        "Text": "También significa ",
+                        "Target": "",
+                        "Children": null
+                      },
+                      {
+                        "Kind": "bracket_definition",
+                        "Variant": "",
+                        "Text": "'mejor o preferentemente'",
+                        "Target": "",
+                        "Children": [
+                          {
+                            "Kind": "text",
+                            "Variant": "",
+                            "Text": "'mejor o preferentemente'",
+                            "Target": "",
+                            "Children": null
+                          }
+                        ]
+                      },
+                      {
+                        "Kind": "text",
+                        "Variant": "",
+                        "Text": ".",
+                        "Target": "",
+                        "Children": null
+                      }
+                    ]
+                  }
+                ],
+                "Children": null
+              }
+            ]
+          },
+          {
+            "Label": "7.",
+            "Title": "si bien.",
+            "Blocks": [
+              {
+                "kind": "paragraph",
+                "paragraph": {
+                  "Markdown": "Locución conjuntiva concesiva equivalente a 'aunque'. Con este mismo sentido, se emplea también, aunque con menos frecuencia, la locución *bien que* (→ [5](bien#S1590507271206059324)).",
+                  "Inlines": [
+                    {
+                      "Kind": "text",
+                      "Variant": "",
+                      "Text": "Locución conjuntiva concesiva equivalente a ",
+                      "Target": "",
+                      "Children": null
+                    },
+                    {
+                      "Kind": "bracket_definition",
+                      "Variant": "",
+                      "Text": "'aunque'",
+                      "Target": "",
+                      "Children": [
+                        {
+                          "Kind": "text",
+                          "Variant": "",
+                          "Text": "'aunque'",
+                          "Target": "",
+                          "Children": null
+                        }
+                      ]
+                    },
+                    {
+                      "Kind": "text",
+                      "Variant": "",
+                      "Text": ". Con este mismo sentido, se emplea también, aunque con menos frecuencia, la locución ",
+                      "Target": "",
+                      "Children": null
+                    },
+                    {
+                      "Kind": "mention",
+                      "Variant": "ment",
+                      "Text": "bien que",
+                      "Target": "",
+                      "Children": [
+                        {
+                          "Kind": "text",
+                          "Variant": "",
+                          "Text": "bien que",
+                          "Target": "",
+                          "Children": null
+                        }
+                      ]
+                    },
+                    {
+                      "Kind": "text",
+                      "Variant": "",
+                      "Text": " (",
+                      "Target": "",
+                      "Children": null
+                    },
+                    {
+                      "Kind": "reference",
+                      "Variant": "MismaEntrada",
+                      "Text": "5",
+                      "Target": "bien#S1590507271206059324",
+                      "Children": [
+                        {
+                          "Kind": "text",
+                          "Variant": "",
+                          "Text": "5",
+                          "Target": "",
+                          "Children": null
+                        }
+                      ]
+                    },
+                    {
+                      "Kind": "text",
+                      "Variant": "",
+                      "Text": ").",
+                      "Target": "",
+                      "Children": null
+                    }
+                  ]
+                }
+              }
+            ],
+            "Paragraphs": [
+              {
+                "Markdown": "Locución conjuntiva concesiva equivalente a 'aunque'. Con este mismo sentido, se emplea también, aunque con menos frecuencia, la locución *bien que* (→ [5](bien#S1590507271206059324)).",
+                "Inlines": [
+                  {
+                    "Kind": "text",
+                    "Variant": "",
+                    "Text": "Locución conjuntiva concesiva equivalente a ",
+                    "Target": "",
+                    "Children": null
+                  },
+                  {
+                    "Kind": "bracket_definition",
+                    "Variant": "",
+                    "Text": "'aunque'",
+                    "Target": "",
+                    "Children": [
+                      {
+                        "Kind": "text",
+                        "Variant": "",
+                        "Text": "'aunque'",
+                        "Target": "",
+                        "Children": null
+                      }
+                    ]
+                  },
+                  {
+                    "Kind": "text",
+                    "Variant": "",
+                    "Text": ". Con este mismo sentido, se emplea también, aunque con menos frecuencia, la locución ",
+                    "Target": "",
+                    "Children": null
+                  },
+                  {
+                    "Kind": "mention",
+                    "Variant": "ment",
+                    "Text": "bien que",
+                    "Target": "",
+                    "Children": [
+                      {
+                        "Kind": "text",
+                        "Variant": "",
+                        "Text": "bien que",
+                        "Target": "",
+                        "Children": null
+                      }
+                    ]
+                  },
+                  {
+                    "Kind": "text",
+                    "Variant": "",
+                    "Text": " (",
+                    "Target": "",
+                    "Children": null
+                  },
+                  {
+                    "Kind": "reference",
+                    "Variant": "MismaEntrada",
+                    "Text": "5",
+                    "Target": "bien#S1590507271206059324",
+                    "Children": [
+                      {
+                        "Kind": "text",
+                        "Variant": "",
+                        "Text": "5",
+                        "Target": "",
+                        "Children": null
+                      }
+                    ]
+                  },
+                  {
+                    "Kind": "text",
+                    "Variant": "",
+                    "Text": ").",
+                    "Target": "",
+                    "Children": null
+                  }
+                ]
+              }
+            ],
+            "Children": null
+          }
+        ],
+        "Citation": {
+          "SourceLabel": "Real Academia Española y Asociación de Academias de la Lengua Española",
+          "CanonicalURL": "https://www.rae.es/dpd/bien",
+          "Edition": "2.ª edición",
+          "ConsultedAt": "10/03/2026",
+          "Text": "Real Academia Española y Asociación de Academias de la Lengua Española: Diccionario panhispánico de dudas (DPD) [en línea], https://www.rae.es/dpd/bien, 2.ª edición. [Consulta: 10/03/2026]."
+        }
+      }
+    }
+  ],
+  "Warnings": null,
+  "Problems": null,
+  "Sources": null,
+  "CacheHit": false,
+  "GeneratedAt": "0001-01-01T00:00:00Z"
+}

@@ -2,7 +2,7 @@
 
 ## Batch Completed
 
-- Completed **Phase 5.6 terminal-output contract batch** on top of the earlier fidelity-verification work.
+- Completed **Phase 3.5 + 5.7 + 5.8 JSON/parity closure batch** on top of the earlier fidelity-verification work.
 
 ## Access Method Learning (explicit)
 
@@ -38,6 +38,10 @@
 - Began the scalable semantic-structure refactor: parser paragraphs now carry typed inline nodes, normalization preserves those nodes instead of treating `Paragraph.Markdown` as sole truth, and the renderer now prefers inline semantics when available.
 - Added deterministic semantic extraction coverage for marker families observed across `bien`, `ver`, and `dar`, including examples, mentions, glosses, lexical headings, citation quotes, bibliography blocks, work titles, small-caps markers, editorial glosses, scaffold markers, corrections, patterns, exclusion markers, and typed references.
 - Replaced the previously invented example label with source-faithful quotation-style rendering (`‹…›`) so examples remain distinguishable without editorial invention.
+- Updated `internal/render/json.go` so compatibility `Content` projection now prefers semantic inline rendering when `Entry.Article` carries structured inlines, keeping JSON secondary output aligned with Markdown semantics instead of stale quote-wrapped paragraph strings.
+- Added focused `internal/render/json_test.go` coverage that checks article identity, section hierarchy, nested `6.a..6.c`, inline reference semantics, citation fields, and compatibility content projection for `bien`.
+- Added deterministic secondary JSON golden coverage with `testdata/dpd/bien.json.golden` for the fixture-backed `bien` parity path.
+- Added an opt-in live drift probe test `TestDPDLiveProbeBienDriftInvariants` gated by `DLEXA_LIVE_DPD_PROBE=1`, so maintainers can probe upstream `bien` invariants without making live network drift part of the deterministic acceptance baseline.
 
 ## Verification
 
@@ -46,11 +50,20 @@
 - `go test ./internal/normalize ./internal/render -run "TestDPDNormalizerPreservesExampleAndEmphasisSemantics|TestDPDNormalizerMarksRealBienExampleSemanticsExplicitly|TestMarkdownRendererRendersReadableExampleAndEmphasisOutput|TestMarkdownRendererKeepsRealBienExampleRecoverableInTerminalOutput|TestDPDParseNormalizeRenderProducesTerminalReadableOutput|TestDPDParseNormalizeRenderMatchesBienGolden"`
 - `go test ./internal/render`
 - `go test ./internal/parse ./internal/normalize ./internal/render`
+- `go test ./internal/render -run "TestJSONRendererSerializesArticleHierarchyAndCitation|TestDPDParseNormalizeRenderMatchesBienJSONGolden|TestDPDLiveProbeBienDriftInvariants"`
+- `go test ./internal/render`
+- `go tool --modfile=golangci-lint.mod golangci-lint run ./internal/render/...`
+
+## TDD Cycle Evidence
+
+| Batch | RED | GREEN | REFACTOR |
+|------|-----|-------|----------|
+| Phase 3.5 + 5.7 JSON parity | Added `internal/render/json_test.go` and `TestDPDParseNormalizeRenderMatchesBienJSONGolden`, then saw the new JSON golden fail because `Content` projection and fixture output were misaligned. | Updated `internal/render/json.go` to project compatibility content from structured article rendering and aligned `testdata/dpd/bien.json.golden`; reran focused render tests until they passed. | Refreshed dependent parse JSON sign snapshots (`abrogar`, `acertar`, `alícuota`) so the broader render package regression suite matched the validated Markdown/JSON contract instead of stale quote-wrapped expectations. |
+| Phase 5.8 live drift probe | Added `TestDPDLiveProbeBienDriftInvariants` with opt-in gating and initially verified the default skipped behavior when `DLEXA_LIVE_DPD_PROBE` was unset. | Re-ran the probe with `DLEXA_LIVE_DPD_PROBE=1` and confirmed the live invariant checks passed against upstream `bien`. | Kept the probe isolated from the deterministic baseline and documented it as optional drift detection rather than a blocking acceptance gate. |
 
 ## Remaining Focus
 
-- Phase 3.5 / 5.7: JSON secondary output still needs explicit article-first serialization coverage plus a deterministic golden.
-- Phase 5.8: optional live drift probe remains pending.
+- `dpd-live-lookup-parity` now has a completed verify report and is ready for archive once repository housekeeping is accepted.
 - Normalization still stores paragraph content as Markdown-ish strings internally; runtime correctness is now enforced at the renderer boundary, but future cleanup could move more semantics into structured inlines instead of relying on string cleanup.
-- The new inline model is incremental: parser/normalizer/render now use it for DPD, but JSON serialization and any non-DPD paths still need explicit alignment if they are to benefit from the richer semantic structure.
+- The new inline model is incremental: parser/normalizer/render and JSON parity now use it for DPD, but any future non-DPD paths still need explicit alignment if they are to benefit from the richer semantic structure.
 - Current parser is intentionally scoped to the validated `bien` article shape; broader DPD shape coverage remains outside this batch.

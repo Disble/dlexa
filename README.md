@@ -96,6 +96,24 @@ dlexa --doctor
 dlexa --version
 ```
 
+## Development Quick Run
+
+Run the CLI directly from source while iterating locally:
+
+```bash
+# default format: markdown, default source: dpd
+go run ./cmd/dlexa -- bien
+
+# search command
+go run ./cmd/dlexa -- search abu dhabi
+
+# explicit JSON output
+go run ./cmd/dlexa -- --format json solo
+
+# skip cache for a live request
+go run ./cmd/dlexa -- --no-cache imprimido
+```
+
 ## CLI Options
 
 | Flag | Description |

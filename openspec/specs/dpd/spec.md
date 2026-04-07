@@ -1,205 +1,303 @@
-# DPD Rendering Specification
+# DPD Lookup Specification
 
 ## Purpose
 
-Define the final semantic Markdown contract for DPD article output in `dlexa`.
-
-This specification covers the renderer-visible output that reaches users and downstream LLM consumers. It locks the contract corrected by `dpd-terminal-semantic-rendering`: DPD output is accepted as semantic Markdown, not as a plain/ANSI-only terminal projection.
+Define the required runtime and output behavior for live Diccionario panhispánico de dudas lookups in `dlexa`, with `dlexa bien` accepted primarily by terminal/Markdown semantic fidelity for LLM consumption rather than by raw data extraction alone.
 
 ## Requirements
 
-### Requirement: Final DPD Output Uses Semantic Markdown
+### Requirement: Live DPD Production Lookup
 
-The system MUST emit final DPD article output as semantic Markdown, securely wrapped inside an explicit Markdown Envelope by the renderer.
+The system MUST execute the default DPD lookup path against the live remote DPD source for production behavior. The system MUST NOT satisfy production DPD lookups from bootstrap demo content, production mocks, or an internal database.
 
-#### Scenario: Internal semantics are insufficient without Markdown output fidelity and envelope
+#### Scenario: Live lookup is the default production path
 
-- GIVEN a normalized DPD article preserves prose, emphasis-bearing spans, examples, and references in structured form
-- WHEN the final renderer produces the user-visible DPD payload
-- THEN acceptance MUST be based on the final semantic Markdown output
-- AND the system MUST fail acceptance if the final payload is not wrapped in the standard `[dlexa:dpd]` envelope or collapses into plain terminal text
+- GIVEN the user runs `dlexa bien` with the default DPD source configuration
+- WHEN the lookup flow resolves the requested source
+- THEN the system MUST acquire DPD content from the live remote source
+- AND the system MUST continue through the existing query-first `fetch -> parse -> normalize -> render` boundary sequence
 
-### Requirement: Modular DPD Interface
+#### Scenario: Non-production data sources are excluded from parity behavior
 
-The `dpd` lookup functionality MUST implement a standard `Module` contract, removing tight coupling with the root application boundary and `flag` parser.
+- GIVEN the system is executing the production DPD lookup path
+- WHEN the lookup is performed for a real term
+- THEN the resulting article MUST NOT be produced from fixture-only bootstrap content
+- AND the resulting article MUST NOT depend on an internal persistence store to emulate the remote source
 
-#### Scenario: DPD executes as a formal module
+### Requirement: Article Body Extraction from Live DPD HTML
 
-- GIVEN the application initializes the Cobra command tree
-- WHEN the `dpd` subcommand or default root query is invoked
-- THEN execution MUST be delegated to the `internal/modules/dpd` package
-- AND the module MUST accept a standard `Request` and return a standard `Response`
+The system MUST extract the canonical DPD article body from the fetched live HTML response and MUST exclude surrounding site chrome. The extraction contract MUST preserve only the content needed to produce correct downstream Markdown for the actual article.
 
-### Requirement: Structured Envelope and Fallback Offloading
+#### Scenario: Canonical article body is isolated from page chrome
 
-The `dpd` module MUST delegate its output rendering and error presentation to a centralized Envelope Renderer, returning structured `FallbackEnvelope` instances instead of ad-hoc application errors.
+- GIVEN the fetched live DPD response contains the target article together with navigation, promotional, and layout content
+- WHEN the parser identifies the article body for `bien`
+- THEN only the canonical article body MUST proceed to normalization and rendering
+- AND menus, related-content blocks, share widgets, newsletter/footer content, and other non-article shell content MUST be excluded
 
-#### Scenario: DPD returns structured not-found
+#### Scenario: Extraction failure is treated as a contract failure
 
-- GIVEN a term does not exist in the DPD
-- WHEN the `dpd` module is invoked
-- THEN the module MUST return a structured Not Found fallback object
-- AND delegate final representation to the application's renderer
+- GIVEN the fetched live HTML does not yield a recognizable canonical DPD article body
+- WHEN extraction is attempted
+- THEN the system MUST report a parse-or-extraction failure outcome
+- AND it MUST NOT silently fall back to partial shell content or synthetic article text
 
-#### Scenario: DPD preserves `--format json` compatibility
+### Requirement: Terminal and Markdown Acceptance Contract for `bien`
 
-- GIVEN an LLM agent executes `dlexa dpd <query> --format json`
-- WHEN the module prepares the response
-- THEN the JSON output MUST bypass the Markdown Envelope mutation
-- AND remain fully backward-compatible with the existing JSON schema
+For v1, the primary acceptance criterion MUST be that `dlexa bien` produces readable terminal/Markdown output whose semantics match the real DPD article as authored. Acceptance MUST be based on ordered article meaning, heading semantics, inline emphasis, references, and citation structure as consumed by an LLM or terminal reader, and SHALL NOT be reduced to mere presence of extracted facts.
 
-### Requirement: Semantic Distinctions Remain Explicit in Markdown
+#### Scenario: Acceptance is based on semantic output fidelity
 
-The system MUST preserve the visible distinction between normal prose, semantic emphasis, usage examples, and references in final Markdown.
+- GIVEN the live DPD article for `bien` is successfully fetched, extracted, and normalized
+- WHEN parity is evaluated
+- THEN the output MUST include the dictionary context, edition marker, lemma, ordered sections `1.` through `7.`, nested `6.a)` through `6.c)` semantics, and readable references
+- AND acceptance MUST fail if those semantics are degraded even when the raw words are still present somewhere in the output
 
-#### Scenario: Emphasis-bearing spans survive as Markdown emphasis
+#### Scenario: Acceptance is not based on page layout or chrome similarity
 
-- GIVEN a DPD paragraph contains `mention`, `italic`, or equivalent emphasis-bearing spans
-- WHEN the paragraph is rendered to final Markdown
-- THEN those spans MUST remain visibly distinct from surrounding prose through Markdown-safe emphasis
-- AND acceptance MUST fail if they degrade into undifferentiated plain text
+- GIVEN the source page contains presentation details outside the canonical article body
+- WHEN parity is evaluated for `dlexa bien`
+- THEN acceptance MUST center on semantically faithful terminal/Markdown rendering of the article itself
+- AND the result MUST NOT be judged by pixel-level, browser-layout, or chrome-level similarity to `rae.es`
 
-#### Scenario: Examples remain semantically recoverable in Markdown
+### Requirement: Editorial Preservation of Authored Forms
 
-- GIVEN a DPD paragraph contains authored usage examples
-- WHEN the paragraph is rendered to final Markdown
-- THEN the examples MUST remain visibly recoverable as semantic examples in the final output
-- AND acceptance MUST fail if examples collapse into ordinary prose with no surviving semantic cue
+The system MUST preserve authored editorial forms that affect terminal/Markdown reading, including Spanish punctuation and glyphs such as `2.ª`, apostrophes as authored, and guillemets `«»` where present in the source. The system MUST NOT introduce synthetic quote normalization that changes the article's authored punctuation style.
 
-#### Scenario: References render as canonical Markdown links
+#### Scenario: Edition marker glyphs are preserved exactly
 
-- GIVEN a DPD paragraph contains intra-article references
-- WHEN the paragraph is rendered to final Markdown
-- THEN each reference MUST render in canonical Markdown-link form
-- AND acceptance MUST fail if references degrade to plain arrow text or malformed duplicated wrappers
+- GIVEN the authoritative `bien` fixture contains the edition marker `2.ª edición`
+- WHEN Markdown output is rendered
+- THEN the rendered output MUST preserve the ordinal glyph and punctuation semantics of that marker
+- AND the renderer MUST NOT downgrade it into a flattened or anglicized substitute solely for convenience
 
-### Requirement: Synthetic Editorial Wrappers and Plain or ANSI Contract Drift Are Forbidden
+#### Scenario: Synthetic mixed quote wrappers are rejected
 
-The renderer MUST NOT introduce synthetic editorial labels or wrappers that are not authored by the source semantics. The final default contract also MUST NOT depend on raw ANSI escapes or plain-text degradation that discards Markdown semantics.
+- GIVEN a DPD definition or gloss appears in the source without mixed synthetic quote wrappers
+- WHEN the article is normalized and rendered
+- THEN the output MUST preserve the authored punctuation form or a semantically equivalent Markdown-safe form
+- AND it MUST NOT emit hybrid constructions created by the pipeline itself such as mismatched ASCII quotes around text that was not authored that way
 
-#### Scenario: Rejected synthetic wrappers are absent
+#### Scenario: Authored apostrophes and guillemets survive transformation
 
-- GIVEN a DPD article is rendered to final Markdown
-- WHEN the final payload is inspected
-- THEN it MUST NOT contain generated wrappers or labels such as `[ej.: ...]`, `ej.:`, `‹...›`, or equivalent synthetic notation
-- AND acceptance MUST fail if those artifacts appear in the shipped output
+- GIVEN the extracted article body contains apostrophes or guillemets as part of authored text
+- WHEN that content flows through normalization and rendering
+- THEN those characters MUST survive in the final output when supported by the source fixture
+- AND they MUST NOT be silently replaced by unrelated quote styles that change authored reading cues
 
-#### Scenario: Raw ANSI bytes are absent from the default Markdown contract
+### Requirement: Example and Emphasis Semantics Are Preserved
 
-- GIVEN the default DPD Markdown renderer is used
-- WHEN the final payload is emitted
-- THEN the payload MUST NOT rely on raw ANSI escape sequences for semantic distinction
-- AND acceptance MUST fail if semantic visibility depends on ANSI styling instead of Markdown syntax
+The system MUST preserve example semantics and inline emphasis from source HTML whenever those signals affect meaning, contrast, or reading flow in the `bien` article. The system MUST NOT flatten emphasized examples, contrastive forms, or locutions into indistinguishable plain text when the source expresses them as semantically marked content.
 
-### Requirement: Markdown Contract Is Verified at the Renderer Boundary
+#### Scenario: Contrastive terms keep emphasis semantics
 
-The system MUST verify the DPD Markdown contract with deterministic renderer, integration, and golden checks that inspect the final emitted Markdown.
+- GIVEN the source article marks contrastive forms such as `más bien`, `mejor`, or `si bien` with emphasis-relevant HTML semantics
+- WHEN Markdown output is rendered
+- THEN the final output MUST preserve those emphasis distinctions in readable Markdown-safe form
+- AND the terms MUST NOT become visually indistinguishable from surrounding prose solely because markup was stripped
 
-#### Scenario: Tests and golden fixtures align to Markdown output
+#### Scenario: Example content remains semantically separable from prose
 
-- GIVEN authoritative DPD fixtures such as `bien`
-- WHEN renderer and parse-normalize-render acceptance checks are executed
-- THEN they MUST assert final semantic Markdown output directly
-- AND the accepted goldens and tests MUST reject the prior plain/ANSI-only drift as well as synthetic wrappers
+- GIVEN a paragraph contains an example or usage fragment distinguished in the source HTML
+- WHEN the paragraph is normalized and rendered
+- THEN the final output MUST preserve enough structure or emphasis for a reader to distinguish the example from explanatory prose
+- AND the example MUST NOT collapse into undifferentiated sentence text that loses its role in the article
 
-### Requirement: DPD Tables Use Markdown When Representable and HTML When Not
+### Requirement: Cross-Reference Rendering Is Canonical and Non-Malformed
 
-DPD table rendering MUST prefer standard Markdown tables for simple rectangular data, but MUST fall back to HTML tables when the source structure depends on spans or other constructs that Markdown tables cannot express faithfully.
+The system MUST render intra-article and related references in a readable canonical form for terminal/Markdown consumption. The system MUST NOT duplicate arrows, duplicate target labels, or introduce malformed parenthetical structures such as `(→ [→ 6](...))`.
 
-#### Scenario: Simple DPD tables render as valid Markdown tables
+#### Scenario: Numeric references render with one arrow and one target label
 
-- GIVEN a DPD table has a single header row, rectangular rows, and no `rowspan` or `colspan`
-- WHEN the final Markdown payload is rendered
-- THEN the table MUST use pipe-table Markdown syntax with pipe-only divider rows
-- AND acceptance MUST fail if the divider row uses non-Markdown separators that common live previews reject
+- GIVEN the source article contains a reference to section `6` or `7`
+- WHEN the reference is rendered into terminal/Markdown output
+- THEN the visible reference text MUST contain exactly one directional marker and one target label for that reference
+- AND it MUST be readable as `→ [6]`, `→ [7]`, or a semantically equivalent form without duplicated arrow text
 
-#### Scenario: Complex DPD tables fall back to HTML
+#### Scenario: Parenthetical references do not nest malformed wrappers
 
-- GIVEN a DPD table uses `rowspan`, `colspan`, or equivalent multi-level structure such as the `Tilde diacrítica en qué/...` summary table
-- WHEN the final Markdown payload is rendered
-- THEN the table MUST be emitted as HTML table markup embedded in the Markdown output
-- AND acceptance MUST fail if the renderer flattens that structure into a misleading Markdown grid that loses semantic relationships
+- GIVEN a reference appears within surrounding punctuation such as parentheses in the source article
+- WHEN the final Markdown is rendered
+- THEN the output MUST preserve readable surrounding punctuation without doubling the reference marker inside it
+- AND the output MUST NOT contain malformed constructions where wrapper punctuation and generated reference syntax collide
 
-### Requirement: DPD Typographical Signs Preserve Validated Semantics End-to-End
+### Requirement: Lexical Heads Stay Integrated with Numbered Heading Semantics
 
-The system MUST preserve validated DPD typographical signs through the HTML → Parse → Normalize → Render pipeline without collapsing their semantic meaning.
+The system MUST preserve lexical heads such as `bien que.`, `más bien.`, and `si bien.` as part of their owning numbered heading semantics. The system MUST NOT split the numeric label from the lexical head into disconnected blocks that force the reader or LLM to reconstruct the heading relationship.
 
-Validated signs for this contract are:
+#### Scenario: Section heading remains a single semantic heading
 
-- `@` digital edition marker from `<sup>@</sup>`
-- `+` construction marker from `<span class="nc">+ ...</span>`
-- `⊗` exclusion marker from `<span class="bolaspa">⊗</span>`
-- `→` cross-reference arrow in rendered references
-- bracket contexts authored through `<dfn>`, `<span class="nn">`, and `<span class="yy">`
+- GIVEN the source article expresses a numbered item together with its lexical head
+- WHEN that item is normalized and rendered
+- THEN the output MUST keep the numeric label and lexical head in one heading-level semantic unit
+- AND it MUST NOT render the number on one line and the lexical head as detached body text on another line unless the source itself requires that structure
 
-#### Scenario: Digital edition marker survives end-to-end
+#### Scenario: Section six subitems retain their lexical heads under the parent section
 
-- GIVEN DPD HTML contains `<sup>@</sup>` inside article content
-- WHEN the article is parsed, normalized, and rendered
-- THEN the final Markdown output MUST contain `@`
-- AND the structured output MUST preserve its semantic distinction as a digital edition marker
+- GIVEN section `6.` contains the subitems `a)`, `b)`, and `c)` with lexical heads
+- WHEN the article is rendered
+- THEN each subitem MUST remain attached to section `6.` and preserve its lexical head as part of the subitem heading semantics
+- AND the output MUST remain readable as a parent section with ordered lexical subentries rather than as flattened loose paragraphs
 
-#### Scenario: Construction marker survives end-to-end
+### Requirement: Citation and Reference Structure Remains Explicit
 
-- GIVEN DPD HTML contains `<span class="nc">+ infinitivo</span>` inside a phrase
-- WHEN the article is parsed, normalized, and rendered
-- THEN the final Markdown output MUST contain `+ infinitivo`
-- AND the structured output MUST preserve its semantic distinction as a construction marker
+The system MUST preserve citation and reference structure strongly enough that a terminal or LLM reader can distinguish article body content, intra-article references, canonical source identity, canonical URL, edition marker, and consultation metadata. The system MUST NOT flatten those elements into a single opaque blob when the source distinguishes them.
 
-#### Scenario: Existing exclusion and reference markers do not regress
+#### Scenario: Citation essentials remain structurally distinguishable
 
-- GIVEN DPD HTML contains exclusion markers and cross-reference links
-- WHEN the article is parsed, normalized, and rendered
-- THEN exclusion markers MUST remain visible as `⊗`
-- AND references MUST remain visible in canonical Markdown-link form with their `→` semantics preserved
+- GIVEN the normalized article contains citation essentials for source, edition, canonical URL, and consultation metadata
+- WHEN Markdown or JSON output is produced
+- THEN those citation elements MUST remain individually recoverable and readable in the output structure
+- AND they MUST NOT be collapsed into a single undifferentiated sentence that loses field boundaries
 
-### Requirement: Bracket Contexts Remain Distinct In Structured DPD Output
+#### Scenario: Intra-article references are not conflated with citation metadata
 
-The system MUST preserve bracket content as plain Markdown text while keeping its semantic context distinct in structured output.
+- GIVEN the article contains both section references and citation metadata
+- WHEN the output is rendered
+- THEN section references MUST remain attached to article content where they are used
+- AND citation metadata MUST remain identifiable as source attribution rather than as ordinary body prose or section-reference text
 
-The protected bracket contexts are:
+### Requirement: Minimal Canonical Structure for Fidelity-Critical Rendering
 
-- definition/correction brackets authored with `<dfn>[...]</dfn>`
-- pronunciation brackets authored with `<span class="nn">[...]</span>`
-- interpolation/example brackets authored with `<span class="yy">[...]</span>`
+The system MUST preserve only the structured article information necessary to render faithful terminal/Markdown output and avoid reparsing HTML downstream. Structured modeling for this change SHALL be minimal and sufficient rather than exhaustive, but it MUST be rich enough to represent every verified formatting-fidelity case in this specification.
 
-#### Scenario: Structured output distinguishes bracket contexts
+#### Scenario: Minimal structure still covers all verified fidelity cases
 
-- GIVEN a DPD article contains definition, pronunciation, and interpolation brackets
-- WHEN the article is parsed and normalized
-- THEN each bracketed segment MUST keep the semantic context implied by its immediate HTML container
-- AND acceptance MUST fail if different bracket contexts are conflated into one indistinguishable structured kind
+- GIVEN the verified defect inventory includes quote preservation, example emphasis, cross-reference shape, integrated lexical heads, and citation structure
+- WHEN canonical article data is defined for v1
+- THEN that structure MUST preserve the hierarchy and inline semantics needed to render each of those cases correctly
+- AND the system MUST NOT claim the model is sufficient if any verified case still requires renderer-side heuristics against raw HTML
 
-#### Scenario: Markdown output keeps authored brackets without synthetic wrappers
+#### Scenario: Uneven article shape does not justify flattening semantics away
 
-- GIVEN a bracketed DPD span reaches final Markdown rendering
-- WHEN the renderer emits the article
-- THEN the output MUST preserve the authored brackets as plain bracket text
-- AND the renderer MUST NOT add synthetic wrappers or labels to express bracket semantics
+- GIVEN a DPD article includes sections with different paragraph counts, mixed nested content, or citation-bearing tails
+- WHEN the article is normalized
+- THEN the canonical structure MUST preserve source hierarchy and inline meaning needed for fidelity
+- AND the system MUST NOT flatten headings, references, or citations merely to avoid representing them explicitly
 
-### Requirement: Unvalidated DPD Signs Stay Explicitly Non-Authoritative
+### Requirement: Secondary Structured Output and Metadata
 
-The system MAY include defensive support for unvalidated DPD signs inferred from patterns, but those cases MUST remain explicitly documented as speculative until real DPD HTML evidence exists.
+JSON output and richer metadata are secondary for this change. When JSON is emitted, it SHOULD derive from the same normalized article representation used for terminal/Markdown output, but JSON completeness and metadata richness SHALL NOT become the primary acceptance gate for `dpd-live-lookup-parity`.
 
-Archived signs `<` and `>` remain intentionally unimplemented because their collision risk with HTML syntax is higher than their proven value.
+#### Scenario: JSON remains aligned but secondary
 
-#### Scenario: Speculative signs are implemented with warnings only
+- GIVEN a canonical DPD article has been normalized successfully
+- WHEN JSON output is requested
+- THEN the output SHOULD expose the same article hierarchy and core identity needed to reflect the Markdown meaning
+- AND missing non-essential rich metadata SHALL NOT by itself fail the primary business goal if the terminal/Markdown fidelity contract is satisfied
 
-- GIVEN support exists for inferred signs such as `*`, `‖`, or `//`
-- WHEN that support is reviewed or verified
-- THEN the code and tests MUST clearly state that the behavior is speculative and pending real HTML validation
-- AND acceptance MUST NOT treat those inferred paths as equivalent to validated DPD sign evidence
+#### Scenario: Markdown-first acceptance resolves prioritization conflicts
 
-#### Scenario: Archived signs remain excluded pending safer evidence
+- GIVEN there is a tradeoff between adding richer structured metadata and correcting a Markdown fidelity defect in `bien`
+- WHEN v1 scope is evaluated
+- THEN the system MUST prioritize the behavior that improves faithful terminal/Markdown output from the real article
+- AND richer JSON or metadata work MAY be deferred if the fidelity contract is met
 
-- GIVEN developers review DPD sign support scope
-- WHEN they inspect the authoritative spec and archive evidence
-- THEN `<` and `>` MUST remain documented as intentionally excluded from implementation
-- AND future support MUST require real article evidence plus a collision-safe parsing strategy
+### Requirement: Lookup Failure Classification
+
+The system MUST distinguish at least three DPD lookup failure classes: remote fetch failure, not-found outcome, and parse-or-render-input failure. Error handling MUST preserve the difference between these classes so callers and verification flows can tell whether failure came from transport, domain absence, or inability to derive faithful article output from the live response.
+
+#### Scenario: Remote fetch failure is surfaced distinctly
+
+- GIVEN the live DPD source cannot be reached or returns an unusable transport-level response
+- WHEN a DPD lookup is attempted
+- THEN the system MUST report a remote fetch failure outcome
+- AND that outcome MUST remain distinguishable from not-found and parse-or-render-input failures
+
+#### Scenario: Canonical article absence is treated as not found
+
+- GIVEN the live DPD source resolves the request but no canonical entry exists for the queried term
+- WHEN the lookup flow completes source acquisition
+- THEN the system MUST report a not-found outcome
+- AND it MUST NOT misclassify the result as a parser failure solely because no article was present
+
+#### Scenario: Content-shape breakdown is surfaced as parse failure
+
+- GIVEN the live response is fetched but the article body cannot be extracted or transformed into fidelity-supporting structure
+- WHEN the lookup flow reaches parse or normalization stages
+- THEN the system MUST report a parse-or-normalization failure
+- AND the failure MUST remain distinguishable from transport and not-found outcomes
+
+### Requirement: Deterministic Fixture Verification Is the Acceptance Baseline
+
+The system MUST support stable verification of DPD parity through captured authoritative HTML fixtures from the real DPD response and expectations derived from those fixtures. Deterministic fixture-based verification MUST be the acceptance baseline for this change, and optional live/upstream drift checks MUST remain explicitly separate.
+
+#### Scenario: Authoritative fixture is the deterministic source of truth
+
+- GIVEN an authoritative captured HTML response for the live `bien` article is available
+- WHEN extraction, normalization, and rendering are verified
+- THEN fixture-based checks MUST be sufficient to validate the v1 contract deterministically
+- AND those checks MUST evaluate semantic fidelity rather than only raw text presence
+
+#### Scenario: Stale defective expectations are not accepted as the contract
+
+- GIVEN an existing golden file or fixture expectation encodes malformed formatting that contradicts the authoritative `bien` fixture
+- WHEN the verification baseline is updated
+- THEN the stale expectation MUST be replaced or corrected
+- AND the system MUST NOT preserve a known defect merely because it was already captured in a golden artifact
+
+#### Scenario: Live verification is optional drift detection only
+
+- GIVEN a maintainer chooses to run live parity verification against the remote DPD source
+- WHEN the live verification suite is executed
+- THEN it MAY probe the real upstream `bien` article as an integration or drift signal
+- AND a failure in that opt-in suite MUST NOT redefine the deterministic fixture contract without an explicit fixture refresh decision
+
+### Requirement: Many Granular Tests Cover Each Verified Formatting Case
+
+Verification for this change MUST include many targeted tests, not only one broad golden test. Each verified formatting-fidelity case in this specification MUST map to one or more deterministic fixture-based tests that isolate the specific behavior being protected.
+
+#### Scenario: Every verified formatting defect has targeted deterministic coverage
+
+- GIVEN the verified defect inventory includes quote normalization, example/emphasis loss, malformed cross-references, split lexical heads, flattened citation structure, and stale golden expectations
+- WHEN the verification suite for `dpd-live-lookup-parity` is defined
+- THEN each defect category MUST have at least one targeted deterministic test that fails specifically for that category
+- AND the suite MUST make it possible to identify which formatting behavior regressed without relying only on a full-output diff
+
+#### Scenario: End-to-end goldens supplement but do not replace granular tests
+
+- GIVEN a full `bien` Markdown golden test exists
+- WHEN acceptance coverage is evaluated
+- THEN that golden test MUST be treated as a high-level integration safeguard
+- AND it SHALL NOT be the only automated evidence for the formatting cases required by this specification
+
+#### Scenario: Parser, normalizer, and renderer tests are aligned to the same fixture baseline
+
+- GIVEN the deterministic fixture baseline for `bien` has been captured
+- WHEN granular tests are added across parser, normalizer, renderer, and integration boundaries
+- THEN those tests MUST agree on the same authoritative fixture semantics
+- AND they MUST NOT encode contradictory expectations for the same formatting case at different layers
+
+## Architectural Significance
+
+- This change is architecturally significant because it converts DPD lookup from bootstrap scaffolding into a real live source while keeping the existing `fetch -> parse -> normalize -> render` boundary model intact.
+- The critical path is the parser and transformer chain that turns live DPD HTML into semantically faithful terminal/Markdown output, not a broad source-model redesign.
+- Canonical structure remains important, but only as a minimal anti-corruption layer that preserves article meaning for rendering and secondary structured output.
+
+## Design-Pattern Decision Notes for Design Phase
+
+The design phase MUST keep architecture and design-pattern reasoning explicit, but aligned to the fidelity-first business value. It MUST justify patterns only where they protect extraction quality, transformation fidelity, boundary clarity, or failure isolation.
+
+### Creational
+
+- The design MUST explain how live DPD lookup components are instantiated and wired from the composition root.
+- If factories or configuration-driven creation are used, the design MUST justify them against simpler constructor wiring for the fidelity-first pipeline.
+
+### Structural
+
+- The design MUST explain how live remote HTML is translated into a minimal canonical article shape without leaking site chrome or source-specific markup into renderers.
+- If adapters, facades, translators, or anti-corruption-style structures are introduced, the design MUST justify them in terms of protecting terminal/Markdown fidelity and boundary clarity rather than maximizing model richness.
+
+### Behavioral
+
+- The design MUST explain the runtime behavior that coordinates live fetch, article-body extraction, normalization, rendering, and failure classification.
+- If pipeline, strategy, or similar behavioral patterns are used, the design MUST justify them in terms of correctness, maintainability, and isolation of fidelity-critical transformations.
 
 ## Out-of-Scope Guardrails
 
-- This specification does NOT redefine remote lookup, fetch, or parser ownership.
-- This specification does NOT require perfect handling of every nested emphasis edge case before archive.
-- This specification does NOT allow regressing to plain terminal output as the primary contract.
-- This specification does NOT require speculative DPD signs to be treated as validated behavior before real HTML evidence exists.
+- This specification does NOT require pixel-perfect page reproduction.
+- This specification does NOT require a giant generalized redesign of every DPD article family.
+- This specification does NOT require an internal database.
+- This specification does NOT allow production mocks to satisfy real lookup behavior.
+- This specification does NOT require exhaustive JSON richness or metadata completeness for v1.
+- This specification does NOT treat `go-rae` as an implementation blueprint; any reuse of ideas from that repository MUST be justified at the boundary and architectural level.

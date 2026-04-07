@@ -20,7 +20,7 @@
 - [x] 3.2 Create `internal/normalize/dpd.go` to transform parsed DPD content into that minimal article model, preserving section order `1..7`, nested `6.a..6.c`, emphasis semantics, readable references, paragraph boundaries, and citation data without inventing extra schema.
 - [x] 3.3 Add normalization tests in `internal/normalize/dpd_test.go` covering section ordering, nested subsection attachment, emphasis / reference preservation, whitespace cleanup, and rejection or warning paths when shell leakage or structurally invalid article shapes appear.
 - [x] 3.4 Update `internal/render/markdown.go` and add `internal/render/markdown_test.go` plus `testdata/dpd/bien.md.golden` so Markdown rendering is driven from `Entry.Article` and proves parity-critical output for dictionary context, edition, lemma, ordered sections, nested subitems, readable references, and citation essentials.
-- [ ] 3.5 Update `internal/render/json.go` so JSON serializes `Entry.Article` as the same minimal hierarchy used by Markdown, and add focused `internal/render/json_test.go` shape checks for article identity, section nesting, inline references, and citation fields without expanding the v1 contract beyond the Markdown-first business goal.
+- [x] 3.5 Update `internal/render/json.go` so JSON serializes `Entry.Article` as the same minimal hierarchy used by Markdown, and add focused `internal/render/json_test.go` shape checks for article identity, section nesting, inline references, and citation fields without expanding the v1 contract beyond the Markdown-first business goal.
 
 ## Phase 4: Typed Failure Handling and Pipeline Wiring
 
@@ -36,8 +36,8 @@
 - [x] 5.4 Expand `internal/render/markdown_test.go` with targeted renderer cases that independently assert canonical Markdown for preserved quotes, readable example/emphasis output, single-arrow cross-references like `→ [6]` and `→ [7]`, integrated numbered lexical heads, and citation readability without flattened blobs.
 - [x] 5.5 Refresh or split `testdata/dpd/bien.md.golden` plus any shared fixture/assert helpers so stale expectations that encode known defects are removed, and each verified defect category has a deterministic assertion path in addition to the broad golden diff.
 - [x] 5.6 Add named end-to-end regression tests over `testdata/dpd/bien.html` that map each verified defect category to a specific parse + normalize + render assertion, so failures identify the broken semantic contract instead of only showing a whole-output mismatch.
-- [ ] 5.7 Add secondary JSON verification in `internal/render/json_test.go` plus `testdata/dpd/bien.json.golden` that proves article identity, heading hierarchy, inline reference semantics, and citation fields remain aligned with the Markdown-first normalized article without promoting JSON richness to the primary release gate.
-- [ ] 5.8 Add an opt-in live probe test or documented verification hook for `bien` drift detection that checks invariant markers, major headings, and citation essentials against upstream while remaining explicitly non-blocking and outside the deterministic fixture baseline.
+- [x] 5.7 Add secondary JSON verification in `internal/render/json_test.go` plus `testdata/dpd/bien.json.golden` that proves article identity, heading hierarchy, inline reference semantics, and citation fields remain aligned with the Markdown-first normalized article without promoting JSON richness to the primary release gate.
+- [x] 5.8 Add an opt-in live probe test or documented verification hook for `bien` drift detection that checks invariant markers, major headings, and citation essentials against upstream while remaining explicitly non-blocking and outside the deterministic fixture baseline.
 
 ## Implementation Notes
 

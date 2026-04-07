@@ -1,5 +1,5 @@
 change: dpd-live-lookup-parity
-phase: apply
+phase: verify
 artifact_store: hybrid
 artifacts:
   proposal: true
@@ -7,7 +7,7 @@ artifacts:
   design: true
   tasks: true
   apply_progress: true
-  verify_report: false
+  verify_report: true
 tasks_progress:
   completed:
     - 1.1
@@ -31,10 +31,11 @@ tasks_progress:
     - 5.4
     - 5.5
     - 5.6
-  pending:
     - 3.5
     - 5.7
     - 5.8
+  pending:
+    []
 notes:
   access_method: "Validated direct GET https://www.rae.es/dpd/<term> with browser-like User-Agent reaches article HTML; low-profile/no-UA requests may hit Cloudflare challenge pages; /srv/keys is useful for entry discovery only, not as the direct article-fetch path; go-rae is not a direct DPD blueprint."
-last_updated: 2026-03-13T20:08:00Z
+last_updated: 2026-04-07T22:25:00Z
