@@ -125,6 +125,53 @@ type LookupNextAction struct {
 	Command string               `json:"command"`
 }
 
+// FallbackKind classifies one of the four explicit fallback ladder levels.
+type FallbackKind string
+
+const (
+	// FallbackKindSyntax indicates the command shape was invalid.
+	FallbackKindSyntax FallbackKind = "syntax"
+	// FallbackKindNotFound indicates the command was valid but the content was not found.
+	FallbackKindNotFound FallbackKind = "not_found"
+	// FallbackKindUpstreamUnavailable indicates the remote provider is unavailable.
+	FallbackKindUpstreamUnavailable FallbackKind = "upstream_unavailable"
+	// FallbackKindParseFailure indicates upstream changed and parsing failed.
+	FallbackKindParseFailure FallbackKind = "parse_failure"
+)
+
+// Envelope carries shared metadata for Markdown-wrapped module responses.
+type Envelope struct {
+	Module     string
+	Title      string
+	Source     string
+	CacheState string
+	Format     string
+}
+
+// HelpEnvelope carries agent-oriented Markdown help content.
+type HelpEnvelope struct {
+	Command     string
+	Summary     string
+	Syntax      string
+	Examples    []string
+	NextSteps   []string
+	RecoveryTip string
+}
+
+// FallbackEnvelope carries structured fallback semantics independent from transport.
+type FallbackEnvelope struct {
+	Kind        FallbackKind `json:"kind"`
+	Module      string       `json:"module,omitempty"`
+	Title       string       `json:"title,omitempty"`
+	Query       string       `json:"query,omitempty"`
+	Message     string       `json:"message,omitempty"`
+	Detail      string       `json:"detail,omitempty"`
+	Syntax      string       `json:"syntax,omitempty"`
+	Suggestion  string       `json:"suggestion,omitempty"`
+	NextCommand string       `json:"next_command,omitempty"`
+	Format      string       `json:"format,omitempty"`
+}
+
 // Entry represents a single dictionary entry with its content and metadata.
 type Entry struct {
 	ID       string

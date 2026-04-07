@@ -12,9 +12,8 @@ import (
 
 func main() {
 	cli := platform.NewOSCLI(os.Args, os.Stdout, os.Stderr)
-	application := app.New(cli)
-
-	if err := application.Run(context.Background()); err != nil {
+	runtime := app.New(cli)
+	if err := executeRootCommand(context.Background(), runtime, os.Stdout, os.Stderr, os.Args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

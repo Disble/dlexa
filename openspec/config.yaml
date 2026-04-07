@@ -1,32 +1,79 @@
 schema: spec-driven
 
 context: |
-  Tech stack: Go 1.22 CLI single binary
-  Architecture: thin cmd, composition root in internal/app, query-first orchestration, pipeline-based sources
-  Testing: go test with package-level *_test.go coverage in app/query/source/render
-  Style: explicit internal boundaries, no CI/lint config detected, avoid builds during SDD work
+  Tech stack: Go 1.22 CLI single binary, migrating to spf13/cobra multi-command
+  Architecture: thin cmd, composition root in internal/app, query-first orchestration,
+    pipeline-based sources (fetch→parse→normalize→render), explicit internal boundaries;
+    moving toward multi-module surface (Search, DPD, DLE, …) via cobra subcommands
+  Testing: go test with package-level *_test.go across app/cache/fetch/normalize/parse/query/render/source
+  Style: explicit internal packages, no-build policy during SDD, golangci-lint (golangci-lint.mod),
+    pre-commit diff-based lint hook, SonarQube MCP for quality gate
+
+strict_tdd: true
 
 rules:
   proposal:
     - Include rollback plan for risky changes
     - Identify affected internal packages and CLI surface
+    - Flag cobra surface changes explicitly (new commands, flag migration, interface breaks)
   specs:
     - Use Given/When/Then format for scenarios
     - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
   design:
     - Document boundary changes and dependency direction rationale
     - Include sequence diagrams only for multi-package runtime flows
+    - Document cobra command tree when CLI surface changes
   tasks:
     - Group tasks by infrastructure, implementation, and verification
     - Keep tasks small enough to complete in one session
+    - Use hierarchical numbering (1.1, 1.2, etc.)
   apply:
     guidance:
       - Follow existing query-first and explicit-boundary patterns
-    tdd: false
+      - Strict TDD is MANDATORY — write failing test first, then implement, then refactor
+      - Load dlexa-go-cli-lint before marking any task complete
+    tdd: true
     test_command: go test ./...
+    tdd_cycle: RED → GREEN → REFACTOR
   verify:
     test_command: go test ./...
+    lint_command: go tool --modfile=golangci-lint.mod golangci-lint run ./...
     build_command: ""
     coverage_threshold: 0
   archive:
     - Warn before merging destructive deltas or boundary collapses
+    - Sync delta specs to openspec/specs/ before archiving
+
+testing:
+  strict_tdd: true
+  detected: "2026-04-06"
+
+  runner:
+    framework: go test
+    command: go test ./...
+
+  layers:
+    unit:
+      available: true
+      tool: go test
+    integration:
+      available: true
+      tool: net/http/httptest (stdlib)
+    e2e:
+      available: false
+      tool: ~
+
+  coverage:
+    available: true
+    command: go test -cover ./...
+
+  quality:
+    linter:
+      available: true
+      command: go tool --modfile=golangci-lint.mod golangci-lint run ./...
+    type_checker:
+      available: true
+      command: go vet ./...
+    formatter:
+      available: true
+      command: gofmt -l .

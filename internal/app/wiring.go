@@ -9,6 +9,9 @@ import (
 	"github.com/Disble/dlexa/internal/doctor"
 	"github.com/Disble/dlexa/internal/fetch"
 	"github.com/Disble/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/modules"
+	moddpd "github.com/Disble/dlexa/internal/modules/dpd"
+	modsearch "github.com/Disble/dlexa/internal/modules/search"
 	"github.com/Disble/dlexa/internal/normalize"
 	"github.com/Disble/dlexa/internal/parse"
 	"github.com/Disble/dlexa/internal/platform"
@@ -85,14 +88,10 @@ func New(cli platform.CLI) *App {
 		render.NewSearchMarkdownRenderer(),
 		render.NewSearchJSONRenderer(),
 	)
+	moduleRegistry := modules.NewRegistry(
+		moddpd.New(lookupService, rendererRegistry),
+		modsearch.New(searchService, searchRendererRegistry),
+	)
 
-	return &App{
-		platform:        cli,
-		config:          loader,
-		doctor:          doctorService,
-		lookup:          lookupService,
-		search:          searchService,
-		renderers:       rendererRegistry,
-		searchRenderers: searchRendererRegistry,
-	}
+	return NewWithDependencies(cli, loader, doctorService, moduleRegistry, render.NewEnvelopeRenderer())
 }

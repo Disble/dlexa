@@ -1,210 +1,171 @@
-// Package app provides the main application entry point for dlexa.
+// Package app provides the composition-root runtime boundary for dlexa.
 package app
 
 import (
 	"context"
-	"errors"
-	"flag"
 	"fmt"
 	"strings"
 
 	"github.com/Disble/dlexa/internal/config"
 	"github.com/Disble/dlexa/internal/doctor"
 	"github.com/Disble/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/modules"
 	"github.com/Disble/dlexa/internal/platform"
-	"github.com/Disble/dlexa/internal/query"
 	"github.com/Disble/dlexa/internal/render"
-	searchsvc "github.com/Disble/dlexa/internal/search"
 	"github.com/Disble/dlexa/internal/version"
 )
 
-// App wires together configuration, lookup, and rendering to drive the CLI.
+// App owns the runtime-facing application services required by the CLI surface.
 type App struct {
-	platform        platform.CLI
-	config          config.Loader
-	doctor          doctor.Runner
-	lookup          query.Looker
-	search          searchsvc.Searcher
-	renderers       render.RendererResolver
-	searchRenderers render.SearchRendererResolver
+	platform platform.CLI
+	config   config.Loader
+	doctor   doctor.Runner
+	registry *modules.Registry
+	envelope render.EnvelopeRenderer
 }
 
-// Run parses CLI flags, performs the lookup, and writes rendered output.
-func (a *App) Run(ctx context.Context) error {
-	flagSet := flag.NewFlagSet(version.BinaryName, flag.ContinueOnError)
-	flagSet.SetOutput(a.platform.Stderr())
+// NewWithDependencies creates an App with explicit collaborators for tests and wiring.
+func NewWithDependencies(cli platform.CLI, loader config.Loader, doctorRunner doctor.Runner, registry *modules.Registry, envelope render.EnvelopeRenderer) *App {
+	return &App{
+		platform: cli,
+		config:   loader,
+		doctor:   doctorRunner,
+		registry: registry,
+		envelope: envelope,
+	}
+}
 
-	formatFlag := flagSet.String("format", "", "render format: markdown|json")
-	sourceFlag := flagSet.String("source", "", "comma-separated source names")
-	noCacheFlag := flagSet.Bool("no-cache", false, "skip cache reads and writes")
-	doctorFlag := flagSet.Bool("doctor", false, "run environment checks")
-	versionFlag := flagSet.Bool("version", false, "print version information")
+// ExecuteModule runs a registered module and writes its rendered payload to stdout.
+func (a *App) ExecuteModule(ctx context.Context, moduleName string, req modules.Request) error {
+	if a == nil {
+		return fmt.Errorf("application is not configured")
+	}
+	runtimeConfig, err := a.loadConfig(ctx)
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(req.Format) == "" {
+		req.Format = runtimeConfig.DefaultFormat
+	}
+	if len(req.Sources) == 0 {
+		req.Sources = append([]string(nil), runtimeConfig.DefaultSources...)
+	}
+	if !runtimeConfig.CacheEnabled {
+		req.NoCache = true
+	}
 
-	args := a.platform.Args()
-	if len(args) > 1 {
-		if err := flagSet.Parse(args[1:]); err != nil {
-			return err
+	module, ok := a.registry.Module(moduleName)
+	if !ok {
+		return a.HandleSyntaxError(ctx, fmt.Errorf("unknown command %q for %q", moduleName, version.BinaryName), version.BinaryName+" --help")
+	}
+
+	response, err := module.Execute(ctx, req)
+	if err != nil {
+		fallback := modules.FallbackFromError(module.Name(), req.Query, req.Format, err)
+		return a.writeFallback(ctx, *fallback)
+	}
+	if response.Fallback != nil {
+		if strings.TrimSpace(response.Fallback.Format) == "" {
+			response.Fallback.Format = req.Format
 		}
-	}
-
-	if *versionFlag {
-		_, err := fmt.Fprintf(a.platform.Stdout(), "%s %s\n", version.BinaryName, version.Version)
-		return err
-	}
-
-	if *doctorFlag {
-		return a.runDoctor(ctx)
-	}
-
-	positional := flagSet.Args()
-	if len(positional) == 0 {
-		return a.printUsage()
-	}
-
-	runtimeConfig, err := a.config.Load(ctx)
-	if err != nil {
-		return err
-	}
-
-	formatName := resolveFormat(*formatFlag, runtimeConfig.DefaultFormat)
-	if positional[0] == "search" {
-		return a.runSearch(ctx, positional[1:], formatName, *noCacheFlag || !runtimeConfig.CacheEnabled)
-	}
-
-	queryText := strings.TrimSpace(strings.Join(positional, " "))
-
-	request := model.LookupRequest{
-		Query:   queryText,
-		Format:  formatName,
-		Sources: requestedSources(*sourceFlag, runtimeConfig.DefaultSources),
-		NoCache: *noCacheFlag || !runtimeConfig.CacheEnabled,
-	}
-
-	return a.runLookup(ctx, request, formatName)
-}
-
-func (a *App) runSearch(ctx context.Context, args []string, formatName string, noCache bool) error {
-	queryText := strings.TrimSpace(strings.Join(args, " "))
-	if queryText == "" {
-		if err := a.printSearchUsage(); err != nil {
-			return err
+		if strings.TrimSpace(response.Fallback.Module) == "" {
+			response.Fallback.Module = module.Command()
 		}
-		return errors.New("search command requires a query")
+		return a.writeFallback(ctx, *response.Fallback)
 	}
 
-	request := model.SearchRequest{Query: queryText, Format: formatName, NoCache: noCache}
-	result, err := a.search.Search(ctx, request)
+	payload, err := a.envelope.RenderSuccess(ctx, model.Envelope{
+		Module:     module.Command(),
+		Title:      response.Title,
+		Source:     response.Source,
+		CacheState: response.CacheState,
+		Format:     response.Format,
+	}, response.Body)
 	if err != nil {
 		return err
 	}
-
-	renderer, err := a.searchRenderers.Renderer(formatName)
-	if err != nil {
-		return err
-	}
-	payload, err := renderer.Render(ctx, result)
-	if err != nil {
-		return err
-	}
-	if _, err := a.platform.Stdout().Write(payload); err != nil {
-		return err
-	}
-	return a.ensureTrailingNewline(payload)
+	return a.writePayload(payload)
 }
 
-// runLookup executes the lookup, renders the result, and writes the output.
-func (a *App) runLookup(ctx context.Context, request model.LookupRequest, formatName string) error {
-	result, err := a.lookup.Lookup(ctx, request)
+// RunModule is an alias that keeps the CLI runtime boundary focused on intent.
+func (a *App) RunModule(ctx context.Context, moduleName string, req modules.Request) error {
+	return a.ExecuteModule(ctx, moduleName, req)
+}
+
+// RenderHelp writes Markdown help through the shared envelope renderer.
+func (a *App) RenderHelp(ctx context.Context, help model.HelpEnvelope) error {
+	payload, err := a.envelope.RenderHelp(ctx, help)
 	if err != nil {
 		return err
 	}
-
-	renderer, err := a.renderers.Renderer(formatName)
-	if err != nil {
-		return err
-	}
-
-	payload, err := renderer.Render(ctx, result)
-	if err != nil {
-		return err
-	}
-
-	if _, err := a.platform.Stdout().Write(payload); err != nil {
-		return err
-	}
-
-	return a.ensureTrailingNewline(payload)
+	return a.writePayload(payload)
 }
 
-// ensureTrailingNewline writes a newline to stdout if payload does not already end with one.
-func (a *App) ensureTrailingNewline(payload []byte) error {
-	if len(payload) > 0 && payload[len(payload)-1] == '\n' {
-		return nil
+// HandleSyntaxError writes a Level 1 fallback and keeps CLI usage guidance explicit.
+func (a *App) HandleSyntaxError(ctx context.Context, err error, syntax string) error {
+	message := "El comando es inválido. Corregí la forma antes de volver a intentar."
+	if err != nil && strings.TrimSpace(err.Error()) != "" {
+		message = err.Error()
 	}
-	_, err := a.platform.Stdout().Write([]byte("\n"))
-	return err
+	return a.writeFallback(ctx, model.FallbackEnvelope{
+		Kind:       model.FallbackKindSyntax,
+		Module:     "root",
+		Title:      version.BinaryName,
+		Message:    message,
+		Syntax:     syntax,
+		Suggestion: "Usá `--help` para ver sintaxis válida y ejemplos copiables.",
+	})
 }
 
-// resolveFormat returns the explicit format if non-empty, otherwise the default.
-func resolveFormat(explicit, defaultFormat string) string {
-	if strings.TrimSpace(explicit) != "" {
-		return strings.TrimSpace(explicit)
-	}
-	return defaultFormat
-}
-
-func (a *App) runDoctor(ctx context.Context) error {
+// RunDoctor executes the configured doctor runner and writes a plain diagnostic report.
+func (a *App) RunDoctor(ctx context.Context) error {
 	report, err := a.doctor.Run(ctx)
 	if err != nil {
 		return err
 	}
-
 	status := "ok"
 	if !report.Healthy {
 		status = "degraded"
 	}
-
 	if _, err := fmt.Fprintf(a.platform.Stdout(), "doctor: %s\n", status); err != nil {
 		return err
 	}
-
 	for _, check := range report.Checks {
 		if _, err := fmt.Fprintf(a.platform.Stdout(), "- %s [%s] %s\n", check.Name, check.Status, check.Detail); err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
 
-func (a *App) printUsage() error {
-	_, err := fmt.Fprintf(
-		a.platform.Stderr(),
-		"usage: %s [--format markdown|json] [--source name1,name2] [--no-cache] <query>\n       %s [--format markdown|json] [--no-cache] search <query>\n\nUse `dlexa search <query>` when you do not know the exact DPD entry yet.\nUse `dlexa <query>` when you already know the exact entry.\n",
-		version.BinaryName,
-		version.BinaryName,
-	)
+// PrintVersion writes version metadata to stdout.
+func (a *App) PrintVersion() error {
+	_, err := fmt.Fprintf(a.platform.Stdout(), "%s %s\n", version.BinaryName, version.Version)
 	return err
 }
 
-func (a *App) printSearchUsage() error {
-	_, err := fmt.Fprintf(a.platform.Stderr(), "usage: %s [--format markdown|json] [--no-cache] search <query>\n", version.BinaryName)
-	return err
+func (a *App) loadConfig(ctx context.Context) (config.RuntimeConfig, error) {
+	if a.config == nil {
+		return config.RuntimeConfig{DefaultFormat: "markdown", DefaultSources: []string{"dpd"}, CacheEnabled: true}, nil
+	}
+	return a.config.Load(ctx)
 }
 
-func requestedSources(raw string, fallback []string) []string {
-	if strings.TrimSpace(raw) == "" {
-		return append([]string(nil), fallback...)
+func (a *App) writeFallback(ctx context.Context, fb model.FallbackEnvelope) error {
+	payload, err := a.envelope.RenderFallback(ctx, fb)
+	if err != nil {
+		return err
 	}
+	return a.writePayload(payload)
+}
 
-	parts := strings.Split(raw, ",")
-	selected := make([]string, 0, len(parts))
-	for _, part := range parts {
-		trimmed := strings.TrimSpace(part)
-		if trimmed != "" {
-			selected = append(selected, trimmed)
-		}
+func (a *App) writePayload(payload []byte) error {
+	if _, err := a.platform.Stdout().Write(payload); err != nil {
+		return err
 	}
-
-	return selected
+	if len(payload) > 0 && payload[len(payload)-1] == '\n' {
+		return nil
+	}
+	_, err := a.platform.Stdout().Write([]byte("\n"))
+	return err
 }
