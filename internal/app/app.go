@@ -35,6 +35,12 @@ func NewWithDependencies(cli platform.CLI, loader config.Loader, doctorRunner do
 	}
 }
 
+// validFormats lists the formats supported by the render layer.
+var validFormats = map[string]bool{
+	"markdown": true,
+	"json":     true,
+}
+
 // ExecuteModule runs a registered module and writes its rendered payload to stdout.
 func (a *App) ExecuteModule(ctx context.Context, moduleName string, req modules.Request) error {
 	if a == nil {
@@ -52,6 +58,13 @@ func (a *App) ExecuteModule(ctx context.Context, moduleName string, req modules.
 	}
 	if !runtimeConfig.CacheEnabled {
 		req.NoCache = true
+	}
+
+	if !validFormats[strings.TrimSpace(strings.ToLower(req.Format))] {
+		return a.HandleSyntaxError(ctx,
+			fmt.Errorf("formato %q no soportado; usá markdown o json", req.Format),
+			version.BinaryName+" <query> --format markdown|json",
+		)
 	}
 
 	module, ok := a.registry.Module(moduleName)

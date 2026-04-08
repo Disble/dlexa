@@ -1,0 +1,6 @@
+change: cli-contract-hardening
+status: active
+phase: verify
+last_completed_phase: verify
+next: archive
+created: 2026-04-08

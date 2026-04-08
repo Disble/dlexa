@@ -142,3 +142,29 @@ func (s stubModule) Execute(context.Context, modules.Request) (modules.Response,
 }
 
 var _ platform.CLI = (*fakeCLI)(nil)
+
+func TestExecuteModuleRejectsInvalidFormat(t *testing.T) {
+	loader := &appLoader{cfg: config.RuntimeConfig{DefaultFormat: "markdown", DefaultSources: []string{"dpd"}, CacheEnabled: true}}
+	cli := &fakeCLI{args: []string{version.BinaryName}}
+	application := NewWithDependencies(
+		cli,
+		loader,
+		&appDoctor{},
+		modules.NewRegistry(
+			stubModule{command: "dpd", response: modules.Response{Title: "solo", Source: "DPD", CacheState: "MISS", Format: "markdown", Body: []byte("contenido")}},
+		),
+		render.NewEnvelopeRenderer(),
+	)
+
+	// yaml is not a registered format — should produce a Nivel 1 Syntax fallback, not a raw error.
+	if err := application.ExecuteModule(context.Background(), "dpd", modules.Request{Query: "solo", Format: "yaml"}); err != nil {
+		t.Fatalf("ExecuteModule() should not return error for invalid format, got %v", err)
+	}
+	text := cli.stdout.String()
+	if !strings.Contains(text, "Nivel 1 · Syntax") {
+		t.Fatalf("expected Nivel 1 Syntax fallback for invalid format, got:\n%s", text)
+	}
+	if !strings.Contains(text, "markdown") || !strings.Contains(text, "json") {
+		t.Fatalf("expected fallback to mention supported formats, got:\n%s", text)
+	}
+}
