@@ -8,15 +8,38 @@ import (
 	"github.com/Disble/dlexa/internal/model"
 )
 
+type memoryItems[T any] struct {
+	mu    sync.RWMutex
+	items map[string]T
+}
+
+func newMemoryItems[T any]() memoryItems[T] {
+	return memoryItems[T]{items: map[string]T{}}
+}
+
+func (m *memoryItems[T]) get(key string) (T, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	result, ok := m.items[key]
+	return result, ok
+}
+
+func (m *memoryItems[T]) set(key string, value T) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.items[key] = value
+}
+
 // MemoryStore is an in-memory cache backed by a sync.RWMutex-protected map.
 type MemoryStore struct {
-	mu    sync.RWMutex
-	items map[string]model.LookupResult
+	items memoryItems[model.LookupResult]
 }
 
 // NewMemoryStore returns a ready-to-use in-memory Store.
 func NewMemoryStore() *MemoryStore {
-	return &MemoryStore{items: map[string]model.LookupResult{}}
+	return &MemoryStore{items: newMemoryItems[model.LookupResult]()}
 }
 
 // Get retrieves a cached result by key, delegating to GetResult.
@@ -32,20 +55,14 @@ func (s *MemoryStore) Set(ctx context.Context, key string, result model.LookupRe
 // GetResult retrieves a cached LookupResult, returning false if not found.
 func (s *MemoryStore) GetResult(ctx context.Context, key string) (model.LookupResult, bool, error) {
 	_ = ctx
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	result, ok := s.items[key]
+	result, ok := s.items.get(key)
 	return result, ok, nil
 }
 
 // SetResult stores a LookupResult under the given key.
 func (s *MemoryStore) SetResult(ctx context.Context, key string, result model.LookupResult) error {
 	_ = ctx
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.items[key] = result
+	s.items.set(key, result)
 	return nil
 }
 

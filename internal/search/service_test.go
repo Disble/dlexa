@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -117,22 +119,123 @@ func TestServicePreservesUpstreamFailures(t *testing.T) {
 	}
 }
 
-func TestServicePropagatesCacheWriteFailures(t *testing.T) {
-	wantErr := errors.New("cache unavailable")
+func TestServiceDegradesWhenCacheReadFails(t *testing.T) {
+	store := &stubSearchStore{getErr: errors.New("cache unavailable")}
 	service := NewService(
 		model.SourceDescriptor{Name: "dpd"},
 		&stubFetcher{document: fetch.Document{Body: []byte(`[]`)}},
 		&stubParser{},
 		&stubNormalizer{},
-		&stubSearchStore{setErr: wantErr},
+		store,
+	)
+
+	result, err := service.Search(context.Background(), model.SearchRequest{Query: "tilde", Format: "json"})
+	if err != nil {
+		t.Fatalf("Search() error = %v, want nil", err)
+	}
+	if result.Request.Query != "tilde" {
+		t.Fatalf("Search() request = %#v, want fresh request", result.Request)
+	}
+	if store.setCalls != 1 {
+		t.Fatalf("Set() calls = %d, want 1 after degraded cache read", store.setCalls)
+	}
+}
+
+func TestServiceDegradesWhenCacheWriteFails(t *testing.T) {
+	service := NewService(
+		model.SourceDescriptor{Name: "dpd"},
+		&stubFetcher{document: fetch.Document{Body: []byte(`[]`)}},
+		&stubParser{},
+		&stubNormalizer{},
+		&stubSearchStore{setErr: errors.New("cache unavailable")},
 	)
 
 	result, err := service.Search(context.Background(), model.SearchRequest{Query: "tilde"})
-	if !errors.Is(err, wantErr) {
-		t.Fatalf("Search() error = %v, want %v", err, wantErr)
+	if err != nil {
+		t.Fatalf("Search() error = %v, want nil", err)
 	}
-	if !reflect.DeepEqual(result, model.SearchResult{}) {
-		t.Fatalf("Search() result = %#v, want zero value on cache write failure", result)
+	if result.Request.Query != "tilde" {
+		t.Fatalf("Search() request = %#v, want fresh request", result.Request)
+	}
+}
+
+func TestServiceCoalescesConcurrentCacheMisses(t *testing.T) {
+	fetcher := newGatedFetcher(fetch.Document{Body: []byte(`[]`)})
+	service := NewService(
+		model.SourceDescriptor{Name: "dpd"},
+		fetcher,
+		&stubParser{},
+		&stubNormalizer{},
+		&stubSearchStore{},
+	)
+
+	type searchOutcome struct {
+		result model.SearchResult
+		err    error
+	}
+	results := make(chan searchOutcome, 2)
+	requestA := model.SearchRequest{Query: " Abu   Dhabi ", Format: "json"}
+	requestB := model.SearchRequest{Query: "Abu Dhabi", Format: "markdown"}
+
+	go func() {
+		result, err := service.Search(context.Background(), requestA)
+		results <- searchOutcome{result: result, err: err}
+	}()
+	fetcher.waitStarted(t, 1)
+	go func() {
+		result, err := service.Search(context.Background(), requestB)
+		results <- searchOutcome{result: result, err: err}
+	}()
+	time.Sleep(25 * time.Millisecond)
+	close(fetcher.release)
+
+	outcomeA := <-results
+	outcomeB := <-results
+	if outcomeA.err != nil {
+		t.Fatalf(searchErrFormat, outcomeA.err)
+	}
+	if outcomeB.err != nil {
+		t.Fatalf(searchErrFormat, outcomeB.err)
+	}
+	if got := fetcher.calls.Load(); got != 1 {
+		t.Fatalf("Fetch() calls = %d, want 1", got)
+	}
+	if !reflect.DeepEqual(outcomeA.result.Request, requestA) && !reflect.DeepEqual(outcomeB.result.Request, requestA) {
+		t.Fatalf("expected one coalesced result to preserve requestA, got %#v and %#v", outcomeA.result.Request, outcomeB.result.Request)
+	}
+	if !reflect.DeepEqual(outcomeA.result.Request, requestB) && !reflect.DeepEqual(outcomeB.result.Request, requestB) {
+		t.Fatalf("expected one coalesced result to preserve requestB, got %#v and %#v", outcomeA.result.Request, outcomeB.result.Request)
+	}
+}
+
+func TestServiceNoCacheBypassesCoalescing(t *testing.T) {
+	fetcher := newGatedFetcher(fetch.Document{Body: []byte(`[]`)})
+	service := NewService(
+		model.SourceDescriptor{Name: "dpd"},
+		fetcher,
+		&stubParser{},
+		&stubNormalizer{},
+		&stubSearchStore{},
+	)
+
+	results := make(chan error, 2)
+	request := model.SearchRequest{Query: "Abu Dhabi", NoCache: true}
+	for range 2 {
+		go func() {
+			_, err := service.Search(context.Background(), request)
+			results <- err
+		}()
+	}
+	fetcher.waitStarted(t, 2)
+	close(fetcher.release)
+
+	for i := 0; i < 2; i++ {
+		if err := <-results; err != nil {
+			t.Fatalf(searchErrFormat, err)
+		}
+	}
+	if got := fetcher.calls.Load(); got != 2 {
+		t.Fatalf("Fetch() calls = %d, want 2 when NoCache=true", got)
 	}
 }
 
@@ -141,19 +244,26 @@ type stubSearchStore struct {
 	getOK     bool
 	getErr    error
 	setErr    error
+	mu        sync.Mutex
+	getCalls  int
 	setCalls  int
 	setResult model.SearchResult
 	setKey    string
 }
 
 func (s *stubSearchStore) Get(_ context.Context, _ string) (model.SearchResult, bool, error) {
+	s.mu.Lock()
+	s.getCalls++
+	s.mu.Unlock()
 	return s.getResult, s.getOK, s.getErr
 }
 
 func (s *stubSearchStore) Set(_ context.Context, key string, result model.SearchResult) error {
+	s.mu.Lock()
 	s.setCalls++
 	s.setKey = key
 	s.setResult = result
+	s.mu.Unlock()
 	return s.setErr
 }
 
@@ -166,6 +276,44 @@ type stubFetcher struct {
 func (s *stubFetcher) Fetch(_ context.Context, request fetch.Request) (fetch.Document, error) {
 	s.request = request
 	return s.document, s.err
+}
+
+type gatedFetcher struct {
+	document fetch.Document
+	err      error
+	started  chan struct{}
+	release  chan struct{}
+	calls    atomic.Int32
+}
+
+func newGatedFetcher(document fetch.Document) *gatedFetcher {
+	return &gatedFetcher{
+		document: document,
+		started:  make(chan struct{}, 4),
+		release:  make(chan struct{}),
+	}
+}
+
+func (f *gatedFetcher) Fetch(ctx context.Context, _ fetch.Request) (fetch.Document, error) {
+	f.calls.Add(1)
+	f.started <- struct{}{}
+	select {
+	case <-f.release:
+		return f.document, f.err
+	case <-ctx.Done():
+		return fetch.Document{}, ctx.Err()
+	}
+}
+
+func (f *gatedFetcher) waitStarted(t *testing.T, want int) {
+	t.Helper()
+	for i := 0; i < want; i++ {
+		select {
+		case <-f.started:
+		case <-time.After(2 * time.Second):
+			t.Fatalf("timed out waiting for fetch start %d/%d", i+1, want)
+		}
+	}
 }
 
 type stubParser struct {

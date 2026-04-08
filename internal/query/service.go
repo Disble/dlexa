@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Disble/dlexa/internal/cache"
+	"github.com/Disble/dlexa/internal/inflight"
 	"github.com/Disble/dlexa/internal/model"
 	"github.com/Disble/dlexa/internal/source"
 )
@@ -22,6 +23,7 @@ type sourceOutcome struct {
 type LookupService struct {
 	registry source.SourcesForer
 	cache    cache.Store
+	flights  inflight.Group[model.LookupResult]
 }
 
 // NewService creates a LookupService backed by the given registry and cache.
@@ -36,7 +38,7 @@ func (s *LookupService) lookupCachedResult(ctx context.Context, cacheKey string,
 
 	cached, ok, err := s.cache.Get(ctx, cacheKey)
 	if err != nil {
-		return model.LookupResult{}, false, err
+		return model.LookupResult{}, false, nil
 	}
 	if !ok {
 		return model.LookupResult{}, false, nil
@@ -118,17 +120,7 @@ func (s *LookupService) cacheResult(ctx context.Context, cacheKey string, reques
 	return s.cache.Set(ctx, cacheKey, result)
 }
 
-// Lookup fans out to all matching sources in parallel and merges results.
-func (s *LookupService) Lookup(ctx context.Context, request model.LookupRequest) (model.LookupResult, error) {
-	cacheKey := cache.BuildKey(request)
-	cached, ok, err := s.lookupCachedResult(ctx, cacheKey, request)
-	if err != nil {
-		return model.LookupResult{}, err
-	}
-	if ok {
-		return cached, nil
-	}
-
+func (s *LookupService) lookupFreshResult(ctx context.Context, cacheKey string, request model.LookupRequest) (model.LookupResult, error) {
 	resolvedSources, err := s.registry.SourcesFor(request)
 	if err != nil {
 		return model.LookupResult{}, err
@@ -146,7 +138,29 @@ func (s *LookupService) Lookup(ctx context.Context, request model.LookupRequest)
 		appendOutcome(&result, outcome)
 	}
 
-	if err := s.cacheResult(ctx, cacheKey, request, result); err != nil {
+	_ = s.cacheResult(ctx, cacheKey, request, result)
+
+	return result, nil
+}
+
+// Lookup fans out to all matching sources in parallel and merges results.
+func (s *LookupService) Lookup(ctx context.Context, request model.LookupRequest) (model.LookupResult, error) {
+	cacheKey := cache.BuildKey(request)
+	cached, ok, err := s.lookupCachedResult(ctx, cacheKey, request)
+	if err != nil {
+		return model.LookupResult{}, err
+	}
+	if ok {
+		return cached, nil
+	}
+	if request.NoCache {
+		return s.lookupFreshResult(ctx, cacheKey, request)
+	}
+
+	result, _, err := s.flights.Do(ctx, cacheKey, func(callCtx context.Context) (model.LookupResult, error) {
+		return s.lookupFreshResult(callCtx, cacheKey, request)
+	})
+	if err != nil {
 		return model.LookupResult{}, err
 	}
 

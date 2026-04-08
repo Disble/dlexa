@@ -25,3 +25,8 @@ func TestSearchMemoryStoreStoresNormalizedSearchResults(t *testing.T) {
 		t.Fatalf("cached = %#v", cached)
 	}
 }
+
+func TestSearchMemoryStoreConcurrentReadWrite(t *testing.T) {
+	store := NewSearchMemoryStore()
+	runConcurrentSearchStoreTest(t, store, 10, 10, 100)
+}

@@ -4,7 +4,10 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/Disble/dlexa/internal/model"
 	"github.com/Disble/dlexa/internal/source"
@@ -183,6 +186,132 @@ func TestLookupFallsBackToGenericProblemForUntypedErrors(t *testing.T) {
 	}
 }
 
+func TestLookupDegradesWhenCacheReadFails(t *testing.T) {
+	request := model.LookupRequest{Query: "palabra", Format: "json", Sources: []string{"demo"}}
+	store := &stubStore{getErr: errors.New("cache unavailable")}
+	registry := &stubRegistry{sources: []source.Source{
+		&stubSource{
+			descriptor: model.SourceDescriptor{Name: "demo", Priority: 1},
+			result: model.SourceResult{
+				Source:  model.SourceDescriptor{Name: "demo", Priority: 1},
+				Entries: []model.Entry{{ID: "fresh-entry", Source: "demo"}},
+			},
+		},
+	}}
+
+	result, err := NewService(registry, store).Lookup(context.Background(), request)
+	if err != nil {
+		t.Fatalf(lookupErrFmt, err)
+	}
+	if len(result.Entries) != 1 || result.Entries[0].ID != "fresh-entry" {
+		t.Fatalf("Lookup() entries = %#v, want fresh origin result", result.Entries)
+	}
+	if store.setCalls != 1 {
+		t.Fatalf("Set() calls = %d, want 1 after degraded cache read", store.setCalls)
+	}
+}
+
+func TestLookupDegradesWhenCacheWriteFails(t *testing.T) {
+	request := model.LookupRequest{Query: "palabra", Format: "json", Sources: []string{"demo"}}
+	store := &stubStore{setErr: errors.New("cache unavailable")}
+	registry := &stubRegistry{sources: []source.Source{
+		&stubSource{
+			descriptor: model.SourceDescriptor{Name: "demo", Priority: 1},
+			result: model.SourceResult{
+				Source:  model.SourceDescriptor{Name: "demo", Priority: 1},
+				Entries: []model.Entry{{ID: "fresh-entry", Source: "demo"}},
+			},
+		},
+	}}
+
+	result, err := NewService(registry, store).Lookup(context.Background(), request)
+	if err != nil {
+		t.Fatalf(lookupErrFmt, err)
+	}
+	if len(result.Entries) != 1 || result.Entries[0].ID != "fresh-entry" {
+		t.Fatalf("Lookup() entries = %#v, want fresh origin result", result.Entries)
+	}
+	if result.CacheHit {
+		t.Fatal("Lookup() CacheHit = true, want false for degraded cache write")
+	}
+}
+
+func TestLookupCoalescesConcurrentCacheMisses(t *testing.T) {
+	request := model.LookupRequest{Query: "palabra", Format: "json", Sources: []string{"demo"}}
+	lookupSource := newGatedLookupSource(model.SourceDescriptor{Name: "demo", Priority: 1}, model.SourceResult{
+		Source:  model.SourceDescriptor{Name: "demo", Priority: 1},
+		Entries: []model.Entry{{ID: "fresh-entry", Source: "demo"}},
+	})
+	registry := &countingRegistry{sources: []source.Source{lookupSource}}
+	service := NewService(registry, &stubStore{})
+
+	type lookupOutcome struct {
+		result model.LookupResult
+		err    error
+	}
+	results := make(chan lookupOutcome, 2)
+
+	go func() {
+		result, err := service.Lookup(context.Background(), request)
+		results <- lookupOutcome{result: result, err: err}
+	}()
+	lookupSource.waitStarted(t, 1)
+	go func() {
+		result, err := service.Lookup(context.Background(), request)
+		results <- lookupOutcome{result: result, err: err}
+	}()
+	time.Sleep(25 * time.Millisecond)
+	close(lookupSource.release)
+
+	for i := 0; i < 2; i++ {
+		outcome := <-results
+		if outcome.err != nil {
+			t.Fatalf(lookupErrFmt, outcome.err)
+		}
+		if len(outcome.result.Entries) != 1 || outcome.result.Entries[0].ID != "fresh-entry" {
+			t.Fatalf("Lookup() entries = %#v, want coalesced fresh result", outcome.result.Entries)
+		}
+	}
+	if got := lookupSource.calls.Load(); got != 1 {
+		t.Fatalf("source Lookup() calls = %d, want 1", got)
+	}
+	if got := registry.calls.Load(); got != 1 {
+		t.Fatalf("SourcesFor() calls = %d, want 1", got)
+	}
+}
+
+func TestLookupNoCacheBypassesCoalescing(t *testing.T) {
+	request := model.LookupRequest{Query: "palabra", Format: "json", Sources: []string{"demo"}, NoCache: true}
+	lookupSource := newGatedLookupSource(model.SourceDescriptor{Name: "demo", Priority: 1}, model.SourceResult{
+		Source:  model.SourceDescriptor{Name: "demo", Priority: 1},
+		Entries: []model.Entry{{ID: "fresh-entry", Source: "demo"}},
+	})
+	registry := &countingRegistry{sources: []source.Source{lookupSource}}
+	service := NewService(registry, &stubStore{})
+
+	results := make(chan error, 2)
+	for range 2 {
+		go func() {
+			_, err := service.Lookup(context.Background(), request)
+			results <- err
+		}()
+	}
+	lookupSource.waitStarted(t, 2)
+	close(lookupSource.release)
+
+	for i := 0; i < 2; i++ {
+		if err := <-results; err != nil {
+			t.Fatalf(lookupErrFmt, err)
+		}
+	}
+	if got := lookupSource.calls.Load(); got != 2 {
+		t.Fatalf("source Lookup() calls = %d, want 2 when NoCache=true", got)
+	}
+	if got := registry.calls.Load(); got != 2 {
+		t.Fatalf("SourcesFor() calls = %d, want 2 when NoCache=true", got)
+	}
+}
+
 type stubRegistry struct {
 	sources []source.Source
 	err     error
@@ -202,17 +331,22 @@ type stubStore struct {
 	getOK     bool
 	getErr    error
 	setErr    error
+	mu        sync.Mutex
 	getCalls  int
 	setCalls  int
 }
 
 func (s *stubStore) Get(_ context.Context, _ string) (model.LookupResult, bool, error) {
+	s.mu.Lock()
 	s.getCalls++
+	s.mu.Unlock()
 	return s.getResult, s.getOK, s.getErr
 }
 
 func (s *stubStore) Set(_ context.Context, _ string, _ model.LookupResult) error {
+	s.mu.Lock()
 	s.setCalls++
+	s.mu.Unlock()
 	return s.setErr
 }
 
@@ -228,4 +362,62 @@ func (s *stubSource) Descriptor() model.SourceDescriptor {
 
 func (s *stubSource) Lookup(context.Context, model.LookupRequest) (model.SourceResult, error) {
 	return s.result, s.err
+}
+
+type countingRegistry struct {
+	sources []source.Source
+	err     error
+	calls   atomic.Int32
+}
+
+func (r *countingRegistry) SourcesFor(model.LookupRequest) ([]source.Source, error) {
+	r.calls.Add(1)
+	if r.err != nil {
+		return nil, r.err
+	}
+	return r.sources, nil
+}
+
+type gatedLookupSource struct {
+	descriptor model.SourceDescriptor
+	result     model.SourceResult
+	err        error
+	started    chan struct{}
+	release    chan struct{}
+	calls      atomic.Int32
+}
+
+func newGatedLookupSource(descriptor model.SourceDescriptor, result model.SourceResult) *gatedLookupSource {
+	return &gatedLookupSource{
+		descriptor: descriptor,
+		result:     result,
+		started:    make(chan struct{}, 4),
+		release:    make(chan struct{}),
+	}
+}
+
+func (s *gatedLookupSource) Descriptor() model.SourceDescriptor {
+	return s.descriptor
+}
+
+func (s *gatedLookupSource) Lookup(ctx context.Context, _ model.LookupRequest) (model.SourceResult, error) {
+	s.calls.Add(1)
+	s.started <- struct{}{}
+	select {
+	case <-s.release:
+		return s.result, s.err
+	case <-ctx.Done():
+		return model.SourceResult{}, ctx.Err()
+	}
+}
+
+func (s *gatedLookupSource) waitStarted(t *testing.T, want int) {
+	t.Helper()
+	for i := 0; i < want; i++ {
+		select {
+		case <-s.started:
+		case <-time.After(2 * time.Second):
+			t.Fatalf("timed out waiting for source start %d/%d", i+1, want)
+		}
+	}
 }

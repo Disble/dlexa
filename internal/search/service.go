@@ -6,6 +6,7 @@ import (
 
 	"github.com/Disble/dlexa/internal/cache"
 	"github.com/Disble/dlexa/internal/fetch"
+	"github.com/Disble/dlexa/internal/inflight"
 	"github.com/Disble/dlexa/internal/model"
 	"github.com/Disble/dlexa/internal/parse"
 )
@@ -33,6 +34,7 @@ type Service struct {
 	normalizer Normalizer
 	cache      cache.SearchStore
 	now        func() time.Time
+	flights    inflight.Group[model.SearchResult]
 }
 
 // NewService creates a search service backed by the given fetch/parse/normalize/cache adapters.
@@ -60,21 +62,22 @@ func (s *Service) cacheResult(ctx context.Context, cacheKey string, request mode
 	return s.cache.Set(ctx, cacheKey, cacheCopy)
 }
 
-// Search runs a semantic search using a format-neutral cached normalized result when available.
-func (s *Service) Search(ctx context.Context, request model.SearchRequest) (model.SearchResult, error) {
-	cacheKey := cache.BuildSearchKey(request)
-	if s.cache != nil && !request.NoCache {
-		cached, ok, err := s.cache.Get(ctx, cacheKey)
-		if err != nil {
-			return model.SearchResult{}, err
-		}
-		if ok {
-			cached.Request = request
-			cached.CacheHit = true
-			return cached, nil
-		}
+func (s *Service) lookupCachedResult(ctx context.Context, cacheKey string, request model.SearchRequest) (model.SearchResult, bool) {
+	if s.cache == nil || request.NoCache {
+		return model.SearchResult{}, false
 	}
 
+	cached, ok, err := s.cache.Get(ctx, cacheKey)
+	if err != nil || !ok {
+		return model.SearchResult{}, false
+	}
+
+	cached.Request = request
+	cached.CacheHit = true
+	return cached, true
+}
+
+func (s *Service) freshSearchResult(ctx context.Context, cacheKey string, request model.SearchRequest) (model.SearchResult, error) {
 	document, err := s.fetcher.Fetch(ctx, fetch.Request{Query: request.Query, Source: s.descriptor})
 	if err != nil {
 		return model.SearchResult{}, err
@@ -95,9 +98,28 @@ func (s *Service) Search(ctx context.Context, request model.SearchRequest) (mode
 		GeneratedAt: s.now(),
 	}
 
-	if err := s.cacheResult(ctx, cacheKey, request, result); err != nil {
+	_ = s.cacheResult(ctx, cacheKey, request, result)
+	return result, nil
+}
+
+// Search runs a semantic search using a format-neutral cached normalized result when available.
+func (s *Service) Search(ctx context.Context, request model.SearchRequest) (model.SearchResult, error) {
+	cacheKey := cache.BuildSearchKey(request)
+	if cached, ok := s.lookupCachedResult(ctx, cacheKey, request); ok {
+		return cached, nil
+	}
+	if request.NoCache {
+		return s.freshSearchResult(ctx, cacheKey, request)
+	}
+
+	result, _, err := s.flights.Do(ctx, cacheKey, func(callCtx context.Context) (model.SearchResult, error) {
+		return s.freshSearchResult(callCtx, cacheKey, request)
+	})
+	if err != nil {
 		return model.SearchResult{}, err
 	}
+	result.Request = request
+	result.CacheHit = false
 
 	return result, nil
 }
