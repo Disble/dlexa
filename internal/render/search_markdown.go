@@ -53,9 +53,16 @@ func (r *SearchMarkdownRenderer) Render(ctx context.Context, result model.Search
 			fmt.Fprintf(&builder, "- fallback_command: `%s`\n", searchNextCommand(candidate, query))
 			continue
 		}
-		fmt.Fprintf(&builder, "- sugerencia: `%s`\n", searchNextCommand(candidate, query))
+		builder.WriteString(searchSuggestionLines(candidate, query))
 	}
 	return []byte(strings.TrimRight(builder.String(), "\n")), nil
+}
+
+func searchSuggestionLines(candidate model.SearchCandidate, query string) string {
+	if candidate.Deferred {
+		return fmt.Sprintf("- More info: `%s`\n- nota: (not yet available as CLI command)\n", searchNextCommand(candidate, query))
+	}
+	return fmt.Sprintf("- sugerencia: `%s`\n", searchNextCommand(candidate, query))
 }
 
 func searchTitle(candidate model.SearchCandidate) string {

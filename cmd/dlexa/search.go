@@ -13,7 +13,7 @@ import (
 func newSearchCommand(ctx context.Context, runtime runtimeRunner, format *string, noCache *bool) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:           "search <query>",
-		Short:         "Busca rutas lingüísticas y devuelve siguientes pasos accionables.",
+		Short:         "Busca rutas lingüísticas y devuelve sugerencias; algunas son guía diferida.",
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		Args:          cobra.MinimumNArgs(1),
@@ -24,11 +24,11 @@ func newSearchCommand(ctx context.Context, runtime runtimeRunner, format *string
 	cmd.SetHelpFunc(func(*cobra.Command, []string) {
 		_ = runtime.RenderHelp(ctx, model.HelpEnvelope{
 			Command:     "dlexa search",
-			Summary:     "Explora contenido normativo y devuelve comandos literales para profundizar.",
+			Summary:     "Explora contenido normativo y devuelve sugerencias literales para profundizar; algunas son guía diferida y no comandos CLI ejecutables todavía.",
 			Syntax:      "dlexa search <consulta>",
 			Examples:    []string{"dlexa search solo o sólo", "dlexa search tilde en qué"},
-			NextSteps:   []string{"Copiá el `next_command` sugerido para entrar al módulo correcto."},
-			RecoveryTip: "Si todavía no sabés el módulo adecuado, search es el primer paso correcto.",
+			NextSteps:   []string{"Leé la salida: `- sugerencia:` indica un siguiente paso ejecutable; `- More info:` indica guía diferida.", "No copies ni ejecutes a ciegas cada `next_command`; algunas sugerencias son guía diferida hasta que exista ese subcomando."},
+			RecoveryTip: "Si todavía no sabés el módulo adecuado, search es el primer paso correcto; después verificá si la sugerencia es ejecutable o solo informativa.",
 		})
 	})
 	cmd.SetFlagErrorFunc(func(_ *cobra.Command, err error) error {

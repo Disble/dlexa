@@ -40,6 +40,7 @@ type SearchCandidate struct {
 	Module         string `json:"module,omitempty"`
 	ID             string `json:"id,omitempty"`
 	NextCommand    string `json:"next_command,omitempty"`
+	Deferred       bool   `json:"deferred"`
 	Classification string `json:"classification,omitempty"`
 	SourceHint     string `json:"source_hint,omitempty"`
 	URL            string `json:"url,omitempty"`

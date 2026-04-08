@@ -42,6 +42,7 @@ func enrichCandidate(query string, candidate model.SearchCandidate) model.Search
 	candidate.Module = moduleName
 	candidate.ID = id
 	candidate.NextCommand = nextCommand
+	candidate.Deferred = moduleName != "dpd" && moduleName != "unknown"
 	if strings.TrimSpace(candidate.SourceHint) == "" {
 		candidate.SourceHint = firstNonEmpty(candidate.SourceHint, "RAE")
 	}
