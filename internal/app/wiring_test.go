@@ -3,6 +3,7 @@ package app
 import (
 	"testing"
 
+	"github.com/Disble/dlexa/internal/config"
 	"github.com/Disble/dlexa/internal/fetch"
 	modsearch "github.com/Disble/dlexa/internal/modules/search"
 	"github.com/Disble/dlexa/internal/normalize"
@@ -45,5 +46,15 @@ func TestNewWiresSearchModuleToLiveSearchAdapters(t *testing.T) {
 	}
 	if got := provider.NormalizerForTesting(); got == nil || got.(*normalize.LiveSearchNormalizer) == nil {
 		t.Fatalf("normalizer type = %T, want *normalize.LiveSearchNormalizer", got)
+	}
+	wantConfig := config.DefaultRuntimeConfig().Search
+	if got := registry.DefaultProviderForTesting(); got != wantConfig.DefaultProviders[0] {
+		t.Fatalf("default provider = %q, want %q", got, wantConfig.DefaultProviders[0])
+	}
+	if got := service.MaxConcurrentForTesting(); got != wantConfig.MaxConcurrent {
+		t.Fatalf("max concurrent = %d, want %d", got, wantConfig.MaxConcurrent)
+	}
+	if _, ok := provider.FetcherForTesting().(*fetch.LiveSearchFetcher); !ok {
+		t.Fatalf("fetcher type = %T, want *fetch.LiveSearchFetcher", provider.FetcherForTesting())
 	}
 }

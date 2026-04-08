@@ -106,6 +106,14 @@ func (r *StaticRegistry) Providers() []Provider {
 	return append([]Provider(nil), r.providers...)
 }
 
+// DefaultProviderForTesting exposes the configured default provider for wiring tests.
+func (r *StaticRegistry) DefaultProviderForTesting() string {
+	if r == nil {
+		return ""
+	}
+	return r.defaultProvider
+}
+
 // ProvidersFor selects providers by request or falls back to the configured default provider.
 func (r *StaticRegistry) ProvidersFor(request model.SearchRequest) ([]Provider, error) {
 	if r == nil || len(r.providers) == 0 {

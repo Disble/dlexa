@@ -13,13 +13,28 @@ type DPDConfig struct {
 	UserAgent string
 }
 
+// SearchGovernanceConfig holds bounded upstream governance settings for search transports.
+type SearchGovernanceConfig struct {
+	CooldownBase      time.Duration
+	CooldownMax       time.Duration
+	RespectRetryAfter bool
+}
+
+// SearchConfig holds search-specific runtime configuration.
+type SearchConfig struct {
+	DefaultProviders []string
+	MaxConcurrent    int
+	Governance       SearchGovernanceConfig
+}
+
 // RuntimeConfig aggregates all runtime settings used by the application.
 type RuntimeConfig struct {
-	DefaultFormat  string
-	DefaultSources []string
-	CacheEnabled   bool
-	CacheTTL       time.Duration
-	DPD            DPDConfig
+	DefaultFormat        string
+	DefaultLookupSources []string
+	CacheEnabled         bool
+	CacheTTL             time.Duration
+	DPD                  DPDConfig
+	Search               SearchConfig
 }
 
 // Loader loads and returns the runtime configuration.

@@ -67,3 +67,20 @@ func TestLiveSearchFetcherClassifiesTransportFailures(t *testing.T) {
 	document, err := fetcher.Fetch(context.Background(), Request{Query: testutil.LiveSearchQuery, Source: model.SourceDescriptor{Name: "search"}})
 	assertFetchProblem(t, err, document, &model.Problem{Code: model.ProblemCodeDPDSearchFetchFailed, Message: "fetch live search page: dial tcp refused", Source: "search", Severity: model.ProblemSeverityError})
 }
+
+func TestLiveSearchFetcherClassifiesRateLimitCooldownsExplicitly(t *testing.T) {
+	now := time.Date(2026, time.April, 8, 19, 30, 0, 0, time.UTC)
+	governed := NewGovernedDoer(roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusTooManyRequests, Body: io.NopCloser(strings.NewReader("limited")), Request: req, Header: http.Header{"Retry-After": []string{"30"}}}, nil
+	}), GovernanceConfig{CooldownBase: 5 * time.Second, CooldownMax: time.Minute, RespectRetryAfter: true})
+	governed.now = func() time.Time { return now }
+	fetcher := NewLiveSearchFetcher("https://example.invalid/dpd", time.Second, testUserAgent)
+	fetcher.Client = governed
+
+	firstDocument, firstErr := fetcher.Fetch(context.Background(), Request{Query: testutil.LiveSearchQuery, Source: model.SourceDescriptor{Name: "search"}})
+	assertFetchProblem(t, firstErr, firstDocument, &model.Problem{Code: model.ProblemCodeDPDSearchFetchFailed, Message: "live search request failed with status 429", Source: "search", Severity: model.ProblemSeverityError})
+
+	now = now.Add(5 * time.Second)
+	secondDocument, secondErr := fetcher.Fetch(context.Background(), Request{Query: testutil.LiveSearchQuery, Source: model.SourceDescriptor{Name: "search"}})
+	assertFetchProblem(t, secondErr, secondDocument, &model.Problem{Code: model.ProblemCodeDPDSearchFetchFailed, Message: "fetch live search page: search transport cooling down for 25s after upstream rate limiting", Source: "search", Severity: model.ProblemSeverityError})
+}

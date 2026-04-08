@@ -54,7 +54,7 @@ func (a *App) ExecuteModule(ctx context.Context, moduleName string, req modules.
 		req.Format = runtimeConfig.DefaultFormat
 	}
 	if len(req.Sources) == 0 {
-		req.Sources = append([]string(nil), runtimeConfig.DefaultSources...)
+		req.Sources = defaultSourcesForModule(moduleName, runtimeConfig)
 	}
 	if !runtimeConfig.CacheEnabled {
 		req.NoCache = true
@@ -159,9 +159,28 @@ func (a *App) PrintVersion() error {
 
 func (a *App) loadConfig(ctx context.Context) (config.RuntimeConfig, error) {
 	if a.config == nil {
-		return config.RuntimeConfig{DefaultFormat: "markdown", DefaultSources: []string{"dpd"}, CacheEnabled: true}, nil
+		return config.DefaultRuntimeConfig(), nil
 	}
 	return a.config.Load(ctx)
+}
+
+func defaultSourcesForModule(moduleName string, runtimeConfig config.RuntimeConfig) []string {
+	switch strings.TrimSpace(moduleName) {
+	case "search":
+		if len(runtimeConfig.Search.DefaultProviders) > 0 {
+			return append([]string(nil), runtimeConfig.Search.DefaultProviders...)
+		}
+	default:
+		if len(runtimeConfig.DefaultLookupSources) > 0 {
+			return append([]string(nil), runtimeConfig.DefaultLookupSources...)
+		}
+	}
+
+	defaults := config.DefaultRuntimeConfig()
+	if strings.TrimSpace(moduleName) == "search" {
+		return append([]string(nil), defaults.Search.DefaultProviders...)
+	}
+	return append([]string(nil), defaults.DefaultLookupSources...)
 }
 
 func (a *App) writeFallback(ctx context.Context, fb model.FallbackEnvelope) error {

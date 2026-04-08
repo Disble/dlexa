@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -18,15 +19,15 @@ import (
 )
 
 func TestAppExecuteModuleWrapsMarkdownAndBypassesJSON(t *testing.T) {
-	loader := &appLoader{cfg: config.RuntimeConfig{DefaultFormat: "markdown", DefaultSources: []string{"dpd"}, CacheEnabled: true}}
+	loader := &appLoader{cfg: config.RuntimeConfig{DefaultFormat: "markdown", DefaultLookupSources: []string{"dpd"}, Search: config.SearchConfig{DefaultProviders: []string{"search"}}, CacheEnabled: true}}
 	cli := &fakeCLI{args: []string{version.BinaryName}}
 	application := NewWithDependencies(
 		cli,
 		loader,
 		&appDoctor{},
 		modules.NewRegistry(
-			stubModule{command: "dpd", response: modules.Response{Title: "solo", Source: "Diccionario panhispánico de dudas", CacheState: "MISS", Format: "markdown", Body: []byte("## Resultado\ncontenido")}},
-			stubModule{command: "search", response: modules.Response{Title: "solo", Source: "búsqueda general RAE", CacheState: "HIT", Format: "json", Body: []byte(`{"ok":true}`)}},
+			&stubModule{command: "dpd", response: modules.Response{Title: "solo", Source: "Diccionario panhispánico de dudas", CacheState: "MISS", Format: "markdown", Body: []byte("## Resultado\ncontenido")}},
+			&stubModule{command: "search", response: modules.Response{Title: "solo", Source: "búsqueda general RAE", CacheState: "HIT", Format: "json", Body: []byte(`{"ok":true}`)}},
 		),
 		render.NewEnvelopeRenderer(),
 	)
@@ -51,14 +52,14 @@ func TestAppExecuteModuleWrapsMarkdownAndBypassesJSON(t *testing.T) {
 }
 
 func TestAppHandlesStructuredFallbacksAndSyntaxErrors(t *testing.T) {
-	loader := &appLoader{cfg: config.RuntimeConfig{DefaultFormat: "markdown", DefaultSources: []string{"dpd"}, CacheEnabled: true}}
+	loader := &appLoader{cfg: config.RuntimeConfig{DefaultFormat: "markdown", DefaultLookupSources: []string{"dpd"}, Search: config.SearchConfig{DefaultProviders: []string{"search"}}, CacheEnabled: true}}
 	cli := &fakeCLI{args: []string{version.BinaryName}}
 	application := NewWithDependencies(
 		cli,
 		loader,
 		&appDoctor{},
 		modules.NewRegistry(
-			stubModule{command: "dpd", response: modules.Response{Title: "solo", Source: "Diccionario panhispánico de dudas", CacheState: "MISS", Format: "markdown", Fallback: &model.FallbackEnvelope{Kind: model.FallbackKindNotFound, Module: "dpd", Query: "solo", Message: "No se encontró contenido en este módulo.", NextCommand: "dlexa search solo"}}},
+			&stubModule{command: "dpd", response: modules.Response{Title: "solo", Source: "Diccionario panhispánico de dudas", CacheState: "MISS", Format: "markdown", Fallback: &model.FallbackEnvelope{Kind: model.FallbackKindNotFound, Module: "dpd", Query: "solo", Message: "No se encontró contenido en este módulo.", NextCommand: "dlexa search solo"}}},
 		),
 		render.NewEnvelopeRenderer(),
 	)
@@ -80,7 +81,7 @@ func TestAppHandlesStructuredFallbacksAndSyntaxErrors(t *testing.T) {
 }
 
 func TestAppRendersMarkdownHelpAndDoctorOutput(t *testing.T) {
-	loader := &appLoader{cfg: config.RuntimeConfig{DefaultFormat: "markdown", DefaultSources: []string{"dpd"}, CacheEnabled: true}}
+	loader := &appLoader{cfg: config.RuntimeConfig{DefaultFormat: "markdown", DefaultLookupSources: []string{"dpd"}, Search: config.SearchConfig{DefaultProviders: []string{"search"}}, CacheEnabled: true}}
 	cli := &fakeCLI{args: []string{version.BinaryName}}
 	application := NewWithDependencies(
 		cli,
@@ -130,28 +131,30 @@ func (d *appDoctor) Run(context.Context) (doctor.Report, error) {
 }
 
 type stubModule struct {
-	command  string
-	response modules.Response
-	err      error
+	command     string
+	response    modules.Response
+	err         error
+	lastRequest modules.Request
 }
 
 func (s stubModule) Name() string    { return s.command }
 func (s stubModule) Command() string { return s.command }
-func (s stubModule) Execute(context.Context, modules.Request) (modules.Response, error) {
+func (s *stubModule) Execute(_ context.Context, req modules.Request) (modules.Response, error) {
+	s.lastRequest = req
 	return s.response, s.err
 }
 
 var _ platform.CLI = (*fakeCLI)(nil)
 
 func TestExecuteModuleRejectsInvalidFormat(t *testing.T) {
-	loader := &appLoader{cfg: config.RuntimeConfig{DefaultFormat: "markdown", DefaultSources: []string{"dpd"}, CacheEnabled: true}}
+	loader := &appLoader{cfg: config.RuntimeConfig{DefaultFormat: "markdown", DefaultLookupSources: []string{"dpd"}, Search: config.SearchConfig{DefaultProviders: []string{"search"}}, CacheEnabled: true}}
 	cli := &fakeCLI{args: []string{version.BinaryName}}
 	application := NewWithDependencies(
 		cli,
 		loader,
 		&appDoctor{},
 		modules.NewRegistry(
-			stubModule{command: "dpd", response: modules.Response{Title: "solo", Source: "DPD", CacheState: "MISS", Format: "markdown", Body: []byte("contenido")}},
+			&stubModule{command: "dpd", response: modules.Response{Title: "solo", Source: "DPD", CacheState: "MISS", Format: "markdown", Body: []byte("contenido")}},
 		),
 		render.NewEnvelopeRenderer(),
 	)
@@ -166,5 +169,42 @@ func TestExecuteModuleRejectsInvalidFormat(t *testing.T) {
 	}
 	if !strings.Contains(text, "markdown") || !strings.Contains(text, "json") {
 		t.Fatalf("expected fallback to mention supported formats, got:\n%s", text)
+	}
+}
+
+func TestExecuteModuleAppliesModuleSpecificDefaultSources(t *testing.T) {
+	loader := &appLoader{cfg: config.RuntimeConfig{
+		DefaultFormat:        "markdown",
+		DefaultLookupSources: []string{"dpd"},
+		Search: config.SearchConfig{
+			DefaultProviders: []string{"search"},
+		},
+		CacheEnabled: true,
+	}}
+	cli := &fakeCLI{args: []string{version.BinaryName}}
+	dpdModule := &stubModule{command: "dpd", response: modules.Response{Title: "basto", Source: "DPD", CacheState: "MISS", Format: "markdown", Body: []byte("contenido")}}
+	searchModule := &stubModule{command: "search", response: modules.Response{Title: "basto", Source: "búsqueda general RAE", CacheState: "MISS", Format: "json", Body: []byte(`{"ok":true}`)}}
+	application := NewWithDependencies(cli, loader, &appDoctor{}, modules.NewRegistry(dpdModule, searchModule), render.NewEnvelopeRenderer())
+
+	if err := application.ExecuteModule(context.Background(), "dpd", modules.Request{Query: "basto"}); err != nil {
+		t.Fatalf("ExecuteModule() dpd error = %v", err)
+	}
+	if got := dpdModule.lastRequest.Sources; !reflect.DeepEqual(got, []string{"dpd"}) {
+		t.Fatalf("dpd sources = %#v, want [\"dpd\"]", got)
+	}
+
+	if err := application.ExecuteModule(context.Background(), "search", modules.Request{Query: "basto", Format: "json"}); err != nil {
+		t.Fatalf("ExecuteModule() search error = %v", err)
+	}
+	if got := searchModule.lastRequest.Sources; !reflect.DeepEqual(got, []string{"search"}) {
+		t.Fatalf("search sources = %#v, want [\"search\"]", got)
+	}
+
+	explicit := []string{"manual"}
+	if err := application.ExecuteModule(context.Background(), "search", modules.Request{Query: "basto", Format: "json", Sources: explicit}); err != nil {
+		t.Fatalf("ExecuteModule() explicit sources error = %v", err)
+	}
+	if got := searchModule.lastRequest.Sources; !reflect.DeepEqual(got, explicit) {
+		t.Fatalf("explicit search sources = %#v, want %#v", got, explicit)
 	}
 }

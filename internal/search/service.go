@@ -50,6 +50,9 @@ func NewService(registry Registry, store cache.SearchStore, maxConcurrent int, d
 // RegistryForTesting exposes the wired registry for app wiring tests.
 func (s *Service) RegistryForTesting() Registry { return s.registry }
 
+// MaxConcurrentForTesting exposes the configured concurrency bound for wiring tests.
+func (s *Service) MaxConcurrentForTesting() int { return s.maxConcurrent }
+
 func (s *Service) cacheResult(ctx context.Context, cacheKey string, request model.SearchRequest, result model.SearchResult) error {
 	if s.cache == nil || request.NoCache {
 		return nil

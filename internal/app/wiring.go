@@ -3,6 +3,7 @@ package app
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/Disble/dlexa/internal/cache"
 	"github.com/Disble/dlexa/internal/config"
@@ -73,14 +74,21 @@ func New(cli platform.CLI) *App {
 
 	registry := source.NewStaticRegistry(dpdSource, demoSource)
 	lookupService := query.NewService(registry, cacheStore)
+	searchFetcher := fetch.NewLiveSearchFetcher(runtimeConfig.DPD.BaseURL, runtimeConfig.DPD.Timeout, runtimeConfig.DPD.UserAgent)
+	searchFetcher.Client = fetch.NewGovernedDoer(searchFetcher.Client, fetch.GovernanceConfig{
+		CooldownBase:      runtimeConfig.Search.Governance.CooldownBase,
+		CooldownMax:       runtimeConfig.Search.Governance.CooldownMax,
+		RespectRetryAfter: runtimeConfig.Search.Governance.RespectRetryAfter,
+	})
 	searchProvider := searchsvc.NewPipelineProvider(
 		model.SourceDescriptor{Name: "search", DisplayName: "Búsqueda general RAE", Kind: "remote-html", Priority: 1, Cacheable: true},
-		fetch.NewLiveSearchFetcher(runtimeConfig.DPD.BaseURL, runtimeConfig.DPD.Timeout, runtimeConfig.DPD.UserAgent),
+		searchFetcher,
 		parse.NewLiveSearchParser(),
 		normalize.NewLiveSearchNormalizer(),
 	)
-	searchRegistry := searchsvc.NewStaticRegistry("search", searchProvider)
-	searchService := searchsvc.NewService(searchRegistry, searchCacheStore, 2, "search")
+	defaultSearchProvider := defaultSearchProvider(runtimeConfig.Search.DefaultProviders)
+	searchRegistry := searchsvc.NewStaticRegistry(defaultSearchProvider, searchProvider)
+	searchService := searchsvc.NewService(searchRegistry, searchCacheStore, runtimeConfig.Search.MaxConcurrent, defaultSearchProvider)
 	rendererRegistry := render.NewRegistry(
 		render.NewMarkdownRenderer(),
 		render.NewJSONRenderer(),
@@ -95,4 +103,13 @@ func New(cli platform.CLI) *App {
 	)
 
 	return NewWithDependencies(cli, loader, doctorService, moduleRegistry, render.NewEnvelopeRenderer())
+}
+
+func defaultSearchProvider(providers []string) string {
+	for _, provider := range providers {
+		if candidate := strings.TrimSpace(provider); candidate != "" {
+			return candidate
+		}
+	}
+	return "search"
 }
