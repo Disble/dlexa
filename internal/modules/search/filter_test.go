@@ -7,6 +7,32 @@ import (
 	"github.com/Disble/dlexa/internal/model"
 )
 
+var (
+	soloRankingCandidates = []model.SearchCandidate{
+		{Title: "solo", Classification: "dpd-entry", ArticleKey: "solo"},
+		{Title: "El uso de tilde en solo", Classification: "faq"},
+	}
+	alicuotaRankingCandidates = []model.SearchCandidate{
+		{Title: "Alícuota", Classification: "dpd-entry", ArticleKey: "alicuota"},
+		{Title: "Dudas sobre tildes en esdrújulas", Classification: "faq"},
+	}
+	asimismoRankingCandidates = []model.SearchCandidate{
+		{Title: "asimismo", Classification: "dpd-entry", ArticleKey: "asimismo"},
+		{Title: "así mismo", Classification: "dpd-entry", ArticleKey: "asimismo"},
+		{Title: "a sí mismo", Classification: "dpd-entry", ArticleKey: "asimismo"},
+	}
+	exRankingCandidates = []model.SearchCandidate{
+		{Title: "ex", Classification: "dpd-entry", ArticleKey: "ex"},
+		{Title: "Texto de ejemplo", Classification: "faq"},
+		{Title: "expresión", Classification: "linguistic-article"},
+	}
+	guionRankingCandidates = []model.SearchCandidate{
+		{Title: "guion", Classification: "dpd-entry", ArticleKey: "guion"},
+		{Title: "guión", Classification: "dpd-entry", ArticleKey: "guion"},
+		{Title: "Usos del guion en la escritura", Classification: "faq"},
+	}
+)
+
 func TestCurateCandidatesRanksAndDeduplicatesCrossProviderResults(t *testing.T) {
 	candidates := []model.SearchCandidate{
 		{Title: "Ruta rara", URL: "https://www.rae.es/archivo/ruta-rara"},
@@ -60,6 +86,71 @@ func TestCurateCandidatesBoostsQueryAffinityAcrossComplementaryHits(t *testing.T
 
 	if want := []string{"Alícuota", "Preguntas frecuentes: sobre la tilde", "Ruta rara"}; !reflect.DeepEqual(candidateTitles(got), want) {
 		t.Fatalf("candidate order = %v, want %v", candidateTitles(got), want)
+	}
+}
+
+func TestCurateCandidatesCalibratesRankingForExactVariantsAndShortQueries(t *testing.T) {
+	tests := []struct {
+		name         string
+		query        string
+		candidates   []model.SearchCandidate
+		wantTopTitle string
+	}{
+		{
+			name:         "solo ranking",
+			query:        "solo",
+			candidates:   soloRankingCandidates,
+			wantTopTitle: "solo",
+		},
+		{
+			name:         "alicuota unaccented",
+			query:        "alicuota",
+			candidates:   alicuotaRankingCandidates,
+			wantTopTitle: "Alícuota",
+		},
+		{
+			name:         "alicuota accented",
+			query:        "alícuota",
+			candidates:   alicuotaRankingCandidates,
+			wantTopTitle: "Alícuota",
+		},
+		{
+			name:         "asimismo disambiguation",
+			query:        "asimismo",
+			candidates:   asimismoRankingCandidates,
+			wantTopTitle: "asimismo",
+		},
+		{
+			name:         "ex short query",
+			query:        "ex",
+			candidates:   exRankingCandidates,
+			wantTopTitle: "ex",
+		},
+		{
+			name:         "guion accent variant",
+			query:        "guion",
+			candidates:   guionRankingCandidates,
+			wantTopTitle: "guion",
+		},
+		{
+			name:         "guion accented query",
+			query:        "guión",
+			candidates:   guionRankingCandidates,
+			wantTopTitle: "guion",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := curateCandidates(tt.query, tt.candidates)
+			if len(got) == 0 {
+				t.Fatalf("curateCandidates(%q) returned no candidates", tt.query)
+			}
+
+			if got[0].Title != tt.wantTopTitle {
+				t.Fatalf("top title = %q, want %q (order=%v)", got[0].Title, tt.wantTopTitle, candidateTitles(got))
+			}
+		})
 	}
 }
 

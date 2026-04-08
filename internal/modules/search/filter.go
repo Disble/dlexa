@@ -119,19 +119,54 @@ func queryAffinityScore(query string, candidate model.SearchCandidate) int {
 	if normalizedQuery == "" {
 		return 0
 	}
-	for _, value := range []string{candidate.ArticleKey, candidate.Title, candidate.DisplayText, candidate.ID} {
-		normalizedValue := normalizeSearchText(value)
-		if normalizedValue == "" {
-			continue
-		}
-		if normalizedValue == normalizedQuery {
-			return 140
-		}
-		if strings.Contains(normalizedValue, normalizedQuery) {
-			return 60
+
+	canonicalLabel := firstNonEmpty(candidate.Title, candidate.DisplayText, candidate.ArticleKey, candidate.ID)
+	normalizedLabel := normalizeSearchText(canonicalLabel)
+	if normalizedLabel == "" {
+		return 0
+	}
+
+	if normalizedLabel == normalizedQuery {
+		return 140
+	}
+
+	isShortQuery := len(normalizedQuery) <= 3
+	if isShortQuery {
+		return 0
+	}
+
+	queryTokens := tokenizeNormalized(query)
+	labelTokens := tokenizeNormalized(canonicalLabel)
+	labelSet := make(map[string]struct{}, len(labelTokens))
+	for _, token := range labelTokens {
+		labelSet[token] = struct{}{}
+	}
+
+	matched := 0
+	for _, token := range queryTokens {
+		if _, ok := labelSet[token]; ok {
+			matched++
 		}
 	}
+	if matched > 0 {
+		return matched * 15
+	}
+	if strings.Contains(normalizedLabel, normalizedQuery) {
+		return 60
+	}
+
 	return 0
+}
+
+func tokenizeNormalized(s string) []string {
+	normalized := normalizeSearchText(s)
+	if normalized == "" {
+		return nil
+	}
+
+	return strings.FieldsFunc(normalized, func(r rune) bool {
+		return unicode.IsSpace(r) || r == '-'
+	})
 }
 
 func classificationRank(classification string) int {
