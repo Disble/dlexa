@@ -190,3 +190,66 @@ The `search` module MUST coalesce identical concurrent cacheable misses by norma
 - WHEN the request is executed
 - THEN the module MUST bypass keyed coalescing
 - AND concurrent no-cache requests MUST each run a fresh upstream search
+
+### Requirement: Bounded Concurrent Execution
+
+The `search` module MUST execute multi-provider search requests concurrently using a bounded worker pool.
+
+#### Scenario: Multiple providers queried
+
+- GIVEN a search request targets 3 providers
+- WHEN the search gateway executes the request
+- THEN queries to all 3 providers MUST execute concurrently within the configured worker-pool limit
+- AND the results MUST be aggregated into one search response
+
+### Requirement: Graceful Partial Failure
+
+The `search` module MUST return a successful aggregated response when at least one selected provider succeeds, and MUST fail the request only when every selected provider fails.
+
+#### Scenario: One provider fails
+
+- GIVEN a search request targets Provider A and Provider B
+- WHEN Provider B times out or returns an error
+- THEN the module MUST return the successful results from Provider A
+- AND the degraded provider failure MUST remain in-band as provider-attributed problem metadata
+- AND the overall request MUST NOT fail
+
+#### Scenario: All providers fail
+
+- GIVEN a search request targets multiple providers
+- WHEN every selected provider fails
+- THEN the module MUST return an explicit top-level search failure
+- AND the failure MUST indicate complete provider failure rather than an empty success result
+
+### Requirement: Provider-Aware Caching
+
+The `search` module cache MUST isolate entries by provider selection to prevent cross-provider contamination.
+
+#### Scenario: Partial cache hit
+
+- GIVEN a search request targets Provider A and Provider B
+- AND Provider A already has a usable cached result while Provider B does not
+- WHEN the search gateway executes the request
+- THEN the module MUST return Provider A's cached result
+- AND the module MUST fetch Provider B concurrently
+- AND the combined response MUST preserve provider attribution for degraded or fresh segments
+
+#### Scenario: Legacy single-provider cache fallback
+
+- GIVEN the request targets only the configured default provider
+- AND a legacy single-provider cache entry exists for the normalized query
+- WHEN the provider-aware cache lookup misses
+- THEN the module MAY read the legacy cache entry once
+- AND the module MUST rewrite that result under the provider-aware cache key
+- AND multi-provider requests MUST NOT read the legacy key
+
+### Requirement: Search Service Input Contract
+
+The search service MUST use the request `Sources` field to select the providers that execute the search.
+
+#### Scenario: Search with explicit sources
+
+- GIVEN a search request includes multiple explicit sources
+- WHEN the module executes the search
+- THEN the gateway MUST dispatch queries to exactly those sources
+- AND the request MUST NOT silently fall back to unrelated providers
