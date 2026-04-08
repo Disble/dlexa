@@ -192,3 +192,35 @@ The Cobra command surface in `cmd/dlexa` MUST have black-box tests exercising ro
 - GIVEN the CLI is invoked with `--format json` or `--no-cache`
 - WHEN `executeRootCommand` processes the arguments
 - THEN `RunModule` MUST receive the corresponding `Format` or `NoCache` values
+
+### Requirement: Source-Scoped Search Execution
+
+The `search` command MUST expose a `--source` flag that allows agents to restrict federation to a named subset of registered providers.
+
+#### Scenario: Source flag scopes federation to a single provider
+
+- GIVEN the CLI is invoked as `dlexa search --source dpd <query>`
+- WHEN `executeRootCommand` processes the arguments
+- THEN `RunModule` MUST be called with `Sources: ["dpd"]`
+- AND the search module MUST NOT federate to any other provider
+
+#### Scenario: Multiple source flags accumulate providers
+
+- GIVEN the CLI is invoked as `dlexa search --source dpd --source search <query>`
+- WHEN `executeRootCommand` processes the arguments
+- THEN `RunModule` MUST be called with `Sources: ["dpd", "search"]`
+
+#### Scenario: Omitting source flag federates all providers
+
+- GIVEN the CLI is invoked as `dlexa search <query>` without `--source`
+- WHEN `executeRootCommand` processes the arguments
+- THEN `RunModule` MUST be called with `Sources` empty or nil
+- AND the search module MUST apply its default federation policy
+
+#### Scenario: Unknown source returns a syntax fallback
+
+- GIVEN the CLI is invoked as `dlexa search --source unknown <query>`
+- WHEN `executeRootCommand` processes the arguments
+- THEN `HandleSyntaxError` MUST be called
+- AND the error message MUST name the unknown source and list the valid ones
+- AND `RunModule` MUST NOT be called
