@@ -276,6 +276,87 @@ The search curation phase MUST collapse semantically equivalent DPD hits that ar
 - THEN the module MUST collapse them into one visible result
 - AND it SHOULD prefer the specialized DPD index representation
 
+## Ranking Calibration
+
+### Requirement: Token-aware query-affinity scoring
+
+The search ranking algorithm MUST use additive token-aware query-affinity scoring over the candidate's normalized canonical label.
+
+#### Scenario: Exact full match outranks complementary material
+
+- GIVEN a normalized candidate label exactly equals the normalized query
+- WHEN query-affinity scoring runs
+- THEN the candidate MUST receive a score of `140`
+
+#### Scenario: Token matches accumulate affinity
+
+- GIVEN a normalized query and normalized candidate label share exact tokens
+- WHEN query-affinity scoring runs
+- THEN the candidate MUST receive `+15` per matched query token
+
+#### Scenario: Substring fallback applies only after token miss
+
+- GIVEN a normalized candidate label contains the normalized query as a substring
+- AND no exact full-label match or token match was found
+- WHEN query-affinity scoring runs
+- THEN the candidate MUST receive a fallback score of `60`
+
+### Requirement: Short-query exact-match guard
+
+Short normalized queries MUST use exact-match-only affinity scoring to avoid noisy substring collisions.
+
+#### Scenario: Short query disables substring fallback
+
+- GIVEN a normalized query of length `<=3`
+- WHEN query-affinity scoring runs
+- THEN only exact normalized label equality MUST score positively
+- AND substring fallback MUST NOT apply
+
+### Requirement: Normalized tokenization contract
+
+The ranking pipeline MUST tokenize already-normalized search text through `tokenizeNormalized`.
+
+#### Scenario: Tokenizing normalized text
+
+- GIVEN text has already been normalized for accent and case differences
+- WHEN `tokenizeNormalized` processes the text
+- THEN it MUST split tokens on whitespace and hyphens
+
+### Requirement: Representative ranking calibration cases
+
+The search ranking behavior MUST preserve calibrated ordering for representative orthographic and short-query cases.
+
+#### Scenario: Solo exact entry outranks tilde FAQ
+
+- GIVEN a search query for `solo`
+- WHEN candidates include the exact DPD entry and a complementary tilde FAQ
+- THEN the exact DPD entry MUST rank first
+
+#### Scenario: Alícuota accent variants preserve exact article priority
+
+- GIVEN a search query for `alícuota` or `alicuota`
+- WHEN candidates include the exact article and a generic tilde FAQ
+- THEN the exact article MUST rank first
+
+#### Scenario: Asimismo exact form outranks closest variants
+
+- GIVEN a search query for `asimismo`
+- WHEN candidates include `asimismo`, `así mismo`, and `a sí mismo`
+- THEN `asimismo` MUST rank first
+
+#### Scenario: Ex suppresses noisy substring collisions
+
+- GIVEN a search query for `ex`
+- WHEN candidates include relevant prefix guidance and unrelated substring collisions
+- THEN the relevant `ex` guidance MUST rank above unrelated substring matches
+
+#### Scenario: Guion optional-tilde variants stay near the top
+
+- GIVEN a search query for `guion` or `guión`
+- WHEN candidates include exact normalized matches and complementary guidance
+- THEN the exact normalized entry MUST rank above complementary articles
+- AND orthographic guidance MUST remain near the top
+
 ### Requirement: Resilient Upstream Fetching
 
 The live search fetcher MUST implement a ban-aware mechanism (e.g., backoff or circuit breaker) that detects HTTP 429 (Too Many Requests) or temporary upstream rejections, safely protecting against IP bans.
