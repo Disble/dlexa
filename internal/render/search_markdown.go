@@ -56,6 +56,11 @@ func (r *SearchMarkdownRenderer) Render(ctx context.Context, result model.Search
 		}
 		builder.WriteString(searchSuggestionLines(candidate, query))
 	}
+	for _, warning := range result.Warnings {
+		if msg := strings.TrimSpace(warning.Message); msg != "" {
+			fmt.Fprintf(&builder, "⚠️  %s\n", msg)
+		}
+	}
 	appendSearchProblems(&builder, result.Problems)
 	return []byte(strings.TrimRight(builder.String(), "\n")), nil
 }
@@ -76,9 +81,23 @@ func appendSearchProblems(builder *strings.Builder, problems []model.Problem) {
 
 func searchSuggestionLines(candidate model.SearchCandidate, query string) string {
 	if candidate.Deferred {
-		return fmt.Sprintf("- More info: `%s`\n- nota: (not yet available as CLI command)\n", searchNextCommand(candidate, query))
+		if block := renderDeferredAccessBlock(candidate); block != "" {
+			return block + "\n"
+		}
+		return ""
 	}
 	return fmt.Sprintf("- sugerencia: `%s`\n", searchNextCommand(candidate, query))
+}
+
+func renderDeferredAccessBlock(candidate model.SearchCandidate) string {
+	var parts []string
+	if url := strings.TrimSpace(candidate.URL); url != "" {
+		parts = append(parts, "  🌐 "+url)
+	}
+	if cmd := strings.TrimSpace(candidate.NextCommand); cmd != "" {
+		parts = append(parts, "  _(Acceso futuro via CLI: "+cmd+")_")
+	}
+	return strings.Join(parts, "\n")
 }
 
 func searchTitle(candidate model.SearchCandidate) string {
