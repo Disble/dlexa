@@ -84,3 +84,14 @@ The architecture MUST collapse identical concurrent cacheable requests at the se
 - WHEN the service handles that request
 - THEN the runtime MUST bypass both cache reuse and keyed in-flight coalescing
 - AND each no-cache request MUST execute its own fresh upstream work
+
+### Requirement: Explicit Search Provider Wiring
+
+The system MUST explicitly wire the search registry with intended search providers and their specific defaults, rather than relying on implicit global defaults that match lookup providers.
+
+#### Scenario: Wiring the search module
+
+- GIVEN the application composition root initializes
+- WHEN the search service and registry are constructed
+- THEN the registry MUST be configured with the intended federated search providers (currently `search` and `dpd`)
+- AND the search default set MUST remain distinct from the direct lookup default path (`dpd`)

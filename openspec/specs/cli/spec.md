@@ -59,6 +59,45 @@ The CLI MUST keep `search` as the explicit entrypoint for semantic discovery, wh
 - THEN the system MUST route execution to the live semantic search gateway
 - AND the system MUST return curated search output rather than a direct DPD article lookup
 
+### Requirement: Module-Specific Default Sources
+
+The application runtime MUST distinguish between default sources for lookup and default sources for search, preventing global drift where lookup defaults are incorrectly applied to the search module.
+
+#### Scenario: Injecting search defaults
+
+- GIVEN the `search` module is invoked via `dlexa search <query>` without explicit sources
+- WHEN `App.ExecuteModule` applies configuration defaults
+- THEN the runtime MUST apply the search-specific default sources
+- AND MUST NOT apply the lookup-specific default source (`dpd`)
+
+#### Scenario: Injecting lookup defaults
+
+- GIVEN the `dpd` module is invoked via `dlexa <query>` without explicit sources
+- WHEN `App.ExecuteModule` applies configuration defaults
+- THEN the runtime MUST apply the lookup-specific default source (`dpd`)
+
+### Requirement: Preservation of Current CLI Surface
+
+The external CLI surface and fallback semantics MUST remain unchanged. The `search` command remains the explicit gateway entry, and root queries default to DPD.
+
+#### Scenario: CLI surface remains stable
+
+- GIVEN the CLI is invoked
+- WHEN a user runs existing commands (`dlexa basto`, `dlexa search basto`)
+- THEN the commands MUST route correctly to their respective modules using the correct provider defaults
+
+### Requirement: Independent DPD Search Surface
+
+The CLI MUST preserve an independent DPD search surface in addition to the federated `search` gateway.
+
+#### Scenario: Running the dedicated DPD search command
+
+- GIVEN the CLI is invoked as `dlexa dpd search <termino-de-busqueda>`
+- WHEN the command arguments are valid
+- THEN the system MUST route execution to the `search` module
+- AND it MUST force the provider selection to the DPD entry-discovery source only
+- AND it MUST preserve the `search` response contract rather than doing a direct article lookup
+
 ### Requirement: Search Output Communicates Safe Next Steps
 
 The CLI MUST render search results as safe next-step guidance for agents and users.

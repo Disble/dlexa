@@ -253,3 +253,43 @@ The search service MUST use the request `Sources` field to select the providers 
 - WHEN the module executes the search
 - THEN the gateway MUST dispatch queries to exactly those sources
 - AND the request MUST NOT silently fall back to unrelated providers
+
+### Requirement: Default Federated Search Providers
+
+The default `search` execution path MUST federate heterogeneous search providers rather than relying on only the general RAE search surface.
+
+#### Scenario: Default search request
+
+- GIVEN `dlexa search <query>` is invoked without explicit source overrides
+- WHEN runtime defaults are applied
+- THEN the search request MUST include both the general `search` provider and the specialized `dpd` entry-discovery provider
+
+### Requirement: DPD Equivalence Collapsing
+
+The search curation phase MUST collapse semantically equivalent DPD hits that arrive from different providers.
+
+#### Scenario: DPD index and general DPD URL overlap
+
+- GIVEN federated search returns one candidate with a DPD `ArticleKey`
+- AND another candidate points to an equivalent `/dpd/...` URL for the same target
+- WHEN final curation runs
+- THEN the module MUST collapse them into one visible result
+- AND it SHOULD prefer the specialized DPD index representation
+
+### Requirement: Resilient Upstream Fetching
+
+The live search fetcher MUST implement a ban-aware mechanism (e.g., backoff or circuit breaker) that detects HTTP 429 (Too Many Requests) or temporary upstream rejections, safely protecting against IP bans.
+
+#### Scenario: Upstream returns HTTP 429
+
+- GIVEN the live search fetcher sends a request to the upstream search provider
+- WHEN the upstream responds with HTTP 429 Too Many Requests
+- THEN the fetcher MUST detect the rejection
+- AND the fetcher MUST apply a backoff or circuit-breaking mechanism before allowing further requests
+- AND the module MUST return an explicit rate-limited fallback or error rather than hanging indefinitely
+
+#### Scenario: Standard fetch failure
+
+- GIVEN the live search fetcher sends a request
+- WHEN the upstream is completely unreachable (e.g., DNS failure, timeout)
+- THEN the fetcher MUST return a standard fetch failure problem without triggering the 429-specific backoff
