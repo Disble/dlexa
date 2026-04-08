@@ -268,6 +268,43 @@ Verification for this change MUST include many targeted tests, not only one broa
 - THEN those tests MUST agree on the same authoritative fixture semantics
 - AND they MUST NOT encode contradictory expectations for the same formatting case at different layers
 
+### Requirement: DPD Cache Degradation Semantics
+
+The DPD lookup path MUST treat cache access as a best-effort optimization and MUST continue to live lookup when cache access degrades.
+
+#### Scenario: DPD cache read degrades
+
+- GIVEN a DPD lookup is invoked with caching enabled
+- WHEN the lookup cache cannot provide a usable entry because of corruption, expiry, or backing-store failure
+- THEN the system MUST continue through the live `fetch -> parse -> normalize -> render` lookup path
+- AND the request MUST NOT fail solely because cache retrieval degraded
+
+#### Scenario: DPD cache write degrades
+
+- GIVEN a fresh DPD lookup result has been produced successfully
+- WHEN persisting that result into cache fails
+- THEN the system MUST still return the fresh DPD result
+- AND the cache write failure MUST NOT replace the primary lookup outcome seen by the caller
+
+### Requirement: DPD Request Coalescing on Cache Misses
+
+The DPD lookup path MUST collapse identical concurrent cacheable misses into one upstream lookup execution.
+
+#### Scenario: Concurrent identical DPD misses share one upstream execution
+
+- GIVEN two or more concurrent DPD lookups resolve to the same cache key
+- AND no usable cached result exists
+- WHEN the lookup service executes the live source pipeline
+- THEN only one upstream lookup execution MUST run for that key
+- AND the waiting callers MUST receive the leader's fresh lookup result
+
+#### Scenario: No-cache DPD requests bypass coalescing
+
+- GIVEN a DPD lookup request explicitly disables cache usage
+- WHEN that request is executed
+- THEN the system MUST bypass keyed in-flight coalescing
+- AND concurrent no-cache lookups MUST each run their own fresh upstream execution
+
 ## Architectural Significance
 
 - This change is architecturally significant because it converts DPD lookup from bootstrap scaffolding into a real live source while keeping the existing `fetch -> parse -> normalize -> render` boundary model intact.

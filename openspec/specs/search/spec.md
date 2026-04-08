@@ -153,3 +153,40 @@ The `search` command's help text MUST NOT imply that all returned suggestions ar
 - WHEN the help text is displayed
 - THEN it MUST clarify that some suggestions are deferred guidance
 - AND MUST NOT instruct users to blindly copy and run all next-command outputs
+
+### Requirement: Search Cache Degradation Semantics
+
+The `search` module MUST treat cache access as a best-effort optimization and MUST continue to fresh retrieval when cache access degrades.
+
+#### Scenario: Search cache read degrades
+
+- GIVEN `dlexa search <query>` is invoked with caching enabled
+- WHEN the normalized search cache cannot return a usable entry because of corruption, expiry, or backing-store failure
+- THEN the module MUST continue with live fetch, parse, and normalize execution
+- AND the request MUST NOT fail solely because the cache read degraded
+
+#### Scenario: Search cache write degrades
+
+- GIVEN a fresh semantic search result has been produced successfully
+- WHEN persisting that normalized result into cache fails
+- THEN the module MUST still return the fresh successful result
+- AND the cache write failure MUST NOT be surfaced as the primary user-visible outcome
+
+### Requirement: Search Request Coalescing
+
+The `search` module MUST coalesce identical concurrent cacheable misses by normalized query key.
+
+#### Scenario: Equivalent concurrent search misses share one upstream execution
+
+- GIVEN concurrent search requests normalize to the same cache key
+- AND no usable cached result exists
+- WHEN the module executes the live search pipeline
+- THEN only one upstream fetch/parse/normalize execution MUST run for that key
+- AND all waiting callers MUST receive the same fresh semantic result while preserving their own request fields in the returned envelope
+
+#### Scenario: No-cache search requests bypass coalescing
+
+- GIVEN a search request sets `NoCache` to true
+- WHEN the request is executed
+- THEN the module MUST bypass keyed coalescing
+- AND concurrent no-cache requests MUST each run a fresh upstream search
