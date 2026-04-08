@@ -5,10 +5,10 @@ import (
 	"errors"
 	"reflect"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/Disble/dlexa/internal/cache"
 	"github.com/Disble/dlexa/internal/fetch"
 	"github.com/Disble/dlexa/internal/model"
 	"github.com/Disble/dlexa/internal/parse"
@@ -19,122 +19,60 @@ const searchErrFormat = "Search() error = %v"
 func TestServiceReturnsCachedResultAndRefreshesRequestFields(t *testing.T) {
 	request := model.SearchRequest{Query: " Abu Dhabi ", Format: "json"}
 	stored := model.SearchResult{
-		Request:    model.SearchRequest{Query: "Abu Dhabi", Format: "markdown"},
-		Candidates: []model.SearchCandidate{{RawLabelHTML: "<em>Abu Dhabi</em>", DisplayText: "Abu Dhabi", ArticleKey: "Abu Dabi"}},
+		Request:    model.SearchRequest{Query: "Abu Dhabi", Format: "markdown", Sources: []string{"search"}},
+		Candidates: []model.SearchCandidate{{Title: "Abu Dabi"}},
 	}
-
-	service := NewService(
-		model.SourceDescriptor{Name: "dpd"},
-		nil,
-		nil,
-		nil,
-		&stubSearchStore{getResult: stored, getOK: true},
-	)
+	store := &stubSearchStore{getResult: stored, getOK: true}
+	provider := &providerStub{descriptor: model.SourceDescriptor{Name: "search", Priority: 1}}
+	service := NewService(NewStaticRegistry("search", provider), store, 1, "search")
 
 	result, err := service.Search(context.Background(), request)
 	if err != nil {
 		t.Fatalf(searchErrFormat, err)
 	}
-
 	if !result.CacheHit {
 		t.Fatal("CacheHit = false, want true")
 	}
-
-	if !reflect.DeepEqual(result.Request, request) {
-		t.Fatalf("Request = %#v, want %#v", result.Request, request)
+	if provider.calls.Load() != 0 {
+		t.Fatalf("provider calls = %d, want 0 on cache hit", provider.calls.Load())
 	}
-
-	if len(result.Candidates) != 1 || result.Candidates[0].ArticleKey != "Abu Dabi" {
-		t.Fatalf("Candidates = %#v", result.Candidates)
+	if !reflect.DeepEqual(result.Request, model.SearchRequest{Query: " Abu Dhabi ", Format: "json", Sources: []string{"search"}}) {
+		t.Fatalf("Request = %#v", result.Request)
 	}
 }
 
-func TestServiceFetchesParsesNormalizesAndCachesSearchResults(t *testing.T) {
-	fixedNow := time.Date(2026, time.March, 17, 21, 0, 0, 0, time.UTC)
-	request := model.SearchRequest{Query: "guion", Format: "markdown"}
-	store := &stubSearchStore{}
-	fetcher := &stubFetcher{document: fetch.Document{Body: []byte(`["guion<sup>1</sup>|guion","<span class=\"vers\">guion<sup>2</sup></span>|guion"]`)}}
-	parser := &stubParser{records: []parse.ParsedSearchRecord{{RawLabelHTML: "guion<sup>1</sup>", ArticleKey: "guion"}, {RawLabelHTML: `<span class="vers">guion<sup>2</sup></span>`, ArticleKey: "guion"}}}
-	normalizer := &stubNormalizer{candidates: []model.SearchCandidate{{RawLabelHTML: "guion<sup>1</sup>", DisplayText: "guion1", ArticleKey: "guion"}, {RawLabelHTML: `<span class="vers">guion<sup>2</sup></span>`, DisplayText: "var. guion2", ArticleKey: "guion"}}}
+func TestServiceReadsLegacyCacheForDefaultProviderAndRewritesV2Key(t *testing.T) {
+	legacyResult := model.SearchResult{Request: model.SearchRequest{Query: "tilde"}, Candidates: []model.SearchCandidate{{Title: "solo"}}}
+	store := &stubSearchStore{entries: map[string]model.SearchResult{cache.BuildLegacySearchKey(model.SearchRequest{Query: "tilde"}): legacyResult}}
+	provider := &providerStub{descriptor: model.SourceDescriptor{Name: "search", Priority: 1}}
+	service := NewService(NewStaticRegistry("search", provider), store, 1, "search")
 
-	service := NewService(model.SourceDescriptor{Name: "dpd"}, fetcher, parser, normalizer, store)
-	service.now = func() time.Time { return fixedNow }
-
-	result, err := service.Search(context.Background(), request)
+	result, err := service.Search(context.Background(), model.SearchRequest{Query: "tilde"})
 	if err != nil {
 		t.Fatalf(searchErrFormat, err)
 	}
-
-	if fetcher.request.Query != request.Query {
-		t.Fatalf("Fetch query = %q, want %q", fetcher.request.Query, request.Query)
+	if !result.CacheHit {
+		t.Fatal("CacheHit = false, want true")
 	}
-
-	if !reflect.DeepEqual(parser.document, fetcher.document) {
-		t.Fatalf("parser document = %#v, want %#v", parser.document, fetcher.document)
+	if provider.calls.Load() != 0 {
+		t.Fatalf("provider calls = %d, want 0 when legacy cache hits", provider.calls.Load())
 	}
-
-	if len(result.Candidates) != 2 {
-		t.Fatalf("Candidates len = %d, want 2", len(result.Candidates))
-	}
-
-	if result.GeneratedAt != fixedNow {
-		t.Fatalf("GeneratedAt = %v, want %v", result.GeneratedAt, fixedNow)
-	}
-
-	if store.setCalls != 1 {
-		t.Fatalf("Set() calls = %d, want 1", store.setCalls)
-	}
-
-	if store.setResult.Request.Format != "" {
-		t.Fatalf("cached Request.Format = %q, want empty for format-neutral cache data", store.setResult.Request.Format)
-	}
-}
-
-func TestServiceTreatsEmptyCandidateSetAsSuccessfulSearch(t *testing.T) {
-	service := NewService(
-		model.SourceDescriptor{Name: "dpd"},
-		&stubFetcher{document: fetch.Document{Body: []byte(`[]`)}},
-		&stubParser{},
-		&stubNormalizer{},
-		&stubSearchStore{},
-	)
-
-	result, err := service.Search(context.Background(), model.SearchRequest{Query: "no existe"})
-	if err != nil {
-		t.Fatalf(searchErrFormat, err)
-	}
-
-	if len(result.Candidates) != 0 {
-		t.Fatalf("Candidates = %#v, want empty", result.Candidates)
-	}
-}
-
-func TestServicePreservesUpstreamFailures(t *testing.T) {
-	wantErr := model.NewProblemError(model.Problem{Code: model.ProblemCodeDPDSearchFetchFailed, Message: "search unavailable", Source: "dpd", Severity: model.ProblemSeverityError}, errors.New("timeout"))
-	service := NewService(model.SourceDescriptor{Name: "dpd"}, &stubFetcher{err: wantErr}, &stubParser{}, &stubNormalizer{}, &stubSearchStore{})
-
-	_, err := service.Search(context.Background(), model.SearchRequest{Query: "tilde"})
-	if !errors.Is(err, wantErr) {
-		t.Fatalf("Search() error = %v, want %v", err, wantErr)
+	if _, ok := store.entries[cache.BuildSearchKey(model.SearchRequest{Query: "tilde", Sources: []string{"search"}})]; !ok {
+		t.Fatal("expected legacy cache hit to rewrite v2 cache key")
 	}
 }
 
 func TestServiceDegradesWhenCacheReadFails(t *testing.T) {
+	provider := &providerStub{descriptor: model.SourceDescriptor{Name: "search", Priority: 1}, result: model.SearchResult{Candidates: []model.SearchCandidate{{Title: "bien"}}}}
 	store := &stubSearchStore{getErr: errors.New("cache unavailable")}
-	service := NewService(
-		model.SourceDescriptor{Name: "dpd"},
-		&stubFetcher{document: fetch.Document{Body: []byte(`[]`)}},
-		&stubParser{},
-		&stubNormalizer{},
-		store,
-	)
+	service := NewService(NewStaticRegistry("search", provider), store, 1, "search")
 
 	result, err := service.Search(context.Background(), model.SearchRequest{Query: "tilde", Format: "json"})
 	if err != nil {
 		t.Fatalf("Search() error = %v, want nil", err)
 	}
-	if result.Request.Query != "tilde" {
-		t.Fatalf("Search() request = %#v, want fresh request", result.Request)
+	if len(result.Candidates) != 1 {
+		t.Fatalf("Candidates len = %d, want 1", len(result.Candidates))
 	}
 	if store.setCalls != 1 {
 		t.Fatalf("Set() calls = %d, want 1 after degraded cache read", store.setCalls)
@@ -142,81 +80,76 @@ func TestServiceDegradesWhenCacheReadFails(t *testing.T) {
 }
 
 func TestServiceDegradesWhenCacheWriteFails(t *testing.T) {
-	service := NewService(
-		model.SourceDescriptor{Name: "dpd"},
-		&stubFetcher{document: fetch.Document{Body: []byte(`[]`)}},
-		&stubParser{},
-		&stubNormalizer{},
-		&stubSearchStore{setErr: errors.New("cache unavailable")},
-	)
+	provider := &providerStub{descriptor: model.SourceDescriptor{Name: "search", Priority: 1}, result: model.SearchResult{Candidates: []model.SearchCandidate{{Title: "bien"}}}}
+	service := NewService(NewStaticRegistry("search", provider), &stubSearchStore{setErr: errors.New("cache unavailable")}, 1, "search")
 
 	result, err := service.Search(context.Background(), model.SearchRequest{Query: "tilde"})
 	if err != nil {
 		t.Fatalf("Search() error = %v, want nil", err)
 	}
-	if result.Request.Query != "tilde" {
-		t.Fatalf("Search() request = %#v, want fresh request", result.Request)
+	if len(result.Candidates) != 1 {
+		t.Fatalf("Candidates len = %d, want 1", len(result.Candidates))
 	}
 }
 
-func TestServiceCoalescesConcurrentCacheMisses(t *testing.T) {
-	fetcher := newGatedFetcher(fetch.Document{Body: []byte(`[]`)})
-	service := NewService(
-		model.SourceDescriptor{Name: "dpd"},
-		fetcher,
-		&stubParser{},
-		&stubNormalizer{},
-		&stubSearchStore{},
-	)
+func TestServiceCoalescesConcurrentCacheMissesPerProvider(t *testing.T) {
+	provider := &providerStub{
+		descriptor: model.SourceDescriptor{Name: "search", Priority: 1},
+		result:     model.SearchResult{Candidates: []model.SearchCandidate{{Title: "bien"}}},
+		started:    make(chan struct{}, 2),
+		release:    make(chan struct{}),
+	}
+	service := NewService(NewStaticRegistry("search", provider), &stubSearchStore{}, 1, "search")
 
-	type searchOutcome struct {
+	type outcome struct {
 		result model.SearchResult
 		err    error
 	}
-	results := make(chan searchOutcome, 2)
+	results := make(chan outcome, 2)
 	requestA := model.SearchRequest{Query: " Abu   Dhabi ", Format: "json"}
 	requestB := model.SearchRequest{Query: "Abu Dhabi", Format: "markdown"}
 
 	go func() {
 		result, err := service.Search(context.Background(), requestA)
-		results <- searchOutcome{result: result, err: err}
+		results <- outcome{result: result, err: err}
 	}()
-	fetcher.waitStarted(t, 1)
+	provider.waitStarted(t)
 	go func() {
 		result, err := service.Search(context.Background(), requestB)
-		results <- searchOutcome{result: result, err: err}
+		results <- outcome{result: result, err: err}
 	}()
 	time.Sleep(25 * time.Millisecond)
-	close(fetcher.release)
+	close(provider.release)
 
-	outcomeA := <-results
-	outcomeB := <-results
-	if outcomeA.err != nil {
-		t.Fatalf(searchErrFormat, outcomeA.err)
+	first := <-results
+	second := <-results
+	if first.err != nil {
+		t.Fatalf(searchErrFormat, first.err)
 	}
-	if outcomeB.err != nil {
-		t.Fatalf(searchErrFormat, outcomeB.err)
+	if second.err != nil {
+		t.Fatalf(searchErrFormat, second.err)
 	}
-	if got := fetcher.calls.Load(); got != 1 {
-		t.Fatalf("Fetch() calls = %d, want 1", got)
+	if got := provider.calls.Load(); got != 1 {
+		t.Fatalf("provider calls = %d, want 1", got)
 	}
-	if !reflect.DeepEqual(outcomeA.result.Request, requestA) && !reflect.DeepEqual(outcomeB.result.Request, requestA) {
-		t.Fatalf("expected one coalesced result to preserve requestA, got %#v and %#v", outcomeA.result.Request, outcomeB.result.Request)
+	wantA := model.SearchRequest{Query: requestA.Query, Format: requestA.Format, Sources: []string{"search"}}
+	wantB := model.SearchRequest{Query: requestB.Query, Format: requestB.Format, Sources: []string{"search"}}
+	if !reflect.DeepEqual(first.result.Request, wantA) && !reflect.DeepEqual(second.result.Request, wantA) {
+		t.Fatalf("expected one requestA result, got %#v and %#v", first.result.Request, second.result.Request)
 	}
-	if !reflect.DeepEqual(outcomeA.result.Request, requestB) && !reflect.DeepEqual(outcomeB.result.Request, requestB) {
-		t.Fatalf("expected one coalesced result to preserve requestB, got %#v and %#v", outcomeA.result.Request, outcomeB.result.Request)
+	if !reflect.DeepEqual(first.result.Request, wantB) && !reflect.DeepEqual(second.result.Request, wantB) {
+		t.Fatalf("expected one requestB result, got %#v and %#v", first.result.Request, second.result.Request)
 	}
 }
 
 func TestServiceNoCacheBypassesCoalescing(t *testing.T) {
-	fetcher := newGatedFetcher(fetch.Document{Body: []byte(`[]`)})
-	service := NewService(
-		model.SourceDescriptor{Name: "dpd"},
-		fetcher,
-		&stubParser{},
-		&stubNormalizer{},
-		&stubSearchStore{},
-	)
+	provider := &providerStub{
+		descriptor: model.SourceDescriptor{Name: "search", Priority: 1},
+		result:     model.SearchResult{Candidates: []model.SearchCandidate{{Title: "bien"}}},
+		started:    make(chan struct{}, 2),
+		release:    make(chan struct{}),
+	}
+	service := NewService(NewStaticRegistry("search", provider), &stubSearchStore{}, 1, "search")
 
 	results := make(chan error, 2)
 	request := model.SearchRequest{Query: "Abu Dhabi", NoCache: true}
@@ -226,20 +159,22 @@ func TestServiceNoCacheBypassesCoalescing(t *testing.T) {
 			results <- err
 		}()
 	}
-	fetcher.waitStarted(t, 2)
-	close(fetcher.release)
+	provider.waitStarted(t)
+	provider.waitStarted(t)
+	close(provider.release)
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		if err := <-results; err != nil {
 			t.Fatalf(searchErrFormat, err)
 		}
 	}
-	if got := fetcher.calls.Load(); got != 2 {
-		t.Fatalf("Fetch() calls = %d, want 2 when NoCache=true", got)
+	if got := provider.calls.Load(); got != 2 {
+		t.Fatalf("provider calls = %d, want 2 when NoCache=true", got)
 	}
 }
 
 type stubSearchStore struct {
+	entries   map[string]model.SearchResult
 	getResult model.SearchResult
 	getOK     bool
 	getErr    error
@@ -251,19 +186,30 @@ type stubSearchStore struct {
 	setKey    string
 }
 
-func (s *stubSearchStore) Get(_ context.Context, _ string) (model.SearchResult, bool, error) {
+func (s *stubSearchStore) Get(_ context.Context, key string) (model.SearchResult, bool, error) {
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.getCalls++
-	s.mu.Unlock()
-	return s.getResult, s.getOK, s.getErr
+	if s.getErr != nil {
+		return model.SearchResult{}, false, s.getErr
+	}
+	if s.entries != nil {
+		result, ok := s.entries[key]
+		return result, ok, nil
+	}
+	return s.getResult, s.getOK, nil
 }
 
 func (s *stubSearchStore) Set(_ context.Context, key string, result model.SearchResult) error {
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.setCalls++
 	s.setKey = key
 	s.setResult = result
-	s.mu.Unlock()
+	if s.entries == nil {
+		s.entries = make(map[string]model.SearchResult)
+	}
+	s.entries[key] = result
 	return s.setErr
 }
 
@@ -276,44 +222,6 @@ type stubFetcher struct {
 func (s *stubFetcher) Fetch(_ context.Context, request fetch.Request) (fetch.Document, error) {
 	s.request = request
 	return s.document, s.err
-}
-
-type gatedFetcher struct {
-	document fetch.Document
-	err      error
-	started  chan struct{}
-	release  chan struct{}
-	calls    atomic.Int32
-}
-
-func newGatedFetcher(document fetch.Document) *gatedFetcher {
-	return &gatedFetcher{
-		document: document,
-		started:  make(chan struct{}, 4),
-		release:  make(chan struct{}),
-	}
-}
-
-func (f *gatedFetcher) Fetch(ctx context.Context, _ fetch.Request) (fetch.Document, error) {
-	f.calls.Add(1)
-	f.started <- struct{}{}
-	select {
-	case <-f.release:
-		return f.document, f.err
-	case <-ctx.Done():
-		return fetch.Document{}, ctx.Err()
-	}
-}
-
-func (f *gatedFetcher) waitStarted(t *testing.T, want int) {
-	t.Helper()
-	for i := 0; i < want; i++ {
-		select {
-		case <-f.started:
-		case <-time.After(2 * time.Second):
-			t.Fatalf("timed out waiting for fetch start %d/%d", i+1, want)
-		}
-	}
 }
 
 type stubParser struct {

@@ -16,6 +16,7 @@ const (
 type SearchRequest struct {
 	Query   string
 	Format  string
+	Sources []string
 	NoCache bool
 }
 

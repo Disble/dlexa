@@ -11,7 +11,7 @@ import (
 
 func TestSearchJSONRendererPreservesRawHTMLAndOrderWithoutMarkdownProjection(t *testing.T) {
 	renderer := NewSearchJSONRenderer()
-	result := model.SearchResult{Request: model.SearchRequest{Query: "abu dhabi", Format: "json"}, Outcome: model.SearchOutcomeNoResults, Candidates: []model.SearchCandidate{{RawLabelHTML: `<em>Abu Dhabi</em>`, DisplayText: "Abu Dhabi", ArticleKey: "Abu Dabi"}, {RawLabelHTML: `<span class="bolaspa">⊗</span>alicuota`, DisplayText: "⊗ alicuota", ArticleKey: "alícuoto", Module: "unknown", URL: "https://www.rae.es/archivo/ruta-rara", NextCommand: "dlexa search abu dhabi"}, {RawLabelHTML: `<strong>solo</strong>`, DisplayText: "solo", Module: "espanol-al-dia", NextCommand: "dlexa espanol-al-dia solo", Deferred: true}}}
+	result := model.SearchResult{Request: model.SearchRequest{Query: "abu dhabi", Format: "json"}, Outcome: model.SearchOutcomeNoResults, Candidates: []model.SearchCandidate{{RawLabelHTML: `<em>Abu Dhabi</em>`, DisplayText: "Abu Dhabi", ArticleKey: "Abu Dabi"}, {RawLabelHTML: `<span class="bolaspa">⊗</span>alicuota`, DisplayText: "⊗ alicuota", ArticleKey: "alícuoto", Module: "unknown", URL: "https://www.rae.es/archivo/ruta-rara", NextCommand: "dlexa search abu dhabi"}, {RawLabelHTML: `<strong>solo</strong>`, DisplayText: "solo", Module: "espanol-al-dia", NextCommand: "dlexa espanol-al-dia solo", Deferred: true}}, Problems: []model.Problem{{Source: "academia", Message: "timeout", Severity: model.ProblemSeverityError}}}
 
 	payload, err := renderer.Render(context.Background(), result)
 	if err != nil {
@@ -32,6 +32,9 @@ func TestSearchJSONRendererPreservesRawHTMLAndOrderWithoutMarkdownProjection(t *
 	}
 	if !strings.Contains(text, `"deferred": false`) {
 		t.Fatalf("payload = %s, want deferred field for non-deferred candidates too", text)
+	}
+	if !strings.Contains(text, `"Problems": [`) || !strings.Contains(text, `"source": "academia"`) {
+		t.Fatalf("payload = %s, want in-band problems preserved", text)
 	}
 
 	var decoded model.SearchResult

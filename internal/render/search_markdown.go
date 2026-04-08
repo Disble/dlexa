@@ -29,6 +29,7 @@ func (r *SearchMarkdownRenderer) Render(ctx context.Context, result model.Search
 	if result.Outcome == model.SearchOutcomeNoResults || len(result.Candidates) == 0 {
 		fmt.Fprintf(&builder, "## Resultado semántico para %q\n\n", query)
 		fmt.Fprintf(&builder, "No se encontraron resultados normativos útiles para %q.\n\n", query)
+		appendSearchProblems(&builder, result.Problems)
 		builder.WriteString("- siguiente_paso: `dlexa search <consulta más específica>`")
 		return []byte(builder.String()), nil
 	}
@@ -55,7 +56,22 @@ func (r *SearchMarkdownRenderer) Render(ctx context.Context, result model.Search
 		}
 		builder.WriteString(searchSuggestionLines(candidate, query))
 	}
+	appendSearchProblems(&builder, result.Problems)
 	return []byte(strings.TrimRight(builder.String(), "\n")), nil
+}
+
+func appendSearchProblems(builder *strings.Builder, problems []model.Problem) {
+	if len(problems) == 0 {
+		return
+	}
+	builder.WriteString("\n\n## Problemas detectados\n")
+	for _, problem := range problems {
+		if source := strings.TrimSpace(problem.Source); source != "" {
+			fmt.Fprintf(builder, "- [%s] %s\n", source, strings.TrimSpace(problem.Message))
+			continue
+		}
+		fmt.Fprintf(builder, "- %s\n", strings.TrimSpace(problem.Message))
+	}
 }
 
 func searchSuggestionLines(candidate model.SearchCandidate, query string) string {

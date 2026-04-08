@@ -25,13 +25,25 @@ func TestNewWiresSearchModuleToLiveSearchAdapters(t *testing.T) {
 	if !ok {
 		t.Fatalf("searcher type = %T, want *search.Service", searcher)
 	}
-	if got := service.FetcherForTesting(); got == nil || got.(*fetch.LiveSearchFetcher) == nil {
+	registry, ok := service.RegistryForTesting().(*searchsvc.StaticRegistry)
+	if !ok {
+		t.Fatalf("registry type = %T, want *search.StaticRegistry", service.RegistryForTesting())
+	}
+	providers := registry.Providers()
+	if len(providers) != 1 {
+		t.Fatalf("providers len = %d, want 1", len(providers))
+	}
+	provider, ok := providers[0].(*searchsvc.PipelineProvider)
+	if !ok {
+		t.Fatalf("provider type = %T, want *search.PipelineProvider", providers[0])
+	}
+	if got := provider.FetcherForTesting(); got == nil || got.(*fetch.LiveSearchFetcher) == nil {
 		t.Fatalf("fetcher type = %T, want *fetch.LiveSearchFetcher", got)
 	}
-	if got := service.ParserForTesting(); got == nil || got.(*parse.LiveSearchParser) == nil {
+	if got := provider.ParserForTesting(); got == nil || got.(*parse.LiveSearchParser) == nil {
 		t.Fatalf("parser type = %T, want *parse.LiveSearchParser", got)
 	}
-	if got := service.NormalizerForTesting(); got == nil || got.(*normalize.LiveSearchNormalizer) == nil {
+	if got := provider.NormalizerForTesting(); got == nil || got.(*normalize.LiveSearchNormalizer) == nil {
 		t.Fatalf("normalizer type = %T, want *normalize.LiveSearchNormalizer", got)
 	}
 }

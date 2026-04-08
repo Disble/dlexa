@@ -37,7 +37,7 @@ func (m *Module) SearcherForTesting() searchsvc.Searcher { return m.searcher }
 
 // Execute curates the upstream search result and maps semantic URLs into actionable commands.
 func (m *Module) Execute(ctx context.Context, req modules.Request) (modules.Response, error) {
-	searchReq := model.SearchRequest{Query: strings.TrimSpace(req.Query), Format: strings.TrimSpace(req.Format), NoCache: req.NoCache}
+	searchReq := model.SearchRequest{Query: strings.TrimSpace(req.Query), Format: strings.TrimSpace(req.Format), Sources: append([]string(nil), req.Sources...), NoCache: req.NoCache}
 	result, err := m.searcher.Search(ctx, searchReq)
 	if err != nil {
 		return modules.Response{Title: searchReq.Query, Source: moduleSource, CacheState: modules.CacheState(false), Format: searchReq.Format, Fallback: modules.FallbackFromError(moduleName, searchReq.Query, searchReq.Format, err)}, nil

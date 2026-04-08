@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -76,6 +77,19 @@ func TestModuleKeepsFailuresOnExplicitFallbackPath(t *testing.T) {
 	}
 	if response.Fallback == nil || response.Fallback.Kind != model.FallbackKindParseFailure {
 		t.Fatalf("Fallback = %#v, want parse failure", response.Fallback)
+	}
+}
+
+func TestModuleForwardsExplicitSourcesToSearcher(t *testing.T) {
+	searcher := &searchStub{result: model.SearchResult{Request: model.SearchRequest{Query: "tilde", Format: "json"}}}
+	module := New(searcher, &searchRenderersStub{renderer: &searchRendererStub{payload: []byte("{}")}})
+	request := modules.Request{Query: "tilde", Format: "json", Sources: []string{"search", "academia"}}
+
+	if _, err := module.Execute(context.Background(), request); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+	if !reflect.DeepEqual(searcher.request.Sources, request.Sources) {
+		t.Fatalf("searcher request sources = %#v, want %#v", searcher.request.Sources, request.Sources)
 	}
 }
 

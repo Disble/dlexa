@@ -13,7 +13,8 @@ import (
 
 func TestServicePreservesLiveParseFailures(t *testing.T) {
 	wantErr := model.NewProblemError(model.Problem{Code: model.ProblemCodeDPDSearchParseFailed, Message: "live search markup changed", Source: "search", Severity: model.ProblemSeverityError}, errors.New("markup changed"))
-	service := NewService(model.SourceDescriptor{Name: "search"}, &stubFetcher{document: fetch.Document{Body: []byte("<html></html>")}}, &stubParser{err: wantErr}, &stubNormalizer{}, &stubSearchStore{})
+	provider := NewPipelineProvider(model.SourceDescriptor{Name: "search"}, &stubFetcher{document: fetch.Document{Body: []byte("<html></html>")}}, &stubParser{err: wantErr}, &stubNormalizer{})
+	service := NewService(NewStaticRegistry("search", provider), &stubSearchStore{}, 1, "search")
 
 	_, err := service.Search(context.Background(), model.SearchRequest{Query: testutil.LiveSearchQuery})
 	if !errors.Is(err, wantErr) {
@@ -23,7 +24,8 @@ func TestServicePreservesLiveParseFailures(t *testing.T) {
 
 func TestServicePreservesLiveNormalizeFailures(t *testing.T) {
 	wantErr := model.NewProblemError(model.Problem{Code: model.ProblemCodeDPDSearchNormalizeFailed, Message: "normalize failed", Source: "search", Severity: model.ProblemSeverityError}, errors.New("normalize failed"))
-	service := NewService(model.SourceDescriptor{Name: "search"}, &stubFetcher{document: fetch.Document{Body: []byte("<html></html>")}}, &stubParser{records: []parse.ParsedSearchRecord{{Title: "bien", URL: testutil.LiveSearchDPDURL}}}, &stubNormalizer{err: wantErr}, &stubSearchStore{})
+	provider := NewPipelineProvider(model.SourceDescriptor{Name: "search"}, &stubFetcher{document: fetch.Document{Body: []byte("<html></html>")}}, &stubParser{records: []parse.ParsedSearchRecord{{Title: "bien", URL: testutil.LiveSearchDPDURL}}}, &stubNormalizer{err: wantErr})
+	service := NewService(NewStaticRegistry("search", provider), &stubSearchStore{}, 1, "search")
 
 	_, err := service.Search(context.Background(), model.SearchRequest{Query: testutil.LiveSearchQuery})
 	if !errors.Is(err, wantErr) {

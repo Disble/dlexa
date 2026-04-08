@@ -73,13 +73,14 @@ func New(cli platform.CLI) *App {
 
 	registry := source.NewStaticRegistry(dpdSource, demoSource)
 	lookupService := query.NewService(registry, cacheStore)
-	searchService := searchsvc.NewService(
+	searchProvider := searchsvc.NewPipelineProvider(
 		model.SourceDescriptor{Name: "search", DisplayName: "Búsqueda general RAE", Kind: "remote-html", Priority: 1, Cacheable: true},
 		fetch.NewLiveSearchFetcher(runtimeConfig.DPD.BaseURL, runtimeConfig.DPD.Timeout, runtimeConfig.DPD.UserAgent),
 		parse.NewLiveSearchParser(),
 		normalize.NewLiveSearchNormalizer(),
-		searchCacheStore,
 	)
+	searchRegistry := searchsvc.NewStaticRegistry("search", searchProvider)
+	searchService := searchsvc.NewService(searchRegistry, searchCacheStore, 2, "search")
 	rendererRegistry := render.NewRegistry(
 		render.NewMarkdownRenderer(),
 		render.NewJSONRenderer(),
