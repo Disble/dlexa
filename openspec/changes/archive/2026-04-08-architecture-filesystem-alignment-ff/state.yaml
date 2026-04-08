@@ -1,7 +1,9 @@
 change: architecture-filesystem-alignment-ff
-phase: verify
-status: ready_for_archive
+phase: archive
+status: archived
 artifact_store: hybrid
+archived_at: "2026-04-08"
+archive_path: openspec/changes/archive/2026-04-08-architecture-filesystem-alignment-ff
 artifacts:
   proposal: true
   spec: true
@@ -9,8 +11,10 @@ artifacts:
   tasks: true
   apply_progress: true
   verify_report: true
-  archive_report: false
-specs: []
+  archive_report: true
+specs:
+  - openspec/changes/archive/2026-04-08-architecture-filesystem-alignment-ff/specs/cli/spec.md
+  - openspec/changes/archive/2026-04-08-architecture-filesystem-alignment-ff/specs/architecture/spec.md
 notes:
   scope_decision: "Close architecture drift at file/folder level by reconciling active guidance with runtime truth and materializing any accepted missing entry-surface files in the same change."
   runtime_truth: "Treat the codebase layout as runtime truth until docs/specs and filesystem are aligned again."
@@ -21,6 +25,7 @@ completed_phases:
   - spec
   - apply
   - verify
-next: archive
-last_completed_phase: verify
+  - archive
+next: none
+last_completed_phase: archive
 last_updated: 2026-04-08T00:30:00Z
