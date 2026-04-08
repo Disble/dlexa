@@ -55,3 +55,21 @@ The system MUST classify all errors into four explicit fallback tiers (Syntax, N
 - WHEN the error reaches the Envelope Renderer
 - THEN it MUST return a Parse fallback response
 - AND instruct the LLM agent that human developer intervention is required
+
+### Requirement: Deferred Guidance Rendering
+
+The system MUST explicitly distinguish deferred search candidates from executable CLI commands in both Markdown and JSON output formats.
+
+#### Scenario: Markdown rendering of deferred candidates
+
+- GIVEN a search candidate has the `Deferred` flag set to true
+- WHEN the Envelope Renderer outputs the search results in Markdown
+- THEN it MUST label the suggestion as guidance (e.g., "More info:") instead of an executable command
+- AND MUST include a disclaimer indicating it is not yet available as a CLI command
+
+#### Scenario: JSON rendering of deferred candidates
+
+- GIVEN a search candidate has the `Deferred` flag set to true
+- WHEN the Envelope Renderer outputs the search results in JSON
+- THEN it MUST include the `"deferred": true` property in the candidate's JSON object
+- AND MUST ensure this is an additive change that does not break backward compatibility

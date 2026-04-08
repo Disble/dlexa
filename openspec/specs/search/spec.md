@@ -100,21 +100,21 @@ The `search` module MUST filter institutional or otherwise low-value results whi
 
 ### Requirement: URL Compression to Safe Command Suggestions
 
-The `search` module MUST compress recognized URLs into literal `dlexa ...` command suggestions, while remaining safe when the destination command does not yet exist.
+The `search` module MUST compress recognized URLs into literal next-step suggestions. It MUST explicitly tag suggestions as deferred when the destination command is not yet implemented in the CLI.
 
-#### Scenario: Compressing a known DPD result into a direct command
+#### Scenario: Compressing a known DPD result into an executable command
 
 - GIVEN a search candidate resolves to a DPD article URL or article key
 - WHEN the next-step mapping phase runs
-- THEN the module MUST expose a literal DPD command suggestion
-- AND that suggestion MUST be copyable as `dlexa dpd <key>`
+- THEN the module MUST flag the candidate as `Deferred: false`
+- AND expose a literal executable command suggestion
 
-#### Scenario: Compressing known non-DPD surfaces into suggestions
+#### Scenario: Compressing known non-DPD surfaces into deferred suggestions
 
-- GIVEN a search candidate URL belongs to a recognized mapped surface such as `espanol-al-dia`, `noticia`, or `duda-linguistica`
+- GIVEN a search candidate URL belongs to a recognized mapped surface not yet implemented in the CLI (e.g., `espanol-al-dia`)
 - WHEN the next-step mapping phase runs
-- THEN the module MUST expose a literal `dlexa <surface> <slug>` command suggestion
-- AND the module MUST treat that suggestion as safe guidance rather than as proof that the destination command is already executable
+- THEN the module MUST expose a literal suggestion
+- AND the module MUST flag the candidate as `Deferred: true`
 
 #### Scenario: Unmapped URLs fall back safely
 
@@ -142,3 +142,14 @@ The `search` module MUST distinguish between successful searches with no useful 
 - WHEN the final curated result set is produced
 - THEN the module MUST return an explicit no-results response
 - AND the module MUST NOT surface discarded noise merely to avoid emptiness
+
+### Requirement: Search Help Text Accuracy
+
+The `search` command's help text MUST NOT imply that all returned suggestions are executable commands.
+
+#### Scenario: Viewing search command help
+
+- GIVEN a user or agent invokes `dlexa search --help`
+- WHEN the help text is displayed
+- THEN it MUST clarify that some suggestions are deferred guidance
+- AND MUST NOT instruct users to blindly copy and run all next-command outputs
