@@ -31,12 +31,22 @@ func TestNewWiresSearchModuleToLiveSearchAdapters(t *testing.T) {
 		t.Fatalf("registry type = %T, want *search.StaticRegistry", service.RegistryForTesting())
 	}
 	providers := registry.Providers()
-	if len(providers) != 1 {
-		t.Fatalf("providers len = %d, want 1", len(providers))
+	if len(providers) != 2 {
+		t.Fatalf("providers len = %d, want 2", len(providers))
 	}
 	provider, ok := providers[0].(*searchsvc.PipelineProvider)
 	if !ok {
 		t.Fatalf("provider type = %T, want *search.PipelineProvider", providers[0])
+	}
+	secondary, ok := providers[1].(*searchsvc.PipelineProvider)
+	if !ok {
+		t.Fatalf("second provider type = %T, want *search.PipelineProvider", providers[1])
+	}
+	if got := secondary.Descriptor().Name; got != "espanol-al-dia" {
+		t.Fatalf("second provider name = %q, want espanol-al-dia", got)
+	}
+	if got := secondary.NormalizerForTesting(); got == nil || got.(*normalize.LiveSearchNormalizer) == nil {
+		t.Fatalf("second normalizer type = %T, want *normalize.LiveSearchNormalizer", got)
 	}
 	if got := provider.FetcherForTesting(); got == nil || got.(*fetch.LiveSearchFetcher) == nil {
 		t.Fatalf("fetcher type = %T, want *fetch.LiveSearchFetcher", got)

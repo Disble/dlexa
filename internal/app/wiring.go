@@ -86,8 +86,14 @@ func New(cli platform.CLI) *App {
 		parse.NewLiveSearchParser(),
 		normalize.NewLiveSearchNormalizer(),
 	)
+	espanolAlDiaProvider := searchsvc.NewPipelineProvider(
+		model.SourceDescriptor{Name: "espanol-al-dia", DisplayName: "Español al día", Kind: "remote-html", Priority: 2, Cacheable: true},
+		searchFetcher,
+		parse.NewLiveSearchParser(),
+		normalize.NewLiveSearchNormalizer(),
+	)
 	defaultSearchProvider := defaultSearchProvider(runtimeConfig.Search.DefaultProviders)
-	searchRegistry := searchsvc.NewStaticRegistry(defaultSearchProvider, searchProvider)
+	searchRegistry := searchsvc.NewStaticRegistry(defaultSearchProvider, searchProvider, espanolAlDiaProvider)
 	searchService := searchsvc.NewService(searchRegistry, searchCacheStore, runtimeConfig.Search.MaxConcurrent, defaultSearchProvider)
 	rendererRegistry := render.NewRegistry(
 		render.NewMarkdownRenderer(),

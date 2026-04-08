@@ -3,6 +3,7 @@ package normalize
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/Disble/dlexa/internal/model"
@@ -24,14 +25,14 @@ func (n *LiveSearchNormalizer) Normalize(ctx context.Context, descriptor model.S
 	for _, record := range records {
 		title := strings.TrimSpace(record.Title)
 		url := strings.TrimSpace(record.URL)
-		if title == "" || url == "" {
+		if title == "" || url == "" || !matchesSearchSurface(descriptor.Name, url) {
 			continue
 		}
 		candidates = append(candidates, model.SearchCandidate{
 			Title:       title,
 			DisplayText: title,
 			Snippet:     strings.TrimSpace(record.Snippet),
-			SourceHint:  "RAE",
+			SourceHint:  sourceHintForDescriptor(descriptor.Name),
 			URL:         url,
 		})
 	}
@@ -41,4 +42,23 @@ func (n *LiveSearchNormalizer) Normalize(ctx context.Context, descriptor model.S
 	}
 
 	return candidates, nil, nil
+}
+
+func matchesSearchSurface(providerName, rawURL string) bool {
+	providerName = strings.TrimSpace(providerName)
+	if providerName == "" || providerName == "search" {
+		return true
+	}
+	parsed, err := url.Parse(strings.TrimSpace(rawURL))
+	if err != nil {
+		return false
+	}
+	return strings.Contains(strings.Trim(parsed.Path, "/"), providerName)
+}
+
+func sourceHintForDescriptor(providerName string) string {
+	if strings.TrimSpace(providerName) == "search" {
+		return "RAE"
+	}
+	return strings.TrimSpace(providerName)
 }

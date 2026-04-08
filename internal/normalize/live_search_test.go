@@ -29,6 +29,26 @@ func TestLiveSearchNormalizerBuildsCuratedCandidates(t *testing.T) {
 	}
 }
 
+func TestLiveSearchNormalizerFiltersSpecificSurfaceProvider(t *testing.T) {
+	normalizer := NewLiveSearchNormalizer()
+	candidates, warnings, err := normalizer.Normalize(context.Background(), model.SourceDescriptor{Name: "espanol-al-dia"}, []parse.ParsedSearchRecord{
+		{Title: "Solo sin tilde", Snippet: "Artículo de orientación.", URL: "https://www.rae.es/espanol-al-dia/el-adverbio-solo-y-los-pronombres-demostrativos-sin-tilde"},
+		{Title: testutil.LiveSearchDPDTitle, Snippet: testutil.LiveSearchDPDSnippet, URL: testutil.LiveSearchDPDURL},
+	})
+	if err != nil {
+		t.Fatalf("Normalize() error = %v", err)
+	}
+	if len(warnings) != 0 {
+		t.Fatalf("warnings = %#v, want none", warnings)
+	}
+	if len(candidates) != 1 {
+		t.Fatalf("candidates len = %d, want 1 filtered espanol-al-dia candidate", len(candidates))
+	}
+	if got := candidates[0]; got.URL != "https://www.rae.es/espanol-al-dia/el-adverbio-solo-y-los-pronombres-demostrativos-sin-tilde" || got.SourceHint != "espanol-al-dia" {
+		t.Fatalf("candidate = %#v", got)
+	}
+}
+
 func TestLiveSearchNormalizerRejectsEntirelyUnusableRecords(t *testing.T) {
 	_, _, err := NewLiveSearchNormalizer().Normalize(context.Background(), model.SourceDescriptor{Name: "search"}, []parse.ParsedSearchRecord{{Title: "", Snippet: "", URL: ""}})
 	if err == nil {
