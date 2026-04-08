@@ -2,20 +2,36 @@
 package search
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/Disble/dlexa/internal/model"
 )
 
 func curateCandidates(query string, candidates []model.SearchCandidate) []model.SearchCandidate {
-	curated := make([]model.SearchCandidate, 0, len(candidates))
+	curated := make([]rankedCandidate, 0, len(candidates))
 	for _, candidate := range candidates {
 		if shouldDropCandidate(candidate) {
 			continue
 		}
-		curated = append(curated, enrichCandidate(query, candidate))
+		enriched := enrichCandidate(query, candidate)
+		curated = append(curated, rankedCandidate{candidate: enriched, score: candidateRankScore(enriched)})
 	}
-	return curated
+	if len(curated) == 0 {
+		return nil
+	}
+	sort.SliceStable(curated, func(i, j int) bool {
+		if curated[i].score != curated[j].score {
+			return curated[i].score > curated[j].score
+		}
+		return curated[i].candidate.Title < curated[j].candidate.Title
+	})
+	return deduplicateCandidates(curated)
+}
+
+type rankedCandidate struct {
+	candidate model.SearchCandidate
+	score     int
 }
 
 func shouldDropCandidate(candidate model.SearchCandidate) bool {
@@ -78,4 +94,51 @@ func classifyCandidate(candidate model.SearchCandidate) string {
 func isRescuedNoticia(candidate model.SearchCandidate) bool {
 	title := strings.ToLower(strings.TrimSpace(candidate.Title))
 	return strings.HasPrefix(title, strings.ToLower("Preguntas frecuentes:")) || strings.Contains(title, "tilde") || strings.Contains(title, "normativa")
+}
+
+func candidateRankScore(candidate model.SearchCandidate) int {
+	score := classificationRank(candidate.Classification) * 100
+	if strings.TrimSpace(candidate.Snippet) != "" {
+		score += 10
+	}
+	if strings.TrimSpace(candidate.URL) != "" {
+		score++
+	}
+	return score
+}
+
+func classificationRank(classification string) int {
+	switch strings.TrimSpace(classification) {
+	case "dpd-entry":
+		return 4
+	case "faq":
+		return 3
+	case "linguistic-article":
+		return 2
+	default:
+		return 1
+	}
+}
+
+func deduplicateCandidates(ranked []rankedCandidate) []model.SearchCandidate {
+	seen := make(map[string]struct{}, len(ranked))
+	curated := make([]model.SearchCandidate, 0, len(ranked))
+	for _, item := range ranked {
+		key := candidateDedupKey(item.candidate)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		curated = append(curated, item.candidate)
+	}
+	return curated
+}
+
+func candidateDedupKey(candidate model.SearchCandidate) string {
+	for _, value := range []string{candidate.NextCommand, candidate.URL, candidate.ArticleKey, candidate.Title} {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			return trimmed
+		}
+	}
+	return "unknown"
 }
