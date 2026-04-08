@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -100,6 +101,19 @@ func withProblemSource(problem model.Problem, provider Provider) model.Problem {
 		problem.Source = provider.Descriptor().Name
 	}
 	return problem
+}
+
+func withCandidateSourceHint(candidate model.SearchCandidate, provider Provider) model.SearchCandidate {
+	if strings.TrimSpace(candidate.SourceHint) != "" {
+		return candidate
+	}
+	descriptor := provider.Descriptor()
+	if display := strings.TrimSpace(descriptor.DisplayName); display != "" {
+		candidate.SourceHint = display
+		return candidate
+	}
+	candidate.SourceHint = strings.TrimSpace(descriptor.Name)
+	return candidate
 }
 
 func problemFromError(provider Provider, err error) model.Problem {
@@ -240,7 +254,9 @@ func aggregateResults(baseRequest model.SearchRequest, providers []Provider, out
 		for _, problem := range outcome.result.Problems {
 			result.Problems = append(result.Problems, withProblemSource(problem, outcome.provider))
 		}
-		result.Candidates = append(result.Candidates, outcome.result.Candidates...)
+		for _, candidate := range outcome.result.Candidates {
+			result.Candidates = append(result.Candidates, withCandidateSourceHint(candidate, outcome.provider))
+		}
 		if result.GeneratedAt.IsZero() || (!outcome.result.GeneratedAt.IsZero() && outcome.result.GeneratedAt.Before(result.GeneratedAt)) {
 			result.GeneratedAt = outcome.result.GeneratedAt
 		}

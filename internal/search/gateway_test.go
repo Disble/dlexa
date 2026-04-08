@@ -82,11 +82,11 @@ func TestServiceBoundsConcurrentProviderSearches(t *testing.T) {
 func TestServiceReturnsPartialCacheHitsAndFreshResultsTogether(t *testing.T) {
 	store := cache.NewSearchMemoryStore()
 	cachedProvider := &providerStub{
-		descriptor: model.SourceDescriptor{Name: "search", Priority: 1},
+		descriptor: model.SourceDescriptor{Name: "search", DisplayName: "Búsqueda general RAE", Priority: 1},
 		result:     model.SearchResult{Candidates: []model.SearchCandidate{{Title: "cached"}}},
 	}
 	freshProvider := &providerStub{
-		descriptor: model.SourceDescriptor{Name: "academia", Priority: 2},
+		descriptor: model.SourceDescriptor{Name: "academia", DisplayName: "Academia", Priority: 2},
 		result:     model.SearchResult{Candidates: []model.SearchCandidate{{Title: "fresh"}}},
 	}
 	cachedKey := cache.BuildSearchKey(model.SearchRequest{Query: "tilde", Sources: []string{"search"}})
@@ -104,6 +104,12 @@ func TestServiceReturnsPartialCacheHitsAndFreshResultsTogether(t *testing.T) {
 	}
 	if got := candidateTitles(result.Candidates); !reflect.DeepEqual(got, []string{"cached", "fresh"}) {
 		t.Fatalf("candidate order = %v, want [cached fresh]", got)
+	}
+	if result.Candidates[0].SourceHint != "Búsqueda general RAE" {
+		t.Fatalf("cached candidate source hint = %q, want provider display name", result.Candidates[0].SourceHint)
+	}
+	if result.Candidates[1].SourceHint != "Academia" {
+		t.Fatalf("fresh candidate source hint = %q, want provider display name", result.Candidates[1].SourceHint)
 	}
 	if cachedProvider.calls.Load() != 0 {
 		t.Fatalf("cached provider calls = %d, want 0", cachedProvider.calls.Load())
