@@ -137,9 +137,33 @@ Use `dlexa search <query>` when you need to discover DPD entry terms or indexed 
 
 - It queries the DPD `/srv/keys` entry-discovery endpoint.
 - It returns candidate labels plus canonical article keys.
+- It can also surface related RAE destinations that are useful as **guidance** even when they are not registered as CLI subcommands yet.
 - It does **not** search article body content.
 - It does **not** auto-fetch every candidate article.
 - It does **not** turn `dlexa` into a generic dictionary search engine.
+
+> **Current implementation note**
+>
+> The active `search` command is currently backed by the **general RAE search surface**, not the specialized DPD entry-discovery index. That means some terms that are discoverable through the DPD-specific search widget may still return no results in `dlexa search` today.
+
+In practice:
+
+- `dlexa search <query>` is a semantic gateway over the general RAE search surface
+- `dlexa dpd <query>` remains the direct DPD consultation path
+- full integration of the specialized DPD search index into `search` is **not** part of the current behavior contract
+
+### Executable suggestions vs deferred guidance
+
+`dlexa search` can return two different kinds of follow-up hints:
+
+- `- sugerencia:` → the next step is an executable CLI command right now (for example, a `dpd` lookup)
+- `- More info:` → the next step is **deferred guidance**: useful navigation text that looks command-shaped, but is **not** an available CLI subcommand yet
+
+This distinction matters for both humans and agents:
+
+- do **not** assume every `next_command`-shaped string can be executed directly
+- when output is JSON, inspect each candidate's `deferred` field before blindly running follow-up automation
+- today, `dlexa dpd <article-key>` is executable; deferred destinations such as `espanol-al-dia`, `noticia`, or `duda-linguistica` are not registered as CLI commands yet
 
 Examples:
 
@@ -154,8 +178,19 @@ dlexa --format json search alicuota
 Example human output shape:
 
 ```text
-Candidate DPD entries for "abu dhabi":
-- Abu Dhabi -> Abu Dabi
+## Resultado semántico para "solo o sólo"
+
+- total_candidatos: 2
+- siguiente_paso: `dlexa dpd solo`
+
+### 1. solo
+- snippet: Entrada DPD recomendada.
+- sugerencia: `dlexa dpd solo`
+
+### 2. Tilde en solo
+- snippet: Artículo complementario de orientación.
+- More info: `dlexa espanol-al-dia solo`
+- nota: (not yet available as CLI command)
 ```
 
 Example JSON candidate shape:
@@ -171,7 +206,16 @@ Example JSON candidate shape:
     {
       "raw_label_html": "<span class=\"bolaspa\">⊗</span>alicuota",
       "display_text": "⊗ alicuota",
-      "article_key": "alícuoto"
+      "article_key": "alícuoto",
+      "next_command": "dlexa search alicuota",
+      "deferred": false
+    },
+    {
+      "raw_label_html": "<strong>solo</strong>",
+      "display_text": "solo",
+      "module": "espanol-al-dia",
+      "next_command": "dlexa espanol-al-dia solo",
+      "deferred": true
     }
   ]
 }
