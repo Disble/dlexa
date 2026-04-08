@@ -29,6 +29,26 @@ func TestCurateCandidatesRanksAndDeduplicatesCrossProviderResults(t *testing.T) 
 	}
 }
 
+func TestCurateCandidatesPrefersDPDIndexHitForEquivalentDPDDestination(t *testing.T) {
+	candidates := []model.SearchCandidate{
+		{Title: "Abu Dhabi", Snippet: "resultado del buscador general", URL: "https://www.rae.es/dpd/Abu_Dabi", SourceHint: "Búsqueda general RAE"},
+		{DisplayText: "Abu Dhabi", ArticleKey: "Abu Dabi", SourceHint: "Diccionario panhispánico de dudas"},
+		{Title: "Ruta rara", URL: "https://www.rae.es/archivo/ruta-rara"},
+	}
+
+	got := curateCandidates("Abu Dhabi", candidates)
+
+	if len(got) != 2 {
+		t.Fatalf("Candidates len = %d, want 2 after semantic DPD deduplication", len(got))
+	}
+	if got[0].NextCommand != "dlexa dpd Abu Dabi" {
+		t.Fatalf("top candidate next command = %q, want DPD entry command", got[0].NextCommand)
+	}
+	if got[0].SourceHint != "Diccionario panhispánico de dudas" {
+		t.Fatalf("top candidate source hint = %q, want specialized DPD provider", got[0].SourceHint)
+	}
+}
+
 func TestEnrichCandidateMarksDeferredOnlyForNonDPDDestinations(t *testing.T) {
 	tests := []struct {
 		name      string

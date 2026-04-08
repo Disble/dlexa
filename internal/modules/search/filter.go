@@ -2,6 +2,8 @@
 package search
 
 import (
+	"net/url"
+	"path"
 	"sort"
 	"strings"
 
@@ -98,6 +100,9 @@ func isRescuedNoticia(candidate model.SearchCandidate) bool {
 
 func candidateRankScore(candidate model.SearchCandidate) int {
 	score := classificationRank(candidate.Classification) * 100
+	if strings.TrimSpace(candidate.ArticleKey) != "" {
+		score += 20
+	}
 	if strings.TrimSpace(candidate.Snippet) != "" {
 		score += 10
 	}
@@ -135,10 +140,35 @@ func deduplicateCandidates(ranked []rankedCandidate) []model.SearchCandidate {
 }
 
 func candidateDedupKey(candidate model.SearchCandidate) string {
+	if key := canonicalDPDTarget(candidate); key != "" {
+		return "dpd:" + key
+	}
 	for _, value := range []string{candidate.NextCommand, candidate.URL, candidate.ArticleKey, candidate.Title} {
 		if trimmed := strings.TrimSpace(value); trimmed != "" {
 			return trimmed
 		}
 	}
 	return "unknown"
+}
+
+func canonicalDPDTarget(candidate model.SearchCandidate) string {
+	if key := strings.TrimSpace(candidate.ArticleKey); key != "" {
+		return normalizeDPDTarget(key)
+	}
+	parsed, err := url.Parse(strings.TrimSpace(candidate.URL))
+	if err != nil {
+		return ""
+	}
+	cleanPath := strings.Trim(strings.TrimSpace(parsed.Path), "/")
+	if !strings.HasPrefix(cleanPath, "dpd/") {
+		return ""
+	}
+	return normalizeDPDTarget(path.Base(cleanPath))
+}
+
+func normalizeDPDTarget(value string) string {
+	value = strings.TrimSpace(value)
+	value = strings.ReplaceAll(value, "_", " ")
+	value = strings.ToLower(strings.Join(strings.Fields(value), " "))
+	return value
 }
