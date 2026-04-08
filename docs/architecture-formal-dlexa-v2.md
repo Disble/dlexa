@@ -16,6 +16,12 @@ Este documento es el artefacto arquitectónico formal de referencia para `dlexa`
 
 En otras palabras: el otro documento inspira; este documento gobierna.
 
+### Convención crítica de lectura
+
+- **Estado actual** = lo que hoy está materializado en el filesystem y el runtime.
+- **Estado objetivo** = dirección arquitectónica válida, pero no necesariamente implementada por completo.
+- Si este documento entra en conflicto con `cmd/dlexa`, `internal/app`, `internal/modules` o `internal/render`, **el código gana como verdad de runtime** y este documento debe corregirse.
+
 ---
 
 ## 2. Definición del proyecto
@@ -81,11 +87,11 @@ Un LLM sin una herramienta intermedia sufre varios problemas:
 
 ### 5.1. Objetivos
 
-1. Reemplazar la CLI basada en `flag` por una CLI basada en `spf13/cobra`.
-2. Separar el DPD actual en un módulo formal.
-3. Introducir `search` como gateway principal del workflow agentivo.
-4. Estandarizar envelopes, ayuda y errores.
-5. Preparar el terreno para múltiples módulos sin sobreingeniería prematura.
+1. Mantener una CLI fina con `cmd/dlexa` + `spf13/cobra`, delegando la ejecución real a `internal/app`.
+2. Consolidar el DPD actual y `search` como módulos formales bajo contratos compartidos.
+3. Tratar `search` como gateway principal del workflow agentivo sin inventar comandos destino inexistentes.
+4. Estandarizar envelopes, ayuda y errores sobre `internal/render`.
+5. Preparar el terreno para múltiples módulos sin confundir runtime actual con roadmap futuro.
 
 ### 5.2. No objetivos inmediatos
 
@@ -102,7 +108,7 @@ Esta tabla existe para que una lectora —humana o LLM— pueda captar en un min
 
 | Decisión | Estado | Impacto | Razón |
 |---|---|---|---|
-| Reemplazar `flag` por `spf13/cobra` | Aprobada | Alto | Necesitamos subcomandos formales, help controlable y una CLI escalable. |
+| Consolidar `cmd/dlexa` + `spf13/cobra` fino | Implementada en el runtime actual | Alto | La superficie pública ya existe y debe seguir delgada, delegando a `internal/app`. |
 | Mantener Markdown como default | Aprobada | Alto | Es el mejor formato para LLMs en densidad semántica por token. |
 | Tratar `search` como gateway principal | Aprobada | Alto | Ordena el workflow agentivo y reduce intentos ciegos en módulos específicos. |
 | Comprimir URLs a comandos | Aprobada | Alto | Reduce desperdicio de tokens y convierte navegación en acción ejecutable. |
@@ -120,21 +126,21 @@ Una fuente clásica de confusión en refactorizaciones grandes es mezclar lo que
 
 | Área | Estado actual | Estado objetivo |
 |---|---|---|
-| CLI | `flag` estándar y ruteo manual | árbol de comandos con Cobra |
-| Entry flow | lookup DPD como comportamiento dominante | `search` como gateway principal + módulos explícitos |
-| Modelado de capacidades | DPD implícito en estructura técnica | módulos formales bajo contratos compartidos |
-| Help | ayuda estándar de CLI tradicional | help Markdown optimizado para agentes |
+| CLI | árbol Cobra fino en `cmd/dlexa` con root, `dpd` y `search` | ampliar la superficie sin meter lógica de dominio en `cmd/` |
+| Entry flow | root default-to-DPD + `search` explícito | reforzar `search` como gateway principal sin romper compatibilidad |
+| Modelado de capacidades | `dpd` y `search` ya viven como módulos bajo contratos compartidos | sumar nuevos módulos reales cuando existan y no antes |
+| Help | ayuda Markdown agentiva ya renderizada por la capa compartida | refinar cobertura y consistencia sin depender del texto default del framework |
 | Errores | errores de aplicación más genéricos | ladder de 4 niveles con ownership explícito |
 | Output default | Markdown ya existente | Markdown formalizado con envelope canónico |
 | URLs de resultados | aún dependientes de formato fuente | compresión URL→comando como norma de diseño |
 | Caché | presente como infraestructura | engine priorizado y preparado para evolución concurrente |
-| Search | capacidad existente, no aún centro del sistema | gateway semántico y ruteador de siguientes pasos |
+| Search | módulo explícito con curación y sugerencias de siguiente paso | gateway semántico más amplio con más superficies realmente cableadas |
 
 ### Cómo usar esta tabla
 
 - Si estás leyendo código existente, asumí que **todavía vas a encontrar rastros del estado actual**.
 - Si estás diseñando cambios, alineate con el **estado objetivo**, salvo que una fase concreta diga lo contrario.
-- Si hay conflicto entre ambos, el documento arquitectónico manda sobre la inercia accidental del código legado.
+- Si hay conflicto entre ambos, corregí el documento para que vuelva a coincidir con el código realmente cableado.
 
 ---
 
@@ -248,7 +254,7 @@ No buscamos pureza dogmática. Buscamos separación útil.
 flowchart LR
     subgraph Entry[Entrada]
         Main[cmd/dlexa/main.go]
-        Cobra[Cobra command tree]
+        Cobra[cmd/dlexa Cobra tree]
     end
 
     subgraph App[Composición / aplicación]
@@ -367,7 +373,7 @@ type Response struct {
 
 - `Name()` identifica semánticamente el módulo.
 - `Command()` define el subcomando público.
-- `Execute(...)` desacopla Cobra de la lógica de negocio.
+- `Execute(...)` desacopla la capa de comandos de la lógica de negocio.
 - `Response` fuerza un shape común para enveloping y fallbacks.
 
 ---
@@ -442,7 +448,7 @@ En otras palabras: el `search` no entrega solo resultados; entrega **navegación
 sequenceDiagram
     autonumber
     actor Agent as LLM
-    participant CLI as Cobra search
+    participant CLI as CLI search command
     participant Module as Search module
     participant Cache as Search cache
     participant Upstream as RAE search
@@ -513,7 +519,7 @@ type EnvelopeRenderer interface {
 
 ## 16. Sistema de ayuda para agentes
 
-La ayuda de Cobra por defecto resuelve el problema de una CLI humana tradicional: enumera comandos, flags y una breve descripción. Eso sirve para una persona que ya conoce el dominio o que puede inferir intenciones leyendo texto suelto. Para un LLM, eso es insuficiente.
+La ayuda por defecto de una CLI tradicional resuelve el problema de una persona humana: enumera comandos, flags y una breve descripción. Eso sirve para alguien que ya conoce el dominio o puede inferir intenciones leyendo texto suelto. Para un LLM, eso es insuficiente.
 
 Un agente necesita que la ayuda cumpla tres funciones simultáneas:
 
@@ -521,7 +527,7 @@ Un agente necesita que la ayuda cumpla tres funciones simultáneas:
 2. **enseñar estrategia de uso**;
 3. **indicar recuperación ante error**.
 
-Por eso, la ayuda en `dlexa v2` no será un subproducto de Cobra: será una superficie de producto.
+Por eso, la ayuda en `dlexa v2` no debe quedar como subproducto del framework CLI: debe ser una superficie de producto.
 
 ### 16.1. Objetivos de la ayuda
 
@@ -889,7 +895,7 @@ Eso no significa prohibir completamente las URLs, sino tratarlas como dato secun
 
 ---
 
-## 21. Layout objetivo del repositorio
+## 21. Layout actual del repositorio y extensiones objetivo
 
 ```text
 cmd/
@@ -901,13 +907,19 @@ cmd/
 
 internal/
 ├── app/
+│   ├── app.go
 │   └── wiring.go
 ├── modules/
+│   ├── interfaces.go
 │   ├── dpd/
 │   ├── search/
 │   └── ... futuros módulos ...
 ├── render/
-│   └── envelope.go
+│   ├── envelope.go
+│   ├── markdown.go
+│   ├── json.go
+│   ├── search_markdown.go
+│   └── search_json.go
 ├── cache/
 ├── fetch/
 ├── parse/
@@ -917,7 +929,7 @@ internal/
 
 ### 21.1. Lectura arquitectónica del árbol
 
-El árbol propuesto intenta balancear dos necesidades:
+El árbol actual intenta balancear dos necesidades:
 
 - que la intención de negocio sea visible;
 - que la infraestructura reutilizable siga teniendo lugar propio.
@@ -967,24 +979,23 @@ El árbol debe gritar intención de negocio sin renunciar a infraestructura reut
 
 El roadmap no es un wishlist difuso. Es una secuencia de maduración intencional.
 
-### 22.1. Fase 1 — Cimientos sólidos
+### 22.1. Fase 1 — Base CLI y módulos iniciales (estado actual)
 
-Objetivo: reemplazar el ruteo frágil actual por una base modular y testeable.
+Objetivo alcanzado en el runtime actual: sostener una base modular y testeable con `cmd/dlexa` fino, `internal/app` como composition root y módulos explícitos.
 
-Entregables:
+Entregables presentes:
 
-- Cobra como nueva superficie CLI;
+- árbol Cobra fino en `cmd/dlexa`;
+- `internal/app/app.go` + `internal/app/wiring.go` como boundary de ejecución;
 - DPD como módulo explícito;
 - Search como gateway semántico inicial;
-- Envelope renderer;
-- Help Markdown;
-- 4-level fallback.
+- Envelope renderer y ladder de fallbacks compartidos.
 
-Criterio de salida de Fase 1:
+Criterio actual de salida:
 
 - la CLI ya no depende de `flag` para su ruteo principal;
 - `search` ya devuelve siguientes pasos útiles;
-- la ayuda y los fallbacks son consistentes;
+- la ayuda y los fallbacks salen de contratos compartidos;
 - el sistema es más explicable a un LLM que en la versión anterior.
 
 ### 22.2. Fase 2 — Expansión controlada
@@ -1123,7 +1134,7 @@ Se rechaza Bubbletea porque el sistema está orientado a agentes que consumen ST
 
 ### 25.2. Sí Cobra como base de CLI
 
-Se elige Cobra porque formaliza subcomandos, mejora help, ordena la superficie pública y reemplaza el ruteo manual con `flag` que hoy limita la evolución.
+Se sostiene Cobra porque formaliza subcomandos, ordena la superficie pública y mantiene `cmd/dlexa` como capa fina sobre `internal/app`.
 
 ### 25.3. Markdown sigue siendo el default
 

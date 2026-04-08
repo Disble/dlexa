@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the semantic routing and module capability of `dlexa search`. It acts as an intelligent gateway for LLMs, converting web search results into actionable commands and curating tokens.
+Defines the semantic routing and module capability of `dlexa search` as invoked from the active CLI surface. It acts as an intelligent gateway for LLMs, converting web search results into actionable next steps while staying truthful about which destination commands are actually wired.
 
 ## Requirements
 
@@ -35,9 +35,9 @@ The module MUST drop institutional or non-normative noise from the upstream resu
 - THEN the module MUST NOT discard it
 - AND MUST include it in the curated results
 
-### Requirement: URL Compression to Actionable Commands
+### Requirement: URL Compression to Actionable Next Steps
 
-The module MUST map result URLs into literal, LLM-optimized CLI commands.
+The module MUST map result URLs into literal, LLM-optimized next steps.
 
 #### Scenario: Compress known surfaces into commands
 
@@ -45,6 +45,7 @@ The module MUST map result URLs into literal, LLM-optimized CLI commands.
 - WHEN generating the next step
 - THEN the module MUST map the URL into an actionable command (e.g., `dlexa espanol-al-dia la-conjuncion-o`)
 - AND expose it as the recommended next action
+- AND MUST NOT treat that literal suggestion as proof that the destination command is currently registered
 
 #### Scenario: Unknown URLs fall back safely
 

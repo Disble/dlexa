@@ -23,6 +23,43 @@
 - If the task is generic lexical definition, translation, encyclopedic lookup, or etymology, `dlexa` is the wrong hammer.
 - When updating repo guidance or mirrored skills, keep `skills/` as canonical and `.claude/skills/` in semantic lockstep.
 
+## Read This First — Critical Files and Reality Checks
+
+- **Do not assume the documented target architecture already exists in code. Verify first.**
+- The repo's **current binary entrypoint** lives in `cmd/dlexa`, especially:
+  - `cmd/dlexa/main.go`
+  - `cmd/dlexa/root.go`
+  - `cmd/dlexa/dpd.go`
+  - `cmd/dlexa/search.go`
+- The repo's **current runtime surface** lives in `internal/app`, especially:
+  - `internal/app/app.go`
+  - `internal/app/wiring.go`
+- The repo's **current application contracts** live in:
+  - `internal/modules/interfaces.go`
+  - `internal/model/types.go`
+  - `internal/model/search.go`
+- The repo's **current implemented modules** live in:
+  - `internal/modules/dpd/module.go`
+  - `internal/modules/search/module.go`
+- The repo's **current agent-facing rendering and fallback contracts** live in:
+  - `internal/render/envelope.go`
+  - `internal/render/markdown.go`
+  - `internal/render/json.go`
+  - `internal/render/search_markdown.go`
+  - `internal/render/search_json.go`
+- The repo's **current live pipelines** live in:
+  - `internal/fetch/live_search.go`
+  - `internal/parse/live_search.go`
+  - `internal/search/service.go`
+  - `internal/config/static.go`
+- The repo's **current main OpenSpec source of truth** lives in:
+  - `openspec/specs/cli/spec.md`
+  - `openspec/specs/search/spec.md`
+  - `openspec/specs/dpd/spec.md`
+  - `openspec/specs/render/spec.md`
+- `docs/architecture-formal-dlexa-v2.md` and `docs/architecture_v2_oraculo.md` contain both **current-state** and **target-state** discussion; when in doubt, verify against the filesystem and runtime wiring first.
+- If docs/specs/archived changes conflict with code, treat the **codebase** as the runtime truth, document the drift, and only then plan the fix.
+
 ## Repo Workflow
 
 - The repo-level lint and pre-commit onboarding flow lives in `CONTRIBUTING.md`.
@@ -36,3 +73,5 @@
 - Those prompts MUST name forbidden outputs or behaviors explicitly when the bug involves false positives, misleading fallbacks, or malformed UX.
 - When parser/classification behavior is involved, prompts MUST require negative regression coverage and adversarial fixture guidance when relevant.
 - If the user explicitly asks the orchestrator to perform a repo-doc or instruction-file update itself, do not delegate that file edit to a sub-agent.
+- Verification is a special case: the orchestrating agent MUST perform the final verification itself and MUST NOT delegate the verify phase to a sub-agent. Other phases may still use sub-agents when appropriate.
+- After verify passes, the orchestrating agent MUST create the commit before reporting verify as fully complete. The commit's own hooks/validations are part of the real verification boundary and save the user an extra round-trip.

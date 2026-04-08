@@ -2,13 +2,13 @@
 
 ## Purpose
 
-Defines the command surface, routing, and help behavior of the `dlexa` CLI using the `spf13/cobra` framework, transforming it into an agent-optimized gateway.
+Defines the active command surface, routing, and help behavior of the `dlexa` CLI. The binary entrypoint lives in `cmd/dlexa`, while command execution delegates to `internal/app` and the `internal/modules` registry.
 
 ## Requirements
 
 ### Requirement: Explicit Command Tree
 
-The CLI MUST provide a formal command tree powered by `spf13/cobra` rather than manual `flag` parsing.
+The CLI MUST expose a thin formal command tree from `cmd/dlexa` and MUST delegate execution to `internal/app` rather than embedding business logic in the command layer.
 
 #### Scenario: Valid commands execute successfully
 
@@ -77,20 +77,20 @@ The CLI MUST render search results as safe next-step guidance for agents and use
 - THEN the output MUST include a safe fallback representation for those candidates
 - AND the output MUST NOT invent unsupported command syntax
 
-### Requirement: No New Destination Commands in This Change
+### Requirement: Active Spec Matches Registered Commands
 
-This change MUST NOT expand the Cobra tree with new destination content commands beyond the existing `search` and `dpd` surface.
+The active CLI spec MUST describe only commands that are actually registered in the current command tree.
 
 #### Scenario: Search suggests a deferred destination command
 
 - GIVEN the semantic gateway suggests a literal command such as `dlexa espanol-al-dia <slug>`
-- WHEN this change is considered complete
+- WHEN that destination command is not registered in the current CLI tree
 - THEN the gateway suggestion MUST be valid as guidance
-- AND the existence of that suggestion MUST NOT require the destination Cobra command to be implemented in this change
+- AND the active CLI spec MUST NOT describe that destination as an implemented subcommand until it is actually wired
 
 #### Scenario: Existing command tree remains constrained
 
 - GIVEN the CLI command tree after this change
-- WHEN the available Cobra subcommands are inspected
+- WHEN the available subcommands are inspected
 - THEN the public destination command surface MUST remain limited to the commands already supported by the current CLI contract
 - AND root default-to-DPD behavior MUST remain unchanged

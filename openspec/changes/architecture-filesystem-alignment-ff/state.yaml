@@ -1,0 +1,26 @@
+change: architecture-filesystem-alignment-ff
+phase: verify
+status: ready_for_archive
+artifact_store: hybrid
+artifacts:
+  proposal: true
+  spec: true
+  design: true
+  tasks: true
+  apply_progress: true
+  verify_report: true
+  archive_report: false
+specs: []
+notes:
+  scope_decision: "Close architecture drift at file/folder level by reconciling active guidance with runtime truth and materializing any accepted missing entry-surface files in the same change."
+  runtime_truth: "Treat the codebase layout as runtime truth until docs/specs and filesystem are aligned again."
+completed_phases:
+  - proposal
+  - design
+  - tasks
+  - spec
+  - apply
+  - verify
+next: archive
+last_completed_phase: verify
+last_updated: 2026-04-08T00:30:00Z

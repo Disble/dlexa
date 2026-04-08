@@ -14,7 +14,7 @@ El objetivo es construir una **Arquitectura de Búsqueda Federada** curada semá
 ## 2. Interfaz y Experiencia de I/O (La CLI Pura)
 
 ### 2.1. Rechazo a las Interfaces Gráficas (TUIs)
-Se descarta el uso de librerías interactivas como `bubbletea`. Los LLMs consumen Standard I/O (texto plano). Una TUI inyectaría secuencias de escape ANSI (`\x1b...`) que destruirían el razonamiento del modelo. La herramienta será una **CLI pura, dura y silenciosa**, construida sobre `spf13/cobra` para un enrutamiento de comandos profesional.
+Se descarta el uso de librerías interactivas como `bubbletea`. Los LLMs consumen Standard I/O (texto plano). Una TUI inyectaría secuencias de escape ANSI (`\x1b...`) que destruirían el razonamiento del modelo. La herramienta se apoya hoy en una **CLI pura, dura y silenciosa**, con un `cmd/dlexa` fino sobre `spf13/cobra` que delega la ejecución real a `internal/app`.
 
 ### 2.2. Markdown como Formato Nativo (El Patrón Envelope)
 El formato de salida por defecto es **Markdown**, priorizando la densidad de información y la eficiencia de tokens frente al exceso de símbolos de un JSON (que quedará como un flag `--format json` opcional).
@@ -54,7 +54,7 @@ El LLM recibirá instrucciones exactas y copiables:
 La CLI se diseña asumiendo que su usuario principal no es un humano, sino un bucle de ejecución de un Agente de IA.
 
 ### 4.1. `--help` Optimizado para IA
-Se sobreescribirán los templates por defecto de Cobra (`SetHelpTemplate`). La ayuda se renderizará en Markdown estructurado, priorizando **ejemplos literales** copiables y explicaciones claras sobre qué comando usar si el actual falla.
+La ayuda no debe depender del texto por defecto del framework. Se renderiza en Markdown estructurado, priorizando **ejemplos literales** copiables y explicaciones claras sobre qué comando usar si el actual falla.
 
 ### 4.2. La Escalera de Errores (Niveles de Fallback)
 Para evitar que un LLM entre en un bucle infinito de reintentos por no saber de quién es la culpa de un fallo, se implementarán **4 Niveles de Error Explícitos** en formato Markdown:
@@ -69,10 +69,11 @@ Para evitar que un LLM entre en un bucle infinito de reintentos por no saber de 
 ## 5. Rendimiento y Evolución (Roadmap)
 
 ### Fase 1: Cimientos Sólidos (Actual)
-- Implementación de enrutamiento con `spf13/cobra` (`cmd/dlexa/*`).
+- Runtime actual con `cmd/dlexa/*` como superficie Cobra fina.
+- `internal/app` como boundary de ejecución y wiring.
 - Encapsulamiento del dominio actual del DPD en `internal/modules/dpd`.
-- Creación del nuevo ruteador semántico en `internal/modules/search`.
-- Implementación de la ayuda en Markdown y la Escalera de Errores.
+- `internal/modules/search` como ruteador semántico inicial.
+- Envelope/fallbacks compartidos y ayuda Markdown agentiva.
 
 ### Fase 2: "La Explosión" (Fan-Out / Fan-In Concurrent Search) - Diferida
 Para construir el Oráculo Definitivo (consultando RAE General, DPD, DLE y Fundéu simultáneamente), se utilizarán *goroutines*. **Sin embargo**, esta fase queda diferida hasta estabilizar la Fase 1 para mitigar el riesgo de *IP Bans* (HTTP 429) por parte de los WAFs de la RAE.
@@ -82,13 +83,13 @@ Para construir el Oráculo Definitivo (consultando RAE General, DPD, DLE y Fund�
 
 ## 6. Diseño Técnico Detallado
 
-La implementación de la Fase 1 se apoya en una CLI basada en `spf13/cobra`, módulos explícitos y un renderer universal de envelopes/fallbacks. Este diseño mantiene el entrypoint fino del binario y desplaza la complejidad a contratos estables para módulos y renderizado.
+El runtime actual de la Fase 1 se apoya en una CLI basada en `spf13/cobra`, módulos explícitos y un renderer universal de envelopes/fallbacks. Este diseño mantiene el entrypoint fino del binario y desplaza la complejidad a contratos estables para módulos y renderizado.
 
 ### 6.1. Decisiones de Arquitectura
 
 | Decisión | Elección | Alternativas consideradas | Rationale |
 |---|---|---|---|
-| Superficie de comandos | `cmd/dlexa/root.go`, `dpd.go`, `search.go` con Cobra | seguir con `flag`; un único archivo Cobra gigante | Hace visibles los subcomandos, habilita help en Markdown y mantiene `cmd/` fino. |
+| Superficie de comandos | `cmd/dlexa/root.go`, `dpd.go`, `search.go` con Cobra | seguir con `flag`; un único archivo Cobra gigante | Hace visibles los subcomandos y mantiene `cmd/` fino sobre `internal/app`. |
 | Límite de dominio | `internal/modules/dpd` y `internal/modules/search` bajo un contrato compartido | seguir con wiring directo de `query.Looker` / `search.Searcher` | Crea un puerto estable para futuros módulos sin filtrar Cobra al dominio. |
 | Límite de renderizado | `EnvelopeRenderer` central para Markdown/help/fallbacks | duplicar renderizado en cada módulo | Fuerza un envelope universal y una sola escalera de errores. |
 
@@ -148,7 +149,7 @@ flowchart LR
 sequenceDiagram
     autonumber
     actor Agent as LLM / Agent
-    participant Cobra as Cobra search command
+    participant Cobra as CLI search command
     participant Router as Search module
     participant Cache as Search cache
     participant Fetch as RAE/DPD fetcher
@@ -187,7 +188,7 @@ sequenceDiagram
 ```mermaid
 stateDiagram-v2
     [*] --> CommandReceived
-    CommandReceived --> SyntaxError: Cobra arg/command validation fails
+    CommandReceived --> SyntaxError: CLI arg/command validation fails
     CommandReceived --> ExecuteModule: command shape valid
     ExecuteModule --> NotFound: module returns structured miss / 404
     ExecuteModule --> Upstream503: upstream unavailable / challenge / 5xx
@@ -237,26 +238,25 @@ type Response struct {
 }
 ```
 
-### 6.6. Cambios Esperados en Archivos
+### 6.6. Archivos clave del runtime actual
 
 | File | Action | Description |
 |---|---|---|
-| `cmd/dlexa/main.go` | Modify | Boot Cobra root en vez de `app.App.Run`. |
-| `cmd/dlexa/root.go` | Create | Flags globales, help Markdown y ejecución DPD por defecto. |
-| `cmd/dlexa/dpd.go` | Create | Subcomando explícito para DPD. |
-| `cmd/dlexa/search.go` | Create | Subcomando del router semántico. |
-| `internal/app/wiring.go` | Modify | Componer módulos, renderer y dependencias Cobra. |
-| `internal/app/app.go` | Delete/trim | Eliminar parsing con `flag` y ruteo legacy. |
-| `internal/modules/dpd/*.go` | Create | Adapter sobre `query.Looker` + renderers actuales. |
-| `internal/modules/search/*.go` | Create | Adapter sobre `search.Searcher` + filtrado semántico y mapping URL→comando. |
-| `internal/render/envelope.go` | Create | Envelope universal en Markdown y fallbacks. |
-| `internal/model/*.go` | Modify | Metadata/fallback classification cuando haga falta. |
+| `cmd/dlexa/main.go` | Present | Inicializa la plataforma CLI, construye `app.New(...)` y ejecuta el root command. |
+| `cmd/dlexa/root.go` | Present | Declara flags globales, help Markdown y default-to-DPD. |
+| `cmd/dlexa/dpd.go` | Present | Subcomando explícito para DPD. |
+| `cmd/dlexa/search.go` | Present | Subcomando explícito para el router semántico. |
+| `internal/app/app.go` | Present | Boundary de ejecución, help y fallbacks compartidos. |
+| `internal/app/wiring.go` | Present | Compone módulos, renderers y servicios concretos. |
+| `internal/modules/dpd/module.go` | Present | Adapter sobre `query.Looker` + renderers actuales. |
+| `internal/modules/search/module.go` | Present | Adapter sobre `search.Searcher` + filtrado y mapping URL→comando. |
+| `internal/render/envelope.go` | Present | Envelope universal de éxito/help/fallbacks. |
 
 ### 6.7. Estrategia de Testing
 
 | Layer | What to Test | Approach |
 |---|---|---|
-| Unit | Validación de args en Cobra, next-step mapping, fallback classification | table tests en `cmd/dlexa` e `internal/modules/*` |
+| Unit | Validación de args en `cmd/dlexa`, next-step mapping, fallback classification | table tests en `cmd/dlexa` e `internal/modules/*` |
 | Integration | Wiring de módulos DPD/search con envelope output | extender tests tipo `internal/app/app_test.go` con CLI fake |
 | Integration | Noise filtering del search y mapping URL→command | tests con fixtures en `internal/modules/search` |
 | Regression | Compatibilidad de `--format json` | comparar payloads serializados con el contrato actual |
