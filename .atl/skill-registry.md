@@ -79,7 +79,7 @@ Last updated: 2026-04-08 (re-init — cobra migration complete, 7 archived chang
 
 None — ready for a new change.
 
-## Archived Changes (7)
+## Archived Changes (8)
 
 1. `2026-03-13-dpd-terminal-semantic-rendering`
 2. `2026-03-14-performance-improvement`
@@ -88,6 +88,7 @@ None — ready for a new change.
 5. `2026-04-07-dpd-live-lookup-parity`
 6. `2026-04-07-live-semantic-search-gateway`
 7. `2026-04-08-architecture-filesystem-alignment-ff`
+8. `2026-04-08-cli-contract-hardening`
 
 ## TDD Status
 

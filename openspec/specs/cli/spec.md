@@ -94,3 +94,62 @@ The active CLI spec MUST describe only commands that are actually registered in 
 - WHEN the available subcommands are inspected
 - THEN the public destination command surface MUST remain limited to the commands already supported by the current CLI contract
 - AND root default-to-DPD behavior MUST remain unchanged
+
+### Requirement: Format Validation at Runtime Boundary
+
+The runtime MUST validate `req.Format` against the set of registered formats after applying config defaults. Unsupported formats MUST produce a Nivel 1 (Syntax) fallback with explicit guidance, not a raw error.
+
+#### Scenario: Valid format passes through
+
+- GIVEN the CLI is invoked with `--format markdown` or `--format json`
+- WHEN the format reaches `App.ExecuteModule`
+- THEN the request MUST proceed to module execution without error
+
+#### Scenario: Empty format defaults and passes through
+
+- GIVEN the CLI is invoked without `--format`
+- WHEN the format is empty at `App.ExecuteModule`
+- THEN the runtime MUST apply the config default format
+- AND the request MUST proceed to module execution without error
+
+#### Scenario: Invalid format returns structured syntax fallback
+
+- GIVEN the CLI is invoked with `--format yaml` (or any unsupported value)
+- WHEN the format reaches `App.ExecuteModule` after defaults are applied
+- THEN the runtime MUST return a Nivel 1 (Syntax) fallback
+- AND the fallback message MUST indicate the supported formats
+- AND the fallback MUST suggest using `--help`
+
+### Requirement: Command Surface Black-Box Tests
+
+The Cobra command surface in `cmd/dlexa` MUST have black-box tests exercising routing, flags, help, and error paths through `executeRootCommand` with a mock `runtimeRunner`.
+
+#### Scenario: Root with query routes to DPD
+
+- GIVEN the CLI is invoked as `dlexa basto`
+- WHEN `executeRootCommand` processes the arguments
+- THEN `RunModule` MUST be called with module `"dpd"` and query `"basto"`
+
+#### Scenario: Subcommand routing is deterministic
+
+- GIVEN the CLI is invoked as `dlexa dpd solo` or `dlexa search solo o sólo`
+- WHEN `executeRootCommand` processes the arguments
+- THEN `RunModule` MUST be called with the correct module and joined query
+
+#### Scenario: Help, version, and doctor flags route correctly
+
+- GIVEN the CLI is invoked with `--help`, `--version`, or `--doctor`
+- WHEN `executeRootCommand` processes the arguments
+- THEN the corresponding method (`RenderHelp`, `PrintVersion`, `RunDoctor`) MUST be called
+
+#### Scenario: Missing subcommand query triggers syntax error
+
+- GIVEN the CLI is invoked as `dlexa dpd` or `dlexa search` (no query)
+- WHEN `executeRootCommand` processes the arguments
+- THEN `HandleSyntaxError` MUST be called
+
+#### Scenario: Format and no-cache flags propagate to module request
+
+- GIVEN the CLI is invoked with `--format json` or `--no-cache`
+- WHEN `executeRootCommand` processes the arguments
+- THEN `RunModule` MUST receive the corresponding `Format` or `NoCache` values
