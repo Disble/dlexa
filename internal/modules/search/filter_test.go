@@ -49,6 +49,20 @@ func TestCurateCandidatesPrefersDPDIndexHitForEquivalentDPDDestination(t *testin
 	}
 }
 
+func TestCurateCandidatesBoostsQueryAffinityAcrossComplementaryHits(t *testing.T) {
+	candidates := []model.SearchCandidate{
+		{Title: "Preguntas frecuentes: sobre la tilde", Snippet: "faq rescatable pero genérica", URL: "https://www.rae.es/noticia/preguntas-frecuentes-sobre-la-tilde", SourceHint: "Búsqueda general RAE"},
+		{Title: "Alícuota", Snippet: "artículo complementario exacto", URL: "https://www.rae.es/espanol-al-dia/alicuota", SourceHint: "Búsqueda general RAE"},
+		{Title: "Ruta rara", URL: "https://www.rae.es/archivo/ruta-rara"},
+	}
+
+	got := curateCandidates("alicuota", candidates)
+
+	if want := []string{"Alícuota", "Preguntas frecuentes: sobre la tilde", "Ruta rara"}; !reflect.DeepEqual(candidateTitles(got), want) {
+		t.Fatalf("candidate order = %v, want %v", candidateTitles(got), want)
+	}
+}
+
 func TestEnrichCandidateMarksDeferredOnlyForNonDPDDestinations(t *testing.T) {
 	tests := []struct {
 		name      string

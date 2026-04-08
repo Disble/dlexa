@@ -6,6 +6,7 @@ import (
 	"path"
 	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/Disble/dlexa/internal/model"
 )
@@ -17,7 +18,7 @@ func curateCandidates(query string, candidates []model.SearchCandidate) []model.
 			continue
 		}
 		enriched := enrichCandidate(query, candidate)
-		curated = append(curated, rankedCandidate{candidate: enriched, score: candidateRankScore(enriched)})
+		curated = append(curated, rankedCandidate{candidate: enriched, score: candidateRankScore(query, enriched)})
 	}
 	if len(curated) == 0 {
 		return nil
@@ -98,11 +99,12 @@ func isRescuedNoticia(candidate model.SearchCandidate) bool {
 	return strings.HasPrefix(title, strings.ToLower("Preguntas frecuentes:")) || strings.Contains(title, "tilde") || strings.Contains(title, "normativa")
 }
 
-func candidateRankScore(candidate model.SearchCandidate) int {
+func candidateRankScore(query string, candidate model.SearchCandidate) int {
 	score := classificationRank(candidate.Classification) * 100
 	if strings.TrimSpace(candidate.ArticleKey) != "" {
 		score += 20
 	}
+	score += queryAffinityScore(query, candidate)
 	if strings.TrimSpace(candidate.Snippet) != "" {
 		score += 10
 	}
@@ -110,6 +112,26 @@ func candidateRankScore(candidate model.SearchCandidate) int {
 		score++
 	}
 	return score
+}
+
+func queryAffinityScore(query string, candidate model.SearchCandidate) int {
+	normalizedQuery := normalizeSearchText(query)
+	if normalizedQuery == "" {
+		return 0
+	}
+	for _, value := range []string{candidate.ArticleKey, candidate.Title, candidate.DisplayText, candidate.ID} {
+		normalizedValue := normalizeSearchText(value)
+		if normalizedValue == "" {
+			continue
+		}
+		if normalizedValue == normalizedQuery {
+			return 140
+		}
+		if strings.Contains(normalizedValue, normalizedQuery) {
+			return 60
+		}
+	}
+	return 0
 }
 
 func classificationRank(classification string) int {
@@ -169,6 +191,40 @@ func canonicalDPDTarget(candidate model.SearchCandidate) string {
 func normalizeDPDTarget(value string) string {
 	value = strings.TrimSpace(value)
 	value = strings.ReplaceAll(value, "_", " ")
-	value = strings.ToLower(strings.Join(strings.Fields(value), " "))
-	return value
+	return normalizeSearchText(value)
+}
+
+func normalizeSearchText(value string) string {
+	value = strings.TrimSpace(strings.ToLower(value))
+	if value == "" {
+		return ""
+	}
+	var builder strings.Builder
+	builder.Grow(len(value))
+	for _, r := range value {
+		switch {
+		case unicode.IsLetter(r) || unicode.IsNumber(r):
+			builder.WriteRune(stripAccent(r))
+		case unicode.IsSpace(r), r == '-', r == '_', r == '/':
+			builder.WriteByte(' ')
+		}
+	}
+	return strings.Join(strings.Fields(builder.String()), " ")
+}
+
+func stripAccent(r rune) rune {
+	switch r {
+	case 'á', 'à', 'ä', 'â':
+		return 'a'
+	case 'é', 'è', 'ë', 'ê':
+		return 'e'
+	case 'í', 'ì', 'ï', 'î':
+		return 'i'
+	case 'ó', 'ò', 'ö', 'ô':
+		return 'o'
+	case 'ú', 'ù', 'ü', 'û':
+		return 'u'
+	default:
+		return r
+	}
 }
