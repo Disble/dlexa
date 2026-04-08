@@ -45,6 +45,34 @@ func TestServiceUsesRequestedSourcesAndOrdersCandidatesByPriority(t *testing.T) 
 	assertSingletonSourceRequest(t, providerP3, "priority-3")
 }
 
+func TestServiceFederatesDPDAndGeneralSearchProvidersByPriority(t *testing.T) {
+	dpdProvider := &providerStub{
+		descriptor: model.SourceDescriptor{Name: "dpd", DisplayName: "Diccionario panhispánico de dudas", Priority: 1},
+		result:     model.SearchResult{Candidates: []model.SearchCandidate{{Title: "Abu Dhabi", ArticleKey: "Abu Dabi"}}},
+	}
+	searchProvider := &providerStub{
+		descriptor: model.SourceDescriptor{Name: "search", DisplayName: "Búsqueda general RAE", Priority: 2},
+		result:     model.SearchResult{Candidates: []model.SearchCandidate{{Title: "Abu Dhabi", URL: "https://www.rae.es/espanol-al-dia/abu-dhabi"}}},
+	}
+
+	service := NewService(NewStaticRegistry("search", searchProvider, dpdProvider), cache.NewSearchMemoryStore(), 2, "search")
+	result, err := service.Search(context.Background(), model.SearchRequest{Query: "Abu Dhabi", Sources: []string{"dpd", "search"}, NoCache: true})
+	if err != nil {
+		t.Fatalf(searchErrFormat, err)
+	}
+	if got := candidateTitles(result.Candidates); !reflect.DeepEqual(got, []string{"Abu Dhabi", "Abu Dhabi"}) {
+		t.Fatalf("candidate order = %v, want [Abu Dhabi Abu Dhabi] preserving provider priority", got)
+	}
+	if result.Candidates[0].SourceHint != "Diccionario panhispánico de dudas" {
+		t.Fatalf("first source hint = %q, want DPD attribution", result.Candidates[0].SourceHint)
+	}
+	if result.Candidates[1].SourceHint != "Búsqueda general RAE" {
+		t.Fatalf("second source hint = %q, want general search attribution", result.Candidates[1].SourceHint)
+	}
+	assertSingletonSourceRequest(t, dpdProvider, "dpd")
+	assertSingletonSourceRequest(t, searchProvider, "search")
+}
+
 func TestServiceBoundsConcurrentProviderSearches(t *testing.T) {
 	tracker := &concurrencyTracker{}
 	providerA := newBlockingProvider("a", 1, tracker)

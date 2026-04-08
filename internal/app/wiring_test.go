@@ -42,11 +42,14 @@ func TestNewWiresSearchModuleToLiveSearchAdapters(t *testing.T) {
 	if !ok {
 		t.Fatalf("second provider type = %T, want *search.PipelineProvider", providers[1])
 	}
-	if got := secondary.Descriptor().Name; got != "espanol-al-dia" {
-		t.Fatalf("second provider name = %q, want espanol-al-dia", got)
+	if got := secondary.Descriptor().Name; got != "dpd" {
+		t.Fatalf("second provider name = %q, want dpd", got)
 	}
-	if got := secondary.NormalizerForTesting(); got == nil || got.(*normalize.LiveSearchNormalizer) == nil {
-		t.Fatalf("second normalizer type = %T, want *normalize.LiveSearchNormalizer", got)
+	if got := secondary.ParserForTesting(); got == nil || got.(*parse.DPDSearchParser) == nil {
+		t.Fatalf("second parser type = %T, want *parse.DPDSearchParser", got)
+	}
+	if got := secondary.NormalizerForTesting(); got == nil || got.(*normalize.DPDSearchNormalizer) == nil {
+		t.Fatalf("second normalizer type = %T, want *normalize.DPDSearchNormalizer", got)
 	}
 	if got := provider.FetcherForTesting(); got == nil || got.(*fetch.LiveSearchFetcher) == nil {
 		t.Fatalf("fetcher type = %T, want *fetch.LiveSearchFetcher", got)

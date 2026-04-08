@@ -38,7 +38,7 @@ func DefaultRuntimeConfig() RuntimeConfig {
 			UserAgent: DefaultDPDUserAgent,
 		},
 		Search: SearchConfig{
-			DefaultProviders: []string{"search"},
+			DefaultProviders: []string{"search", "dpd"},
 			MaxConcurrent:    DefaultSearchMaxConcurrent,
 			Governance: SearchGovernanceConfig{
 				CooldownBase:      DefaultSearchCooldownBase,

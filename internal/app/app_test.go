@@ -208,3 +208,24 @@ func TestExecuteModuleAppliesModuleSpecificDefaultSources(t *testing.T) {
 		t.Fatalf("explicit search sources = %#v, want %#v", got, explicit)
 	}
 }
+
+func TestExecuteModuleAppliesFederatedSearchDefaults(t *testing.T) {
+	loader := &appLoader{cfg: config.RuntimeConfig{
+		DefaultFormat:        "markdown",
+		DefaultLookupSources: []string{"dpd"},
+		Search: config.SearchConfig{
+			DefaultProviders: []string{"search", "dpd"},
+		},
+		CacheEnabled: true,
+	}}
+	cli := &fakeCLI{args: []string{version.BinaryName}}
+	searchModule := &stubModule{command: "search", response: modules.Response{Title: "Abu Dhabi", Source: "búsqueda general RAE", CacheState: "MISS", Format: "json", Body: []byte(`{"ok":true}`)}}
+	application := NewWithDependencies(cli, loader, &appDoctor{}, modules.NewRegistry(searchModule), render.NewEnvelopeRenderer())
+
+	if err := application.ExecuteModule(context.Background(), "search", modules.Request{Query: "Abu Dhabi", Format: "json"}); err != nil {
+		t.Fatalf("ExecuteModule() search error = %v", err)
+	}
+	if got := searchModule.lastRequest.Sources; !reflect.DeepEqual(got, []string{"search", "dpd"}) {
+		t.Fatalf("search sources = %#v, want federated defaults [\"search\", \"dpd\"]", got)
+	}
+}

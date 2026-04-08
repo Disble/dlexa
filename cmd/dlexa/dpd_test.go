@@ -53,3 +53,19 @@ func TestDPDCommandTurnsMissingArgsIntoSyntaxFallback(t *testing.T) {
 		t.Fatalf("syntax = %q, want %q", got, "dlexa dpd <termino>")
 	}
 }
+
+func TestDPDSearchSubcommandRoutesSemanticSearchModuleWithDPDSource(t *testing.T) {
+	runtime := &stubRuntime{}
+	stdout := &bytes.Buffer{}
+	runtime.stdout = stdout
+	stderr := &bytes.Buffer{}
+	if err := executeRootCommand(context.Background(), runtime, stdout, stderr, []string{"dpd", "search", "Abu", "Dhabi", "--format", "json", "--no-cache"}); err != nil {
+		t.Fatalf("executeRootCommand() error = %v", err)
+	}
+	if runtime.executedModule != "search" {
+		t.Fatalf("module = %q, want search", runtime.executedModule)
+	}
+	if !reflect.DeepEqual(runtime.request, modules.Request{Query: "Abu Dhabi", Format: "json", NoCache: true, Args: []string{"Abu", "Dhabi"}, Sources: []string{"dpd"}}) {
+		t.Fatalf("request = %#v", runtime.request)
+	}
+}
