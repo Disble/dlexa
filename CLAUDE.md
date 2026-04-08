@@ -59,7 +59,4 @@ This repo has had architecture drift between docs, OpenSpec artifacts, and the a
 5. **Final verification MUST be performed by the orchestrating agent itself, not by a subagent.**
 6. Subagents may still be used for other phases such as proposal, spec, design, tasks, or apply when appropriate.
 7. **After verify passes, the orchestrating agent MUST create the commit before reporting the change as fully verified.** Commit-time hooks and validations are part of the true verification boundary.
-
-### Practical warning
-
-Some historical OpenSpec changes and docs drifted away from the real filesystem. Do not assume either “no Cobra” or “full future architecture” without checking the code first.
+8. **SDD workflows MUST be fully automatic and proactive:** Execute the entire lifecycle (`explore` -> `propose` -> `spec` -> `design` -> `tasks` -> `apply` -> `verify` -> `archive`) continuously. DO NOT stop to ask the user for reviews, confirmations, or permission to proceed to the next step. Only interrupt the user if there is a hard, unresolvable technical blocker.
