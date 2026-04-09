@@ -31,9 +31,17 @@ The module MUST drop institutional or non-normative noise from the upstream resu
 #### Scenario: Rescuing FAQ content
 
 - GIVEN a result URL points to `/noticia/*`
-- WHEN the title explicitly matches FAQ or linguistic gold criteria (e.g., "Preguntas frecuentes:")
+- WHEN the title explicitly matches the FAQ gate (e.g., starts with "Preguntas frecuentes:")
+- AND the rescued candidate still carries linguistic/normative signals in its title or snippet
 - THEN the module MUST NOT discard it
 - AND MUST include it in the curated results
+
+#### Scenario: Rejecting institutional noticia with broad language wording
+
+- GIVEN a result URL points to `/noticia/*`
+- AND the title mentions language or Spanish broadly but does not pass the FAQ gate
+- WHEN the filtering phase runs
+- THEN the module MUST discard that result as institutional or non-normative noise
 
 ### Requirement: URL Compression to Actionable Next Steps
 
@@ -94,6 +102,7 @@ The `search` module MUST filter institutional or otherwise low-value results whi
 
 - GIVEN a result URL points to `/noticia/*`
 - AND the result title indicates linguistically valuable FAQ-style or normative content
+- AND the candidate still contains linguistic signals after FAQ gating
 - WHEN the filtering phase runs
 - THEN the module MUST retain that result
 - AND the curated output MUST expose it as a valid search candidate instead of discarding it as institutional noise

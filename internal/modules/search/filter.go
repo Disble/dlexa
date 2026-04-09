@@ -98,8 +98,72 @@ func classifyCandidate(candidate model.SearchCandidate) string {
 }
 
 func isRescuedNoticia(candidate model.SearchCandidate) bool {
-	title := strings.ToLower(strings.TrimSpace(candidate.Title))
-	return strings.HasPrefix(title, strings.ToLower("Preguntas frecuentes:")) || strings.Contains(title, "tilde") || strings.Contains(title, "normativa")
+	title := normalizeSearchText(firstNonEmpty(candidate.Title, candidate.DisplayText))
+	if !strings.HasPrefix(title, normalizeSearchText("Preguntas frecuentes:")) {
+		return false
+	}
+	text := noticiaPolicyText(candidate)
+	return containsAnyToken(text, noticiaLinguisticSignals...)
+}
+
+var noticiaLinguisticSignals = []string{
+	"tilde",
+	"tildes",
+	"acento",
+	"acentuacion",
+	"ortografia",
+	"ortografica",
+	"ortograficas",
+	"ortografico",
+	"ortograficos",
+	"gramatica",
+	"gramatical",
+	"gramaticales",
+	"pronombre",
+	"pronombres",
+	"adverbio",
+	"adverbios",
+	"conjuncion",
+	"conjunciones",
+	"preposicion",
+	"preposiciones",
+	"dequeismo",
+	"queismo",
+	"plural",
+	"singular",
+	"genero",
+	"guion",
+	"comillas",
+	"coma",
+	"prefijo",
+	"prefijos",
+	"sufijo",
+	"sufijos",
+	"mayuscula",
+	"minuscula",
+	"normativa",
+	"linguistica",
+	"linguistico",
+}
+
+func noticiaPolicyText(candidate model.SearchCandidate) string {
+	parts := []string{candidate.Title, candidate.Snippet, candidate.DisplayText}
+	var normalized []string
+	for _, part := range parts {
+		if text := normalizeSearchText(part); text != "" {
+			normalized = append(normalized, text)
+		}
+	}
+	return strings.Join(normalized, " ")
+}
+
+func containsAnyToken(text string, tokens ...string) bool {
+	for _, token := range tokens {
+		if strings.Contains(text, normalizeSearchText(token)) {
+			return true
+		}
+	}
+	return false
 }
 
 func candidateRankScore(query string, candidate model.SearchCandidate) int {

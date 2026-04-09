@@ -198,6 +198,54 @@ func TestEnrichCandidateMarksDeferredOnlyForNonDPDDestinations(t *testing.T) {
 	}
 }
 
+func TestIsRescuedNoticiaRequiresFAQGateAndLinguisticSignals(t *testing.T) {
+	tests := []struct {
+		name      string
+		candidate model.SearchCandidate
+		want      bool
+	}{
+		{
+			name:      "faq title with linguistic signal is rescued",
+			candidate: model.SearchCandidate{Title: "Preguntas frecuentes: sobre la tilde", Snippet: "Respuesta normativa breve.", URL: "https://www.rae.es/noticia/preguntas-frecuentes-sobre-la-tilde"},
+			want:      true,
+		},
+		{
+			name:      "faq title without linguistic signal is rejected",
+			candidate: model.SearchCandidate{Title: "Preguntas frecuentes: agenda institucional", Snippet: "Horarios y acceso al acto.", URL: "https://www.rae.es/noticia/agenda"},
+			want:      false,
+		},
+		{
+			name:      "linguistic words without faq gate are rejected",
+			candidate: model.SearchCandidate{Title: "Nueva normativa del español se presenta en la RAE", Snippet: "Presentación institucional del libro.", URL: "https://www.rae.es/noticia/geopolitica"},
+			want:      false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isRescuedNoticia(tt.candidate)
+			if got != tt.want {
+				t.Fatalf("isRescuedNoticia(%#v) = %v, want %v", tt.candidate, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCurateCandidatesRejectsInstitutionalNoticiasEvenWithLinguisticWords(t *testing.T) {
+	candidates := []model.SearchCandidate{
+		{Title: "La obra Geopolítica del español se presenta en la RAE", Snippet: "Libro institucional sobre el español.", URL: "https://www.rae.es/noticia/la-obra-geopolitica-del-espanol-se-presenta-en-la-rae"},
+		{Title: "Preguntas frecuentes: sobre la tilde", Snippet: "FAQ rescatable.", URL: "https://www.rae.es/noticia/preguntas-frecuentes-sobre-la-tilde"},
+	}
+
+	got := curateCandidates("tilde", candidates)
+	if len(got) != 1 {
+		t.Fatalf("Candidates len = %d, want 1 rescued noticia only", len(got))
+	}
+	if got[0].Title != "Preguntas frecuentes: sobre la tilde" {
+		t.Fatalf("candidate titles = %v, want rescued FAQ only", candidateTitles(got))
+	}
+}
+
 func candidateTitles(candidates []model.SearchCandidate) []string {
 	titles := make([]string, 0, len(candidates))
 	for _, candidate := range candidates {
