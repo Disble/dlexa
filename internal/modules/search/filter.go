@@ -61,7 +61,7 @@ func enrichCandidate(query string, candidate model.SearchCandidate) model.Search
 	candidate.Module = moduleName
 	candidate.ID = id
 	candidate.NextCommand = nextCommand
-	candidate.Deferred = moduleName != "dpd" && moduleName != "espanol-al-dia" && moduleName != "unknown"
+	candidate.Deferred = moduleName != "dpd" && moduleName != "espanol-al-dia" && moduleName != "duda-linguistica" && moduleName != "unknown"
 	if strings.TrimSpace(candidate.SourceHint) == "" {
 		candidate.SourceHint = firstNonEmpty(candidate.SourceHint, "RAE")
 	}
@@ -83,6 +83,9 @@ func classifyCandidate(candidate model.SearchCandidate) string {
 		return "faq"
 	}
 	if strings.Contains(url, "/espanol-al-dia/") {
+		return "linguistic-article"
+	}
+	if strings.Contains(url, "/duda-linguistica/") {
 		return "linguistic-article"
 	}
 	if strings.Contains(url, "/dpd/") {

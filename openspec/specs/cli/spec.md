@@ -13,7 +13,7 @@ The CLI MUST expose a thin formal command tree from `cmd/dlexa` and MUST delegat
 #### Scenario: Valid commands execute successfully
 
 - GIVEN the `dlexa` CLI is invoked
-- WHEN the agent provides valid subcommands (`search`, `dpd`, `espanol-al-dia`)
+- WHEN the agent provides valid subcommands (`search`, `dpd`, `espanol-al-dia`, `duda-linguistica`)
 - THEN the system MUST route execution to the corresponding module
 - AND return a structured response payload
 
@@ -83,6 +83,13 @@ The application runtime MUST distinguish between default sources for lookup and 
 - THEN the runtime MUST apply the module-specific source `espanol-al-dia`
 - AND MUST NOT fall back to the generic lookup default source list
 
+#### Scenario: Injecting duda-linguistica defaults
+
+- GIVEN the `duda-linguistica` module is invoked via `dlexa duda-linguistica <slug>` without explicit sources
+- WHEN `App.ExecuteModule` applies configuration defaults
+- THEN the runtime MUST apply the module-specific source `duda-linguistica`
+- AND MUST NOT fall back to the generic lookup default source list
+
 ### Requirement: Preservation of Current CLI Surface
 
 The external CLI surface and fallback semantics MUST remain unchanged. The `search` command remains the explicit gateway entry, and root queries default to DPD.
@@ -141,11 +148,18 @@ The active CLI spec MUST describe only commands that are actually registered in 
 - THEN the active CLI spec MUST describe `espanol-al-dia` as an implemented subcommand
 - AND the suggestion MUST be treated as executable, not deferred guidance
 
+#### Scenario: Search suggests an implemented duda-linguistica command
+
+- GIVEN the semantic gateway suggests a literal command such as `dlexa duda-linguistica <slug>`
+- WHEN that destination command is registered in the current CLI tree
+- THEN the active CLI spec MUST describe `duda-linguistica` as an implemented subcommand
+- AND the suggestion MUST be treated as executable, not deferred guidance
+
 #### Scenario: Existing command tree remains constrained
 
 - GIVEN the CLI command tree after this change
 - WHEN the available subcommands are inspected
-- THEN the public destination command surface MUST include the supported commands in the current CLI contract (`dpd`, `search`, `espanol-al-dia`)
+- THEN the public destination command surface MUST include the supported commands in the current CLI contract (`dpd`, `search`, `espanol-al-dia`, `duda-linguistica`)
 - AND root default-to-DPD behavior MUST remain unchanged
 
 ### Requirement: Format Validation at Runtime Boundary

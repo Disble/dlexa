@@ -156,14 +156,14 @@ In practice:
 
 `dlexa search` can return two different kinds of follow-up hints:
 
-- `- sugerencia:` → the next step is an executable CLI command right now (for example, a `dpd` lookup)
-- `- More info:` → the next step is **deferred guidance**: useful navigation text that looks command-shaped, but is **not** an available CLI subcommand yet
+- `- sugerencia:` → the next step is an executable CLI command right now (for example, a `dpd`, `espanol-al-dia`, or `duda-linguistica` lookup)
+- deferred access block (`🌐 ...` + `Acceso futuro via CLI`) → useful navigation text that looks command-shaped, but is **not** an available CLI subcommand yet
 
 This distinction matters for both humans and agents:
 
 - do **not** assume every `next_command`-shaped string can be executed directly
 - when output is JSON, inspect each candidate's `deferred` field before blindly running follow-up automation
-- today, `dlexa dpd <article-key>` is executable; deferred destinations such as `espanol-al-dia`, `noticia`, or `duda-linguistica` are not registered as CLI commands yet
+- today, `dlexa dpd <article-key>`, `dlexa espanol-al-dia <slug>`, and `dlexa duda-linguistica <slug>` are executable; deferred destinations such as `noticia` are still guidance only
 
 Examples:
 
@@ -189,8 +189,14 @@ Example human output shape:
 
 ### 2. Tilde en solo
 - snippet: Artículo complementario de orientación.
-- More info: `dlexa espanol-al-dia solo`
-- nota: (not yet available as CLI command)
+- sugerencia: `dlexa espanol-al-dia solo`
+
+### 3. Preguntas frecuentes
+- snippet: Recurso complementario.
+- clasificación: faq
+- fuente: RAE
+  🌐 https://www.rae.es/noticia/preguntas-frecuentes
+  _(Acceso futuro via CLI: dlexa noticia preguntas-frecuentes)_
 ```
 
 Example JSON candidate shape:

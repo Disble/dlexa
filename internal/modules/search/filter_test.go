@@ -176,9 +176,9 @@ func TestEnrichCandidateMarksDeferredOnlyForNonDPDDestinations(t *testing.T) {
 			want:      true,
 		},
 		{
-			name:      "duda linguistica is deferred",
+			name:      "duda linguistica is executable",
 			candidate: model.SearchCandidate{URL: "https://www.rae.es/duda-linguistica/solo"},
-			want:      true,
+			want:      false,
 		},
 		{
 			name:      "unknown stays non deferred",

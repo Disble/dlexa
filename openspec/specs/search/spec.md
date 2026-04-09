@@ -116,9 +116,16 @@ The `search` module MUST compress recognized URLs into literal next-step suggest
 - THEN the module MUST expose a literal `dlexa espanol-al-dia <slug>` suggestion
 - AND the module MUST flag the candidate as `Deferred: false`
 
+#### Scenario: Compressing implemented duda-linguistica results into executable suggestions
+
+- GIVEN a search candidate URL belongs to the implemented `duda-linguistica` surface
+- WHEN the next-step mapping phase runs
+- THEN the module MUST expose a literal `dlexa duda-linguistica <slug>` suggestion
+- AND the module MUST flag the candidate as `Deferred: false`
+
 #### Scenario: Compressing known non-DPD surfaces into deferred suggestions
 
-- GIVEN a search candidate URL belongs to a recognized mapped surface not yet implemented in the CLI (e.g., `duda-linguistica`)
+- GIVEN a search candidate URL belongs to a recognized mapped surface not yet implemented in the CLI (e.g., `noticia`)
 - WHEN the next-step mapping phase runs
 - THEN the module MUST expose a literal suggestion
 - AND the module MUST flag the candidate as `Deferred: true`

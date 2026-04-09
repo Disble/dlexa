@@ -1,0 +1,58 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"testing"
+)
+
+func TestDudaLinguisticaCommandRoutesModule(t *testing.T) {
+	runtime := &stubRuntime{}
+	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+	runtime.stdout = stdout
+
+	if err := executeRootCommand(context.Background(), runtime, stdout, stderr, []string{"duda-linguistica", "cuando-se-escriben-con-tilde-los-adverbios-en-mente"}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if runtime.executedModule != "duda-linguistica" {
+		t.Fatalf("module = %q, want duda-linguistica", runtime.executedModule)
+	}
+	if runtime.request.Query != "cuando-se-escriben-con-tilde-los-adverbios-en-mente" {
+		t.Fatalf("query = %q, want slug", runtime.request.Query)
+	}
+}
+
+func TestDudaLinguisticaCommandRendersHelp(t *testing.T) {
+	runtime := &stubRuntime{}
+	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+	runtime.stdout = stdout
+
+	if err := executeRootCommand(context.Background(), runtime, stdout, stderr, []string{"duda-linguistica", "--help"}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if runtime.help.Command != "dlexa duda-linguistica" {
+		t.Fatalf("help.Command = %q, want dlexa duda-linguistica", runtime.help.Command)
+	}
+	if !bytes.Contains(stdout.Bytes(), []byte("# Ayuda: dlexa duda-linguistica")) {
+		t.Fatalf("stdout = %q, missing help header", stdout.String())
+	}
+}
+
+func TestDudaLinguisticaCommandTurnsMissingArgsIntoSyntaxFallback(t *testing.T) {
+	runtime := &stubRuntime{}
+	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+	runtime.stdout = stdout
+
+	if err := executeRootCommand(context.Background(), runtime, stdout, stderr, []string{"duda-linguistica"}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if runtime.syntaxErr == nil {
+		t.Fatal("expected syntax error")
+	}
+	if got := runtime.syntaxSyntax; got != "dlexa duda-linguistica <slug>" {
+		t.Fatalf("syntax = %q, want dlexa duda-linguistica <slug>", got)
+	}
+	if !bytes.Contains(stdout.Bytes(), []byte("Nivel 1 · Syntax")) {
+		t.Fatalf("stdout = %q, want syntax fallback", stdout.String())
+	}
+}

@@ -29,6 +29,7 @@ func TestAppExecuteModuleWrapsMarkdownAndBypassesJSON(t *testing.T) {
 		modules.NewRegistry(
 			&stubModule{command: "dpd", response: modules.Response{Title: "solo", Source: "Diccionario panhispánico de dudas", CacheState: "MISS", Format: "markdown", Body: []byte("## Resultado\ncontenido")}},
 			&stubModule{command: "espanol-al-dia", response: modules.Response{Title: "solo", Source: "Español al día", CacheState: "MISS", Format: "markdown", Body: []byte("## Artículo\ncontenido")}},
+			&stubModule{command: "duda-linguistica", response: modules.Response{Title: "tilde", Source: "Duda lingüística", CacheState: "MISS", Format: "markdown", Body: []byte("## Duda\ncontenido")}},
 			&stubModule{command: "search", response: modules.Response{Title: "solo", Source: "búsqueda general RAE", CacheState: "HIT", Format: "json", Body: []byte(`{"ok":true}`)}},
 		),
 		render.NewEnvelopeRenderer(),
@@ -250,6 +251,27 @@ func TestExecuteModuleUsesLookupDefaultsForEspanolAlDia(t *testing.T) {
 	}
 	if got := eadModule.lastRequest.Sources; !reflect.DeepEqual(got, []string{"espanol-al-dia"}) {
 		t.Fatalf("sources = %#v, want module-specific default [\"espanol-al-dia\"]", got)
+	}
+}
+
+func TestExecuteModuleUsesLookupDefaultsForDudaLinguistica(t *testing.T) {
+	loader := &appLoader{cfg: config.RuntimeConfig{
+		DefaultFormat:        "markdown",
+		DefaultLookupSources: []string{"dpd"},
+		Search: config.SearchConfig{
+			DefaultProviders: []string{"search", "dpd"},
+		},
+		CacheEnabled: true,
+	}}
+	cli := &fakeCLI{args: []string{version.BinaryName}}
+	dlModule := &stubModule{command: "duda-linguistica", response: modules.Response{Title: "tilde", Source: "Duda lingüística", CacheState: "MISS", Format: "markdown", Body: []byte("contenido")}}
+	application := NewWithDependencies(cli, loader, &appDoctor{}, modules.NewRegistry(dlModule), render.NewEnvelopeRenderer())
+
+	if err := application.ExecuteModule(context.Background(), "duda-linguistica", modules.Request{Query: "tilde"}); err != nil {
+		t.Fatalf("ExecuteModule() error = %v", err)
+	}
+	if got := dlModule.lastRequest.Sources; !reflect.DeepEqual(got, []string{"duda-linguistica"}) {
+		t.Fatalf("sources = %#v, want module-specific default [\"duda-linguistica\"]", got)
 	}
 }
 

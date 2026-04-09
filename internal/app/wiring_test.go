@@ -7,6 +7,7 @@ import (
 	"github.com/Disble/dlexa/internal/fetch"
 	"github.com/Disble/dlexa/internal/model"
 	moddpd "github.com/Disble/dlexa/internal/modules/dpd"
+	moddl "github.com/Disble/dlexa/internal/modules/dudalinguistica"
 	modead "github.com/Disble/dlexa/internal/modules/espanolaldia"
 	modsearch "github.com/Disble/dlexa/internal/modules/search"
 	"github.com/Disble/dlexa/internal/normalize"
@@ -158,5 +159,53 @@ func TestNewWiresEspanolAlDiaModuleToEngineArticleParser(t *testing.T) {
 	}
 	if got := fetch.NewEspanolAlDiaFetcher(config.DefaultDPDBaseURL, config.DefaultDPDTimeout, config.DefaultDPDUserAgent); got == nil {
 		t.Fatal("expected concrete espanol-al-dia fetcher constructor to return instance")
+	}
+}
+
+func TestNewWiresDudaLinguisticaModuleToEngineArticleParser(t *testing.T) {
+	application := New(&fakeCLI{})
+	module, ok := application.registry.Module("duda-linguistica")
+	if !ok {
+		t.Fatal("duda-linguistica module not registered")
+	}
+	dlModule, ok := module.(*moddl.Module)
+	if !ok {
+		t.Fatalf("module type = %T, want *dudalinguistica.Module", module)
+	}
+	lookupForTesting := dlModule.LookupForTesting()
+	lookup, ok := lookupForTesting.(*query.LookupService)
+	if !ok {
+		t.Fatalf("lookup type = %T, want *query.LookupService", lookupForTesting)
+	}
+	registryForTesting := lookup.RegistryForTesting()
+	registry, ok := registryForTesting.(*source.StaticRegistry)
+	if !ok {
+		t.Fatalf("registry type = %T, want *source.StaticRegistry", registryForTesting)
+	}
+	resolved, err := registry.SourcesFor(model.LookupRequest{Query: "tilde", Sources: []string{"duda-linguistica"}})
+	if err != nil {
+		t.Fatalf("SourcesFor() error = %v", err)
+	}
+	if len(resolved) != 1 {
+		t.Fatalf("resolved sources len = %d, want 1", len(resolved))
+	}
+	pipeline, ok := resolved[0].(*source.PipelineSource)
+	if !ok {
+		t.Fatalf("source type = %T, want *source.PipelineSource", resolved[0])
+	}
+	if _, ok := pipeline.ArticleEngineParserForTesting().(*parseengine.DudaLinguisticaArticleParser); !ok {
+		t.Fatalf("article engine parser type = %T, want *engine.DudaLinguisticaArticleParser", pipeline.ArticleEngineParserForTesting())
+	}
+	if got := pipeline.Descriptor().Name; got != "duda-linguistica" {
+		t.Fatalf("descriptor name = %q, want duda-linguistica", got)
+	}
+	if got := pipeline.Descriptor().DisplayName; got != "Duda lingüística" {
+		t.Fatalf("descriptor display name = %q, want Duda lingüística", got)
+	}
+	if got := resolved[0].Descriptor().Priority; got != 3 {
+		t.Fatalf("priority = %d, want 3", got)
+	}
+	if got := fetch.NewDudaLinguisticaFetcher(config.DefaultDPDBaseURL, config.DefaultDPDTimeout, config.DefaultDPDUserAgent); got == nil {
+		t.Fatal("expected concrete duda-linguistica fetcher constructor to return instance")
 	}
 }
