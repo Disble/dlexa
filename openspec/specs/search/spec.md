@@ -220,6 +220,7 @@ The `search` module MUST return a successful aggregated response when at least o
 - WHEN every selected provider fails
 - THEN the module MUST return an explicit top-level search failure
 - AND the failure MUST indicate complete provider failure rather than an empty success result
+- AND the top-level failure detail MUST preserve all provider-attributed failures in deterministic provider-priority order
 
 ### Requirement: Provider-Aware Caching
 
@@ -263,6 +264,23 @@ The default `search` execution path MUST federate heterogeneous search providers
 - GIVEN `dlexa search <query>` is invoked without explicit source overrides
 - WHEN runtime defaults are applied
 - THEN the search request MUST include both the general `search` provider and the specialized `dpd` entry-discovery provider
+
+### Requirement: Provider-Aware Search Source Metadata
+
+The `search` module MUST set top-level source metadata truthfully from the effective provider selection instead of hard-coding the general-search label.
+
+#### Scenario: DPD-only search attribution
+
+- GIVEN a search request executes with `Sources` exactly equal to `dpd`
+- WHEN the module returns a response or structured fallback
+- THEN the top-level source metadata MUST identify `Diccionario panhispánico de dudas`
+- AND it MUST NOT identify `búsqueda general RAE`
+
+#### Scenario: Federated or default search attribution
+
+- GIVEN a search request executes with multiple providers selected, or with no explicit provider list
+- WHEN the module returns a response or structured fallback
+- THEN the top-level source metadata MUST identify the general search surface
 
 ### Requirement: DPD Equivalence Collapsing
 
