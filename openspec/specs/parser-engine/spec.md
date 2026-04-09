@@ -56,6 +56,41 @@ The foundation slice MUST NOT modify any existing parsing logic, fallback behavi
 - THEN the resulting models MUST be exactly identical to the legacy parser output
 - AND all existing tests MUST pass without changes to expected values
 
+### Requirement: Engine-Native Article Parsing
+
+The system MUST provide DPD article parsing as an explicit parser-engine `ArticleParser` implementation.
+
+#### Scenario: Instantiating DPD article parser
+- GIVEN the parser-engine module is initialized
+- WHEN requesting an article parser instance for the DPD article-family surface
+- THEN the system MUST return an object implementing the `ArticleParser` interface
+- AND the object MUST be ready to parse DPD article responses
+
+### Requirement: Article Runtime Wiring Adoption
+
+Runtime DPD lookup wiring MUST adopt engine-native article parsers for DPD article-family lookups.
+
+#### Scenario: Executing a DPD lookup
+- GIVEN the application is configured with the DPD article-family source
+- WHEN a user performs a DPD lookup
+- THEN the runtime MUST delegate parsing of the fetched payload to an engine-native `ArticleParser` implementation
+- AND it MUST NOT call the legacy standalone DPD parser directly from the runtime wiring
+
+### Requirement: DPD Article Behavior Preservation
+
+DPD article parsing behavior and output semantics MUST remain unchanged from the legacy implementation during article-family migration.
+
+#### Scenario: Parsing a standard DPD article
+- GIVEN a DPD HTML document with standard article formatting
+- WHEN the engine-native DPD article parser processes the document
+- THEN the resulting parsed model MUST be identical to the output of the legacy parser
+- AND all inline semantics, section hierarchy, and citation extractions MUST be preserved exactly
+
+#### Scenario: Parsing a DPD miss or fallback
+- GIVEN a DPD HTML document representing a miss or requiring fallback
+- WHEN the engine-native DPD article parser processes the document
+- THEN the miss classification and fallback behavior MUST be identical to the legacy implementation
+
 ### Requirement: Search Parser Explicit Implementation
 
 Search-family parsers MUST be available as explicit parser-engine `SearchParser` implementations.
