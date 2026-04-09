@@ -39,6 +39,40 @@ func TestLegacySearchAdapterPreservesInputAndOutput(t *testing.T) {
 	}
 }
 
+func TestLiveSearchParserDelegatesToLegacyImplementation(t *testing.T) {
+	parser := NewLiveSearchParser()
+	descriptor := model.SourceDescriptor{Name: "search", DisplayName: "RAE Search"}
+	document := fetch.Document{URL: "https://example.invalid/search?q=solo", Body: []byte(`<li><div class="row"><a href="/dpd/solo">solo</a><div class="pb-5"><p>Entrada DPD.</p></div></div></li>`)}
+
+	records, warnings, err := parser.ParseSearch(ParseInput{Ctx: context.Background(), Descriptor: descriptor, Document: document})
+	if err != nil {
+		t.Fatalf("ParseSearch() error = %v", err)
+	}
+	if len(warnings) != 0 {
+		t.Fatalf("ParseSearch() warnings = %#v, want none", warnings)
+	}
+	if len(records) != 1 || records[0].Title != "solo" || records[0].URL != "https://example.invalid/dpd/solo" {
+		t.Fatalf("ParseSearch() records = %#v, want delegated live-search parsing result", records)
+	}
+}
+
+func TestDPDSearchParserDelegatesToLegacyImplementation(t *testing.T) {
+	parser := NewDPDSearchParser()
+	descriptor := model.SourceDescriptor{Name: "dpd", DisplayName: "DPD"}
+	document := fetch.Document{Body: []byte(`["solo|solo"]`)}
+
+	records, warnings, err := parser.ParseSearch(ParseInput{Ctx: context.Background(), Descriptor: descriptor, Document: document})
+	if err != nil {
+		t.Fatalf("ParseSearch() error = %v", err)
+	}
+	if len(warnings) != 0 {
+		t.Fatalf("ParseSearch() warnings = %#v, want none", warnings)
+	}
+	if len(records) != 1 || records[0].RawLabelHTML != "solo" || records[0].ArticleKey != "solo" {
+		t.Fatalf("ParseSearch() records = %#v, want delegated DPD-search parsing result", records)
+	}
+}
+
 type legacySearchParserStub struct {
 	ctx        context.Context
 	descriptor model.SourceDescriptor

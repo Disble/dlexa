@@ -15,6 +15,7 @@ import (
 	modsearch "github.com/Disble/dlexa/internal/modules/search"
 	"github.com/Disble/dlexa/internal/normalize"
 	"github.com/Disble/dlexa/internal/parse"
+	parseengine "github.com/Disble/dlexa/internal/parse/engine"
 	"github.com/Disble/dlexa/internal/platform"
 	"github.com/Disble/dlexa/internal/query"
 	"github.com/Disble/dlexa/internal/render"
@@ -80,16 +81,16 @@ func New(cli platform.CLI) *App {
 		CooldownMax:       runtimeConfig.Search.Governance.CooldownMax,
 		RespectRetryAfter: runtimeConfig.Search.Governance.RespectRetryAfter,
 	})
-	searchProvider := searchsvc.NewPipelineProvider(
+	searchProvider := searchsvc.NewEnginePipelineProvider(
 		model.SourceDescriptor{Name: "search", DisplayName: "Búsqueda general RAE", Kind: "remote-html", Priority: 1, Cacheable: true},
 		searchFetcher,
-		parse.NewLiveSearchParser(),
+		parseengine.NewLiveSearchParser(),
 		normalize.NewLiveSearchNormalizer(),
 	)
-	dpdSearchProvider := searchsvc.NewPipelineProvider(
+	dpdSearchProvider := searchsvc.NewEnginePipelineProvider(
 		model.SourceDescriptor{Name: "dpd", DisplayName: "Diccionario panhispánico de dudas", Kind: "remote-json", Priority: 2, Cacheable: true},
 		fetch.NewDPDSearchFetcher(runtimeConfig.DPD.BaseURL, runtimeConfig.DPD.Timeout, runtimeConfig.DPD.UserAgent),
-		parse.NewDPDSearchParser(),
+		parseengine.NewDPDSearchParser(),
 		normalize.NewDPDSearchNormalizer(),
 	)
 	defaultSearchProvider := defaultSearchProvider(runtimeConfig.Search.DefaultProviders)

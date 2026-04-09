@@ -7,7 +7,6 @@ import (
 	"github.com/Disble/dlexa/internal/fetch"
 	modsearch "github.com/Disble/dlexa/internal/modules/search"
 	"github.com/Disble/dlexa/internal/normalize"
-	"github.com/Disble/dlexa/internal/parse"
 	parseengine "github.com/Disble/dlexa/internal/parse/engine"
 	searchsvc "github.com/Disble/dlexa/internal/search"
 )
@@ -46,12 +45,8 @@ func TestNewWiresSearchModuleToLiveSearchAdapters(t *testing.T) {
 	if got := secondary.Descriptor().Name; got != "dpd" {
 		t.Fatalf("second provider name = %q, want dpd", got)
 	}
-	secondaryEngineParser, ok := secondary.EngineSearchParserForTesting().(*parseengine.LegacySearchAdapter)
-	if !ok {
-		t.Fatalf("second engine parser type = %T, want *engine.LegacySearchAdapter", secondary.EngineSearchParserForTesting())
-	}
-	if got := secondaryEngineParser.UnderlyingForTesting(); got == nil || got.(*parse.DPDSearchParser) == nil {
-		t.Fatalf("second underlying parser type = %T, want *parse.DPDSearchParser", got)
+	if _, ok := secondary.EngineSearchParserForTesting().(*parseengine.DPDSearchParser); !ok {
+		t.Fatalf("second engine parser type = %T, want *engine.DPDSearchParser", secondary.EngineSearchParserForTesting())
 	}
 	if got := secondary.NormalizerForTesting(); got == nil || got.(*normalize.DPDSearchNormalizer) == nil {
 		t.Fatalf("second normalizer type = %T, want *normalize.DPDSearchNormalizer", got)
@@ -59,12 +54,8 @@ func TestNewWiresSearchModuleToLiveSearchAdapters(t *testing.T) {
 	if got := provider.FetcherForTesting(); got == nil || got.(*fetch.LiveSearchFetcher) == nil {
 		t.Fatalf("fetcher type = %T, want *fetch.LiveSearchFetcher", got)
 	}
-	engineParser, ok := provider.EngineSearchParserForTesting().(*parseengine.LegacySearchAdapter)
-	if !ok {
-		t.Fatalf("engine parser type = %T, want *engine.LegacySearchAdapter", provider.EngineSearchParserForTesting())
-	}
-	if got := engineParser.UnderlyingForTesting(); got == nil || got.(*parse.LiveSearchParser) == nil {
-		t.Fatalf("underlying parser type = %T, want *parse.LiveSearchParser", got)
+	if _, ok := provider.EngineSearchParserForTesting().(*parseengine.LiveSearchParser); !ok {
+		t.Fatalf("engine parser type = %T, want *engine.LiveSearchParser", provider.EngineSearchParserForTesting())
 	}
 	if got := provider.NormalizerForTesting(); got == nil || got.(*normalize.LiveSearchNormalizer) == nil {
 		t.Fatalf("normalizer type = %T, want *normalize.LiveSearchNormalizer", got)
