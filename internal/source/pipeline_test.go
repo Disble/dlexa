@@ -10,6 +10,7 @@ import (
 	"github.com/Disble/dlexa/internal/model"
 	"github.com/Disble/dlexa/internal/normalize"
 	"github.com/Disble/dlexa/internal/parse"
+	parseengine "github.com/Disble/dlexa/internal/parse/engine"
 )
 
 const (
@@ -105,6 +106,38 @@ func TestPipelineSourcePropagatesStructuredMissWithoutProblemFallback(t *testing
 	}
 	if len(result.Problems) != 0 {
 		t.Fatalf("Lookup() problems = %#v, want none", result.Problems)
+	}
+}
+
+func TestNewEnginePipelineSourcePreservesLegacyParserBehavior(t *testing.T) {
+	descriptor := model.SourceDescriptor{Name: "dpd", DisplayName: "DPD"}
+	callOrder := make([]string, 0, 3)
+	parsedResult := parse.Result{Articles: []parse.ParsedArticle{{Lemma: "Parsed"}}}
+	legacyParser := &recordingParser{
+		calls:          &callOrder,
+		result:         parsedResult,
+		warnings:       []model.Warning{{Code: parseWarningCode, Source: descriptor.Name}},
+		expectedBody:   []byte("raw body"),
+		expectedURL:    "https://example.invalid/demo/palabra",
+		expectedSource: descriptor,
+	}
+
+	pipeline := NewEnginePipelineSource(
+		descriptor,
+		&recordingFetcher{calls: &callOrder, document: fetch.Document{URL: "https://example.invalid/demo/palabra", Body: []byte("raw body")}},
+		parseengine.AdaptLegacyArticleParser(legacyParser),
+		&recordingNormalizer{calls: &callOrder, result: normalize.Result{Entries: []model.Entry{{ID: "normalized", Source: descriptor.Name}}}, expectedResult: parsedResult, expectedSource: descriptor},
+	)
+
+	result, err := pipeline.Lookup(context.Background(), model.LookupRequest{Query: "palabra"})
+	if err != nil {
+		t.Fatalf("Lookup() error = %v", err)
+	}
+	if !reflect.DeepEqual(callOrder, []string{"fetch", "parse", "normalize"}) {
+		t.Fatalf("call order = %#v, want %#v", callOrder, []string{"fetch", "parse", "normalize"})
+	}
+	if len(result.Entries) != 1 || result.Entries[0].ID != "normalized" {
+		t.Fatalf("Lookup() entries = %#v, want normalized result through engine adapter", result.Entries)
 	}
 }
 

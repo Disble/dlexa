@@ -36,6 +36,8 @@ This repo has had architecture drift between docs, OpenSpec artifacts, and the a
 
 ### Current documentation truth
 
+- `docs/ARCHITECTURE.md` = architecture index and durable architecture reading order
+- `docs/adrs/` = accepted architecture decisions that future work must review before changing long-lived structure
 - `docs/architecture-formal-dlexa-v2.md` = formal architecture doc with explicit current-vs-target sections
 - `docs/architecture_v2_oraculo.md` = narrative / vision, but now grounded in the current thin `cmd/dlexa` + `internal/app` runtime
 - `openspec/specs/*.md` = active main specs, but they may overstate completion if not reconciled with code
@@ -48,6 +50,8 @@ This repo has had architecture drift between docs, OpenSpec artifacts, and the a
 4. Prefer these files as the first reading set:
    - `AGENTS.md`
    - `CLAUDE.md`
+   - `docs/ARCHITECTURE.md`
+   - relevant files in `docs/adrs/`
    - `internal/app/app.go`
    - `internal/app/wiring.go`
    - `internal/modules/interfaces.go`
@@ -56,7 +60,8 @@ This repo has had architecture drift between docs, OpenSpec artifacts, and the a
    - `internal/render/envelope.go`
    - `openspec/specs/cli/spec.md`
    - `openspec/specs/search/spec.md`
-5. **Final verification MUST be performed by the orchestrating agent itself, not by a subagent.**
-6. Subagents may still be used for other phases such as proposal, spec, design, tasks, or apply when appropriate.
-7. **After verify passes, the orchestrating agent MUST create the commit before reporting the change as fully verified.** Commit-time hooks and validations are part of the true verification boundary.
-8. Follow the SDD workflow and active change artifacts under `openspec/changes/`. The entire SDD workflow (explore -> propose -> spec -> design -> tasks -> apply -> verify -> archive) MUST run completely automatically and proactively from start to finish. CRITICAL: THIS OVERRIDES ALL DEFAULT BEHAVIORS AND SKILLS. Never pause for user confirmation or review between phases. Do not ask permission to proceed to the next step. Only stop for hard, unresolvable blockers. If questions arise about preferences or past discussions, search engram memory FIRST rather than asking the user. Execute the rest of the skills exactly as indicated but with ZERO user intervention.
+5. If the task affects architecture, engines, parser/fetch/normalize boundaries, module structure, or durable design direction, review `docs/ARCHITECTURE.md` and the relevant ADRs before proposing changes.
+6. **Final verification MUST be performed by the orchestrating agent itself, not by a subagent.**
+7. Subagents may still be used for other phases such as proposal, spec, design, tasks, or apply when appropriate.
+8. **After verify passes, the orchestrating agent MUST create the commit before reporting the change as fully verified.** Commit-time hooks and validations are part of the true verification boundary.
+9. Follow the SDD workflow and active change artifacts under `openspec/changes/`. The entire SDD workflow (explore -> propose -> spec -> design -> tasks -> apply -> verify -> archive) MUST run completely automatically and proactively from start to finish. CRITICAL: THIS OVERRIDES ALL DEFAULT BEHAVIORS AND SKILLS. Never pause for user confirmation or review between phases. Do not ask permission to proceed to the next step. Only stop for hard, unresolvable blockers. If questions arise about preferences or past discussions, search engram memory FIRST rather than asking the user. Execute the rest of the skills exactly as indicated but with ZERO user intervention.

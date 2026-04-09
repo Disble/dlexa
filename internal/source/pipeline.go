@@ -7,6 +7,7 @@ import (
 	"github.com/Disble/dlexa/internal/model"
 	"github.com/Disble/dlexa/internal/normalize"
 	"github.com/Disble/dlexa/internal/parse"
+	parseengine "github.com/Disble/dlexa/internal/parse/engine"
 )
 
 // PipelineSource implements Source by chaining a fetcher, parser, and normalizer.
@@ -30,6 +31,16 @@ func NewPipelineSource(
 		parser:     parser,
 		normalizer: normalizer,
 	}
+}
+
+// NewEnginePipelineSource creates a PipelineSource from the new article parser-engine port.
+func NewEnginePipelineSource(
+	descriptor model.SourceDescriptor,
+	fetcher fetch.Fetcher,
+	parser parseengine.ArticleParser,
+	normalizer normalize.Normalizer,
+) *PipelineSource {
+	return NewPipelineSource(descriptor, fetcher, engineArticleParserBridge{parser: parser}, normalizer)
 }
 
 // Descriptor returns the source metadata for this pipeline.
@@ -73,4 +84,10 @@ func (s *PipelineSource) Lookup(ctx context.Context, request model.LookupRequest
 	result.FetchedAt = document.RetrievedAt
 
 	return result, nil
+}
+
+type engineArticleParserBridge struct{ parser parseengine.ArticleParser }
+
+func (b engineArticleParserBridge) Parse(ctx context.Context, descriptor model.SourceDescriptor, document fetch.Document) (parse.Result, []model.Warning, error) {
+	return b.parser.ParseArticle(parseengine.ParseInput{Ctx: ctx, Descriptor: descriptor, Document: document})
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/Disble/dlexa/internal/fetch"
 	"github.com/Disble/dlexa/internal/model"
 	"github.com/Disble/dlexa/internal/parse"
+	parseengine "github.com/Disble/dlexa/internal/parse/engine"
 )
 
 // Provider executes one concrete search pipeline for a source.
@@ -28,6 +29,7 @@ type PipelineProvider struct {
 	descriptor model.SourceDescriptor
 	fetcher    fetch.Fetcher
 	parser     Parser
+	engine     parseengine.SearchParser
 	normalizer Normalizer
 	now        func() time.Time
 }
@@ -38,6 +40,19 @@ func NewPipelineProvider(descriptor model.SourceDescriptor, fetcher fetch.Fetche
 		descriptor: descriptor,
 		fetcher:    fetcher,
 		parser:     parser,
+		engine:     parseengine.AdaptLegacySearchParser(parser),
+		normalizer: normalizer,
+		now:        func() time.Time { return time.Now().UTC() },
+	}
+}
+
+// NewEnginePipelineProvider creates a provider backed by the engine search parser port.
+func NewEnginePipelineProvider(descriptor model.SourceDescriptor, fetcher fetch.Fetcher, parser parseengine.SearchParser, normalizer Normalizer) *PipelineProvider {
+	return &PipelineProvider{
+		descriptor: descriptor,
+		fetcher:    fetcher,
+		parser:     engineSearchParserBridge{parser: parser},
+		engine:     parser,
 		normalizer: normalizer,
 		now:        func() time.Time { return time.Now().UTC() },
 	}
@@ -51,6 +66,9 @@ func (p *PipelineProvider) FetcherForTesting() fetch.Fetcher { return p.fetcher 
 
 // ParserForTesting exposes the wired parser for wiring tests.
 func (p *PipelineProvider) ParserForTesting() Parser { return p.parser }
+
+// EngineSearchParserForTesting exposes the wired engine parser for wiring tests.
+func (p *PipelineProvider) EngineSearchParserForTesting() parseengine.SearchParser { return p.engine }
 
 // NormalizerForTesting exposes the wired normalizer for wiring tests.
 func (p *PipelineProvider) NormalizerForTesting() Normalizer { return p.normalizer }
@@ -161,3 +179,9 @@ func requestedProviders(raw []string) map[string]struct{} {
 
 // Ensure ParsedSearchRecord stays referenced from this package for provider adapters.
 var _ []parse.ParsedSearchRecord
+
+type engineSearchParserBridge struct{ parser parseengine.SearchParser }
+
+func (b engineSearchParserBridge) Parse(ctx context.Context, descriptor model.SourceDescriptor, document fetch.Document) ([]parse.ParsedSearchRecord, []model.Warning, error) {
+	return b.parser.ParseSearch(parseengine.ParseInput{Ctx: ctx, Descriptor: descriptor, Document: document})
+}

@@ -57,7 +57,11 @@
   - `openspec/specs/search/spec.md`
   - `openspec/specs/dpd/spec.md`
   - `openspec/specs/render/spec.md`
+- The repo's **current architecture decision records and index** live in:
+  - `docs/ARCHITECTURE.md`
+  - `docs/adrs/`
 - `docs/architecture-formal-dlexa-v2.md` and `docs/architecture_v2_oraculo.md` contain both **current-state** and **target-state** discussion; when in doubt, verify against the filesystem and runtime wiring first.
+- When a task involves architecture, engine boundaries, module design, parser/fetch/normalize evolution, or long-lived structural decisions, read `docs/ARCHITECTURE.md` and the relevant ADRs in `docs/adrs/` before proposing changes.
 - If docs/specs/archived changes conflict with code, treat the **codebase** as the runtime truth, document the drift, and only then plan the fix.
 
 ## Repo Workflow
