@@ -39,6 +39,9 @@ func TestModuleFiltersNoiseRescuesFAQAndMapsCommands(t *testing.T) {
 		t.Fatalf("faq candidate classification = %q, want faq", decoded.Candidates[1].Classification)
 	}
 	assertCandidate(t, decoded.Candidates[2], "espanol-al-dia", "la-conjuncion-o-siempre-sin-tilde", "dlexa espanol-al-dia la-conjuncion-o-siempre-sin-tilde")
+	if decoded.Candidates[2].Deferred {
+		t.Fatalf("espanol-al-dia candidate should be executable, got deferred=%v", decoded.Candidates[2].Deferred)
+	}
 	if decoded.Candidates[3].NextCommand == "" || !strings.Contains(decoded.Candidates[3].NextCommand, "dlexa search") {
 		t.Fatalf("unknown candidate next command = %q, want safe fallback", decoded.Candidates[3].NextCommand)
 	}

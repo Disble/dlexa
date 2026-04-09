@@ -11,11 +11,11 @@ import (
 var (
 	searchMarkdownOrderedCandidates = []model.SearchCandidate{
 		{Title: "Abu Dhabi", Snippet: "Entrada sugerida para la grafía recomendada.", NextCommand: "dlexa dpd Abu Dabi", Module: "dpd", ID: "Abu Dabi", DisplayText: "Abu Dhabi", ArticleKey: "Abu Dabi", SourceHint: "Diccionario panhispánico de dudas"},
-		{Title: "Tilde en solo", Snippet: "Artículo de orientación adicional.", NextCommand: "dlexa espanol-al-dia solo", Module: "espanol-al-dia", ID: "solo", Deferred: true, DisplayText: "Tilde en solo", SourceHint: "Academia"},
+		{Title: "Tilde en solo", Snippet: "Artículo de orientación adicional.", NextCommand: "dlexa espanol-al-dia solo", Module: "espanol-al-dia", ID: "solo", Deferred: false, DisplayText: "Tilde en solo", SourceHint: "Academia"},
 		{Title: "Ruta rara", Snippet: "Resultado visible pero no mapeado.", NextCommand: "dlexa search abu dhabi", Module: "unknown", ID: "ruta-rara", DisplayText: "Ruta rara", URL: "https://www.rae.es/archivo/ruta-rara", SourceHint: "Archivo externo"},
 	}
-	searchMarkdownDeferredWithURLCandidate    = model.SearchCandidate{Title: "Uso del guion", Deferred: true, URL: "https://www.rae.es/espanol-al-dia/uso-del-guion", NextCommand: "dlexa espanol-al-dia uso-del-guion", Classification: "linguistic-article"}
-	searchMarkdownDeferredWithoutURLCandidate = model.SearchCandidate{Title: "Sin URL", Deferred: true, URL: "", NextCommand: "dlexa espanol-al-dia sin-url"}
+	searchMarkdownDeferredWithURLCandidate    = model.SearchCandidate{Title: "Preguntas frecuentes", Deferred: true, URL: "https://www.rae.es/noticia/preguntas-frecuentes", NextCommand: "dlexa noticia preguntas-frecuentes", Classification: "faq"}
+	searchMarkdownDeferredWithoutURLCandidate = model.SearchCandidate{Title: "Sin URL", Deferred: true, URL: "", NextCommand: "dlexa noticia sin-url"}
 	searchMarkdownNonDeferredCandidate        = model.SearchCandidate{Title: "solo", Deferred: false, NextCommand: "dlexa dpd solo", Module: "dpd"}
 )
 
@@ -28,13 +28,10 @@ func TestSearchMarkdownRendererRendersOrderedCandidatesAndEmptyState(t *testing.
 		t.Fatalf("Render() error = %v", err)
 	}
 	text := string(payload)
-	for _, want := range []string{"## Resultado semántico para \"abu dhabi\"", "### 1. Abu Dhabi", "- fuente: Diccionario panhispánico de dudas", "- sugerencia: `dlexa dpd Abu Dabi`", "### 2. Tilde en solo", "- fuente: Academia", "_(Acceso futuro via CLI: dlexa espanol-al-dia solo)_", "### 3. Ruta rara", "- fuente: Archivo externo", "- url: https://www.rae.es/archivo/ruta-rara", "- fallback_command: `dlexa search abu dhabi`", "## Problemas detectados", "- [academia] timeout"} {
+	for _, want := range []string{"## Resultado semántico para \"abu dhabi\"", "### 1. Abu Dhabi", "- fuente: Diccionario panhispánico de dudas", "- sugerencia: `dlexa dpd Abu Dabi`", "### 2. Tilde en solo", "- fuente: Academia", "- sugerencia: `dlexa espanol-al-dia solo`", "### 3. Ruta rara", "- fuente: Archivo externo", "- url: https://www.rae.es/archivo/ruta-rara", "- fallback_command: `dlexa search abu dhabi`", "## Problemas detectados", "- [academia] timeout"} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("payload missing %q\n%s", want, text)
 		}
-	}
-	if strings.Contains(text, "- sugerencia: `dlexa espanol-al-dia solo`") {
-		t.Fatalf("deferred candidate rendered as executable suggestion\n%s", text)
 	}
 	if strings.Contains(text, "More info:") || strings.Contains(text, "not yet available as CLI command") {
 		t.Fatalf("legacy deferred guidance remained\n%s", text)
@@ -67,7 +64,7 @@ func TestSearchMarkdownDeferredAccessAndWarnings(t *testing.T) {
 				Outcome:    model.SearchOutcomeResults,
 				Candidates: []model.SearchCandidate{searchMarkdownDeferredWithURLCandidate},
 			},
-			contains: []string{"🌐 https://www.rae.es/espanol-al-dia/uso-del-guion"},
+			contains: []string{"🌐 https://www.rae.es/noticia/preguntas-frecuentes"},
 		},
 		{
 			name: "deferred without url",

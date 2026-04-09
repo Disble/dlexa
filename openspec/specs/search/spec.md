@@ -100,7 +100,7 @@ The `search` module MUST filter institutional or otherwise low-value results whi
 
 ### Requirement: URL Compression to Safe Command Suggestions
 
-The `search` module MUST compress recognized URLs into literal next-step suggestions. It MUST explicitly tag suggestions as deferred when the destination command is not yet implemented in the CLI.
+The `search` module MUST compress recognized URLs into literal next-step suggestions. It MUST explicitly tag suggestions as deferred only when the destination command is not yet implemented in the CLI.
 
 #### Scenario: Compressing a known DPD result into an executable command
 
@@ -109,9 +109,16 @@ The `search` module MUST compress recognized URLs into literal next-step suggest
 - THEN the module MUST flag the candidate as `Deferred: false`
 - AND expose a literal executable command suggestion
 
+#### Scenario: Compressing implemented espanol-al-dia results into executable suggestions
+
+- GIVEN a search candidate URL belongs to the implemented `espanol-al-dia` surface
+- WHEN the next-step mapping phase runs
+- THEN the module MUST expose a literal `dlexa espanol-al-dia <slug>` suggestion
+- AND the module MUST flag the candidate as `Deferred: false`
+
 #### Scenario: Compressing known non-DPD surfaces into deferred suggestions
 
-- GIVEN a search candidate URL belongs to a recognized mapped surface not yet implemented in the CLI (e.g., `espanol-al-dia`)
+- GIVEN a search candidate URL belongs to a recognized mapped surface not yet implemented in the CLI (e.g., `duda-linguistica`)
 - WHEN the next-step mapping phase runs
 - THEN the module MUST expose a literal suggestion
 - AND the module MUST flag the candidate as `Deferred: true`
@@ -145,13 +152,13 @@ The `search` module MUST distinguish between successful searches with no useful 
 
 ### Requirement: Search Help Text Accuracy
 
-The `search` command's help text MUST NOT imply that all returned suggestions are executable commands.
+The `search` command's help text MUST explain that some returned suggestions are executable and some remain deferred guidance.
 
 #### Scenario: Viewing search command help
 
 - GIVEN a user or agent invokes `dlexa search --help`
 - WHEN the help text is displayed
-- THEN it MUST clarify that some suggestions are deferred guidance
+- THEN it MUST clarify that some suggestions are executable while others remain deferred guidance
 - AND MUST NOT instruct users to blindly copy and run all next-command outputs
 
 ### Requirement: Search Cache Degradation Semantics

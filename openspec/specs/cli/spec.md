@@ -13,7 +13,7 @@ The CLI MUST expose a thin formal command tree from `cmd/dlexa` and MUST delegat
 #### Scenario: Valid commands execute successfully
 
 - GIVEN the `dlexa` CLI is invoked
-- WHEN the agent provides valid subcommands (`search`, `dpd`)
+- WHEN the agent provides valid subcommands (`search`, `dpd`, `espanol-al-dia`)
 - THEN the system MUST route execution to the corresponding module
 - AND return a structured response payload
 
@@ -76,6 +76,13 @@ The application runtime MUST distinguish between default sources for lookup and 
 - WHEN `App.ExecuteModule` applies configuration defaults
 - THEN the runtime MUST apply the lookup-specific default source (`dpd`)
 
+#### Scenario: Injecting espanol-al-dia defaults
+
+- GIVEN the `espanol-al-dia` module is invoked via `dlexa espanol-al-dia <slug>` without explicit sources
+- WHEN `App.ExecuteModule` applies configuration defaults
+- THEN the runtime MUST apply the module-specific source `espanol-al-dia`
+- AND MUST NOT fall back to the generic lookup default source list
+
 ### Requirement: Preservation of Current CLI Surface
 
 The external CLI surface and fallback semantics MUST remain unchanged. The `search` command remains the explicit gateway entry, and root queries default to DPD.
@@ -127,11 +134,18 @@ The active CLI spec MUST describe only commands that are actually registered in 
 - THEN the gateway suggestion MUST be valid as guidance
 - AND the active CLI spec MUST NOT describe that destination as an implemented subcommand until it is actually wired
 
+#### Scenario: Search suggests an implemented espanol-al-dia command
+
+- GIVEN the semantic gateway suggests a literal command such as `dlexa espanol-al-dia <slug>`
+- WHEN that destination command is registered in the current CLI tree
+- THEN the active CLI spec MUST describe `espanol-al-dia` as an implemented subcommand
+- AND the suggestion MUST be treated as executable, not deferred guidance
+
 #### Scenario: Existing command tree remains constrained
 
 - GIVEN the CLI command tree after this change
 - WHEN the available subcommands are inspected
-- THEN the public destination command surface MUST remain limited to the commands already supported by the current CLI contract
+- THEN the public destination command surface MUST include the supported commands in the current CLI contract (`dpd`, `search`, `espanol-al-dia`)
 - AND root default-to-DPD behavior MUST remain unchanged
 
 ### Requirement: Format Validation at Runtime Boundary

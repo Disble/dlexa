@@ -166,9 +166,9 @@ func TestEnrichCandidateMarksDeferredOnlyForNonDPDDestinations(t *testing.T) {
 			want:      false,
 		},
 		{
-			name:      "espanol al dia is deferred",
+			name:      "espanol al dia is executable",
 			candidate: model.SearchCandidate{URL: "https://www.rae.es/espanol-al-dia/solo"},
-			want:      true,
+			want:      false,
 		},
 		{
 			name:      "rescued noticia is deferred",

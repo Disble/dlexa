@@ -7,6 +7,7 @@ import (
 	"github.com/Disble/dlexa/internal/fetch"
 	"github.com/Disble/dlexa/internal/model"
 	moddpd "github.com/Disble/dlexa/internal/modules/dpd"
+	modead "github.com/Disble/dlexa/internal/modules/espanolaldia"
 	modsearch "github.com/Disble/dlexa/internal/modules/search"
 	"github.com/Disble/dlexa/internal/normalize"
 	parseengine "github.com/Disble/dlexa/internal/parse/engine"
@@ -109,5 +110,53 @@ func TestNewWiresSearchModuleToLiveSearchAdapters(t *testing.T) {
 	}
 	if _, ok := provider.FetcherForTesting().(*fetch.LiveSearchFetcher); !ok {
 		t.Fatalf("fetcher type = %T, want *fetch.LiveSearchFetcher", provider.FetcherForTesting())
+	}
+}
+
+func TestNewWiresEspanolAlDiaModuleToEngineArticleParser(t *testing.T) {
+	application := New(&fakeCLI{})
+	module, ok := application.registry.Module("espanol-al-dia")
+	if !ok {
+		t.Fatal("espanol-al-dia module not registered")
+	}
+	eadModule, ok := module.(*modead.Module)
+	if !ok {
+		t.Fatalf("module type = %T, want *espanolaldia.Module", module)
+	}
+	lookupForTesting := eadModule.LookupForTesting()
+	lookup, ok := lookupForTesting.(*query.LookupService)
+	if !ok {
+		t.Fatalf("lookup type = %T, want *query.LookupService", lookupForTesting)
+	}
+	registryForTesting := lookup.RegistryForTesting()
+	registry, ok := registryForTesting.(*source.StaticRegistry)
+	if !ok {
+		t.Fatalf("registry type = %T, want *source.StaticRegistry", registryForTesting)
+	}
+	resolved, err := registry.SourcesFor(model.LookupRequest{Query: "solo", Sources: []string{"espanol-al-dia"}})
+	if err != nil {
+		t.Fatalf("SourcesFor() error = %v", err)
+	}
+	if len(resolved) != 1 {
+		t.Fatalf("resolved sources len = %d, want 1", len(resolved))
+	}
+	pipeline, ok := resolved[0].(*source.PipelineSource)
+	if !ok {
+		t.Fatalf("source type = %T, want *source.PipelineSource", resolved[0])
+	}
+	if _, ok := pipeline.ArticleEngineParserForTesting().(*parseengine.EspanolAlDiaArticleParser); !ok {
+		t.Fatalf("article engine parser type = %T, want *engine.EspanolAlDiaArticleParser", pipeline.ArticleEngineParserForTesting())
+	}
+	if got := pipeline.Descriptor().Name; got != "espanol-al-dia" {
+		t.Fatalf("descriptor name = %q, want espanol-al-dia", got)
+	}
+	if got := pipeline.Descriptor().DisplayName; got != "Español al día" {
+		t.Fatalf("descriptor display name = %q, want Español al día", got)
+	}
+	if got := resolved[0].Descriptor().Priority; got != 2 {
+		t.Fatalf("priority = %d, want 2", got)
+	}
+	if got := fetch.NewEspanolAlDiaFetcher(config.DefaultDPDBaseURL, config.DefaultDPDTimeout, config.DefaultDPDUserAgent); got == nil {
+		t.Fatal("expected concrete espanol-al-dia fetcher constructor to return instance")
 	}
 }

@@ -17,6 +17,10 @@ const (
 	ProblemCodeDPDSearchFetchFailed     = "dpd_search_fetch_failed"
 	ProblemCodeDPDSearchParseFailed     = "dpd_search_parse_failed"
 	ProblemCodeDPDSearchNormalizeFailed = "dpd_search_normalize_failed"
+	ProblemCodeArticleFetchFailed       = "article_fetch_failed"
+	ProblemCodeArticleNotFound          = "article_not_found"
+	ProblemCodeArticleExtractFailed     = "article_extract_failed"
+	ProblemCodeArticleTransformFailed   = "article_transform_failed"
 
 	// WarningCodeDPDRedirected is emitted when the DPD server transparently redirects
 	// a lookup URL to a different entry (e.g. /dpd/solo → /dpd/tilde).

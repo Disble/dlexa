@@ -106,16 +106,16 @@ func FallbackFromError(moduleName, query, format string, err error) *model.Fallb
 	}
 
 	switch problem.Code {
-	case model.ProblemCodeDPDNotFound:
+	case model.ProblemCodeDPDNotFound, model.ProblemCodeArticleNotFound:
 		base.Kind = model.FallbackKindNotFound
 		base.Message = "No se encontró contenido en este módulo."
 		base.Suggestion = "Probá con `dlexa search <consulta>` para descubrir una ruta válida."
 		base.NextCommand = "dlexa search " + query
-	case model.ProblemCodeDPDFetchFailed, model.ProblemCodeDPDSearchFetchFailed, model.ProblemCodeSourceLookupFailed:
+	case model.ProblemCodeDPDFetchFailed, model.ProblemCodeDPDSearchFetchFailed, model.ProblemCodeArticleFetchFailed, model.ProblemCodeSourceLookupFailed:
 		base.Kind = model.FallbackKindUpstreamUnavailable
 		base.Message = "La fuente externa no está disponible ahora mismo."
 		base.Suggestion = "NO reintentes en loop automático; abortá y reintentá más tarde."
-	case model.ProblemCodeDPDExtractFailed, model.ProblemCodeDPDTransformFailed, model.ProblemCodeDPDSearchParseFailed, model.ProblemCodeDPDSearchNormalizeFailed:
+	case model.ProblemCodeDPDExtractFailed, model.ProblemCodeDPDTransformFailed, model.ProblemCodeDPDSearchParseFailed, model.ProblemCodeDPDSearchNormalizeFailed, model.ProblemCodeArticleExtractFailed, model.ProblemCodeArticleTransformFailed:
 		base.Kind = model.FallbackKindParseFailure
 		base.Message = "La fuente respondió, pero cambió el contrato que esperamos."
 		base.Suggestion = "Hace falta intervención humana de mantenimiento."

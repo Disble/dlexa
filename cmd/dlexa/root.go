@@ -76,6 +76,7 @@ func newRootCommand(ctx context.Context, runtime runtimeRunner) *cobra.Command {
 	root.SetHelpFunc(func(*cobra.Command, []string) { _ = rootHelp(ctx, runtime) })
 	root.AddCommand(newDPDCommand(ctx, runtime, &format, &noCache))
 	root.AddCommand(newSearchCommand(ctx, runtime, &format, &noCache))
+	root.AddCommand(newEspanolAlDiaCommand(ctx, runtime, &format, &noCache))
 	return root
 }
 
@@ -98,5 +99,5 @@ func looksLikeUnknownSyntax(args []string) bool {
 	if first == "" {
 		return false
 	}
-	return strings.HasPrefix(first, "-") || (len(args) > 1 && strings.HasPrefix(strings.TrimSpace(args[1]), "-")) && first != "search" && first != "dpd"
+	return strings.HasPrefix(first, "-") || (len(args) > 1 && strings.HasPrefix(strings.TrimSpace(args[1]), "-")) && first != "search" && first != "dpd" && first != "espanol-al-dia"
 }

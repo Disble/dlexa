@@ -28,6 +28,7 @@ func TestAppExecuteModuleWrapsMarkdownAndBypassesJSON(t *testing.T) {
 		&appDoctor{},
 		modules.NewRegistry(
 			&stubModule{command: "dpd", response: modules.Response{Title: "solo", Source: "Diccionario panhispánico de dudas", CacheState: "MISS", Format: "markdown", Body: []byte("## Resultado\ncontenido")}},
+			&stubModule{command: "espanol-al-dia", response: modules.Response{Title: "solo", Source: "Español al día", CacheState: "MISS", Format: "markdown", Body: []byte("## Artículo\ncontenido")}},
 			&stubModule{command: "search", response: modules.Response{Title: "solo", Source: "búsqueda general RAE", CacheState: "HIT", Format: "json", Body: []byte(`{"ok":true}`)}},
 		),
 		render.NewEnvelopeRenderer(),
@@ -228,6 +229,27 @@ func TestExecuteModuleAppliesFederatedSearchDefaults(t *testing.T) {
 	}
 	if got := searchModule.lastRequest.Sources; !reflect.DeepEqual(got, []string{"search", "dpd"}) {
 		t.Fatalf("search sources = %#v, want federated defaults [\"search\", \"dpd\"]", got)
+	}
+}
+
+func TestExecuteModuleUsesLookupDefaultsForEspanolAlDia(t *testing.T) {
+	loader := &appLoader{cfg: config.RuntimeConfig{
+		DefaultFormat:        "markdown",
+		DefaultLookupSources: []string{"dpd"},
+		Search: config.SearchConfig{
+			DefaultProviders: []string{"search", "dpd"},
+		},
+		CacheEnabled: true,
+	}}
+	cli := &fakeCLI{args: []string{version.BinaryName}}
+	eadModule := &stubModule{command: "espanol-al-dia", response: modules.Response{Title: "solo", Source: "Español al día", CacheState: "MISS", Format: "markdown", Body: []byte("contenido")}}
+	application := NewWithDependencies(cli, loader, &appDoctor{}, modules.NewRegistry(eadModule), render.NewEnvelopeRenderer())
+
+	if err := application.ExecuteModule(context.Background(), "espanol-al-dia", modules.Request{Query: "solo"}); err != nil {
+		t.Fatalf("ExecuteModule() error = %v", err)
+	}
+	if got := eadModule.lastRequest.Sources; !reflect.DeepEqual(got, []string{"espanol-al-dia"}) {
+		t.Fatalf("sources = %#v, want module-specific default [\"espanol-al-dia\"]", got)
 	}
 }
 

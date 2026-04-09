@@ -75,8 +75,8 @@ func TestSearchCommandRendersMarkdownHelp(t *testing.T) {
 	if runtime.help.Command != "dlexa search" || !bytes.Contains(stdout.Bytes(), []byte("# Ayuda: dlexa search")) {
 		t.Fatalf("help envelope = %#v stdout=%q", runtime.help, stdout.String())
 	}
-	if !bytes.Contains(stdout.Bytes(), []byte("algunas sugerencias son guía diferida")) {
-		t.Fatalf("stdout=%q, want deferred guidance disclaimer", stdout.String())
+	if !bytes.Contains(stdout.Bytes(), []byte("algunas rutas ya son ejecutables")) {
+		t.Fatalf("stdout=%q, want mixed executable/deferred guidance disclaimer", stdout.String())
 	}
 	if bytes.Contains(stdout.Bytes(), []byte("Copiá el `next_command` sugerido")) {
 		t.Fatalf("stdout=%q, should not instruct blindly copying next_command", stdout.String())

@@ -170,6 +170,8 @@ func defaultSourcesForModule(moduleName string, runtimeConfig config.RuntimeConf
 		if len(runtimeConfig.Search.DefaultProviders) > 0 {
 			return append([]string(nil), runtimeConfig.Search.DefaultProviders...)
 		}
+	case "espanol-al-dia":
+		return []string{"espanol-al-dia"}
 	default:
 		if len(runtimeConfig.DefaultLookupSources) > 0 {
 			return append([]string(nil), runtimeConfig.DefaultLookupSources...)
