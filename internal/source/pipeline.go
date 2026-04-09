@@ -15,6 +15,7 @@ type PipelineSource struct {
 	descriptor model.SourceDescriptor
 	fetcher    fetch.Fetcher
 	parser     parse.Parser
+	engine     parseengine.ArticleParser
 	normalizer normalize.Normalizer
 }
 
@@ -29,6 +30,7 @@ func NewPipelineSource(
 		descriptor: descriptor,
 		fetcher:    fetcher,
 		parser:     parser,
+		engine:     parseengine.AdaptLegacyArticleParser(parser),
 		normalizer: normalizer,
 	}
 }
@@ -40,8 +42,17 @@ func NewEnginePipelineSource(
 	parser parseengine.ArticleParser,
 	normalizer normalize.Normalizer,
 ) *PipelineSource {
-	return NewPipelineSource(descriptor, fetcher, engineArticleParserBridge{parser: parser}, normalizer)
+	return &PipelineSource{
+		descriptor: descriptor,
+		fetcher:    fetcher,
+		parser:     engineArticleParserBridge{parser: parser},
+		engine:     parser,
+		normalizer: normalizer,
+	}
 }
+
+// ArticleEngineParserForTesting exposes the wired article engine parser for wiring tests.
+func (s *PipelineSource) ArticleEngineParserForTesting() parseengine.ArticleParser { return s.engine }
 
 // Descriptor returns the source metadata for this pipeline.
 func (s *PipelineSource) Descriptor() model.SourceDescriptor {

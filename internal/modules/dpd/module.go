@@ -27,6 +27,9 @@ func New(lookup query.Looker, renderers render.RendererResolver) *Module {
 	return &Module{lookup: lookup, renderers: renderers}
 }
 
+// LookupForTesting exposes the wired lookup service for app wiring tests.
+func (m *Module) LookupForTesting() query.Looker { return m.lookup }
+
 // Name returns the semantic module name.
 func (m *Module) Name() string { return moduleName }
 

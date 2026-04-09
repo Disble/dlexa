@@ -31,6 +31,9 @@ func NewService(registry source.SourcesForer, store cache.Store) *LookupService 
 	return &LookupService{registry: registry, cache: store}
 }
 
+// RegistryForTesting exposes the wired lookup source registry for app wiring tests.
+func (s *LookupService) RegistryForTesting() source.SourcesForer { return s.registry }
+
 func (s *LookupService) lookupCachedResult(ctx context.Context, cacheKey string, request model.LookupRequest) (model.LookupResult, bool, error) {
 	if s.cache == nil || request.NoCache {
 		return model.LookupResult{}, false, nil

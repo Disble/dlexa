@@ -5,11 +5,51 @@ import (
 
 	"github.com/Disble/dlexa/internal/config"
 	"github.com/Disble/dlexa/internal/fetch"
+	"github.com/Disble/dlexa/internal/model"
+	moddpd "github.com/Disble/dlexa/internal/modules/dpd"
 	modsearch "github.com/Disble/dlexa/internal/modules/search"
 	"github.com/Disble/dlexa/internal/normalize"
 	parseengine "github.com/Disble/dlexa/internal/parse/engine"
+	"github.com/Disble/dlexa/internal/query"
 	searchsvc "github.com/Disble/dlexa/internal/search"
+	"github.com/Disble/dlexa/internal/source"
 )
+
+func TestNewWiresDPDModuleToEngineArticleParser(t *testing.T) {
+	application := New(&fakeCLI{})
+	module, ok := application.registry.Module("dpd")
+	if !ok {
+		t.Fatal("dpd module not registered")
+	}
+	dpdModule, ok := module.(*moddpd.Module)
+	if !ok {
+		t.Fatalf("module type = %T, want *dpd.Module", module)
+	}
+	lookupForTesting := dpdModule.LookupForTesting()
+	lookup, ok := lookupForTesting.(*query.LookupService)
+	if !ok {
+		t.Fatalf("lookup type = %T, want *query.LookupService", lookupForTesting)
+	}
+	registryForTesting := lookup.RegistryForTesting()
+	registry, ok := registryForTesting.(*source.StaticRegistry)
+	if !ok {
+		t.Fatalf("registry type = %T, want *source.StaticRegistry", registryForTesting)
+	}
+	resolved, err := registry.SourcesFor(model.LookupRequest{Query: "solo", Sources: []string{"dpd"}})
+	if err != nil {
+		t.Fatalf("SourcesFor() error = %v", err)
+	}
+	if len(resolved) != 1 {
+		t.Fatalf("resolved sources len = %d, want 1", len(resolved))
+	}
+	pipeline, ok := resolved[0].(*source.PipelineSource)
+	if !ok {
+		t.Fatalf("source type = %T, want *source.PipelineSource", resolved[0])
+	}
+	if _, ok := pipeline.ArticleEngineParserForTesting().(*parseengine.DPDArticleParser); !ok {
+		t.Fatalf("article engine parser type = %T, want *engine.DPDArticleParser", pipeline.ArticleEngineParserForTesting())
+	}
+}
 
 func TestNewWiresSearchModuleToLiveSearchAdapters(t *testing.T) {
 	application := New(&fakeCLI{})

@@ -47,7 +47,7 @@ func New(cli platform.CLI) *App {
 		)
 	}
 
-	dpdSource := source.NewPipelineSource(
+	dpdSource := source.NewEnginePipelineSource(
 		model.SourceDescriptor{
 			Name:        "dpd",
 			DisplayName: "Diccionario panhispánico de dudas",
@@ -56,7 +56,7 @@ func New(cli platform.CLI) *App {
 			Cacheable:   true,
 		},
 		fetch.NewDPDFetcher(runtimeConfig.DPD.BaseURL, runtimeConfig.DPD.Timeout, runtimeConfig.DPD.UserAgent),
-		parse.NewDPDArticleParser(),
+		parseengine.NewDPDArticleParser(),
 		normalize.NewDPDNormalizer(),
 	)
 
