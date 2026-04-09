@@ -93,6 +93,71 @@ func TestModuleForwardsExplicitSourcesToSearcher(t *testing.T) {
 	}
 }
 
+func TestModuleDerivesSourceFromRequestedProviders(t *testing.T) {
+	tests := []struct {
+		name        string
+		request     modules.Request
+		searcherReq model.SearchRequest
+		wantSource  string
+	}{
+		{
+			name:        "dpd only search uses dpd label",
+			request:     modules.Request{Query: "solo", Format: "markdown", Sources: []string{"dpd"}},
+			searcherReq: model.SearchRequest{Query: "solo", Format: "markdown", Sources: []string{"dpd"}},
+			wantSource:  "Diccionario panhispánico de dudas",
+		},
+		{
+			name:        "general search keeps general label",
+			request:     modules.Request{Query: "solo", Format: "markdown", Sources: []string{"search"}},
+			searcherReq: model.SearchRequest{Query: "solo", Format: "markdown", Sources: []string{"search"}},
+			wantSource:  "búsqueda general RAE",
+		},
+		{
+			name:        "multiple sources use federated general label",
+			request:     modules.Request{Query: "solo", Format: "markdown", Sources: []string{"search", "dpd"}},
+			searcherReq: model.SearchRequest{Query: "solo", Format: "markdown", Sources: []string{"search", "dpd"}},
+			wantSource:  "búsqueda general RAE",
+		},
+		{
+			name:        "unknown single source passes through",
+			request:     modules.Request{Query: "solo", Format: "markdown", Sources: []string{"academia"}},
+			searcherReq: model.SearchRequest{Query: "solo", Format: "markdown", Sources: []string{"academia"}},
+			wantSource:  "academia",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			searcher := &searchStub{result: model.SearchResult{Request: tt.searcherReq}}
+			module := New(searcher, &searchRenderersStub{renderer: &searchRendererStub{payload: []byte("ok")}})
+
+			response, err := module.Execute(context.Background(), tt.request)
+			if err != nil {
+				t.Fatalf("Execute() error = %v", err)
+			}
+			if response.Source != tt.wantSource {
+				t.Fatalf("Source = %q, want %q", response.Source, tt.wantSource)
+			}
+		})
+	}
+}
+
+func TestModuleDerivesFallbackSourceFromRequestedProviders(t *testing.T) {
+	searcher := &searchStub{err: model.NewProblemError(model.Problem{Code: model.ProblemCodeDPDSearchFetchFailed, Message: "dpd unavailable", Severity: model.ProblemSeverityError}, nil)}
+	module := New(searcher, &searchRenderersStub{renderer: &searchRendererStub{payload: []byte("unused")}})
+
+	response, err := module.Execute(context.Background(), modules.Request{Query: "solo", Format: "markdown", Sources: []string{"dpd"}})
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+	if response.Source != "Diccionario panhispánico de dudas" {
+		t.Fatalf("Source = %q, want DPD label on fallback path", response.Source)
+	}
+	if response.Fallback == nil {
+		t.Fatal("Fallback = nil, want structured fallback")
+	}
+}
+
 func loadFixture(t *testing.T) []model.SearchCandidate {
 	t.Helper()
 	raw, err := os.ReadFile(filepath.Join("testdata", "candidates.json"))

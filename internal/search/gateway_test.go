@@ -186,6 +186,42 @@ func TestServiceReturnsTopLevelErrorWhenAllProvidersFail(t *testing.T) {
 	service := NewService(NewStaticRegistry("search", providerA, providerB), cache.NewSearchMemoryStore(), 2, "search")
 	if _, err := service.Search(context.Background(), model.SearchRequest{Query: "tilde", Sources: []string{"search", "academia"}, NoCache: true}); err == nil {
 		t.Fatal("Search() error = nil, want top-level error when all providers fail")
+	} else {
+		problem, ok := model.AsProblem(err)
+		if !ok {
+			t.Fatalf("Search() error = %T, want ProblemError", err)
+		}
+		if problem.Code != model.ProblemCodeDPDSearchFetchFailed {
+			t.Fatalf("Problem.Code = %q, want %q", problem.Code, model.ProblemCodeDPDSearchFetchFailed)
+		}
+		want := "all search providers failed: [search] search unavailable; [academia] academia unavailable"
+		if problem.Message != want {
+			t.Fatalf("Problem.Message = %q, want %q", problem.Message, want)
+		}
+	}
+}
+
+func TestServiceUsesDeterministicAggregateProblemCodeWhenAllProvidersFail(t *testing.T) {
+	providerA := &providerStub{
+		descriptor: model.SourceDescriptor{Name: "search", Priority: 1},
+		err:        model.NewProblemError(model.Problem{Code: model.ProblemCodeDPDSearchFetchFailed, Message: "search unavailable", Source: "search", Severity: model.ProblemSeverityError}, errors.New("timeout")),
+	}
+	providerB := &providerStub{
+		descriptor: model.SourceDescriptor{Name: "dpd", Priority: 2},
+		err:        model.NewProblemError(model.Problem{Code: model.ProblemCodeDPDSearchParseFailed, Message: "dpd markup changed", Source: "dpd", Severity: model.ProblemSeverityError}, errors.New("parse error")),
+	}
+
+	service := NewService(NewStaticRegistry("search", providerA, providerB), cache.NewSearchMemoryStore(), 2, "search")
+	_, err := service.Search(context.Background(), model.SearchRequest{Query: "tilde", Sources: []string{"search", "dpd"}, NoCache: true})
+	if err == nil {
+		t.Fatal("Search() error = nil, want top-level error when all providers fail")
+	}
+	problem, ok := model.AsProblem(err)
+	if !ok {
+		t.Fatalf("Search() error = %T, want ProblemError", err)
+	}
+	if problem.Code != model.ProblemCodeDPDSearchParseFailed {
+		t.Fatalf("Problem.Code = %q, want %q so fallback kind is parse failure", problem.Code, model.ProblemCodeDPDSearchParseFailed)
 	}
 }
 

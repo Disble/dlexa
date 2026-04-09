@@ -11,8 +11,9 @@ import (
 )
 
 const (
-	moduleName   = "search"
-	moduleSource = "búsqueda general RAE"
+	moduleName          = "search"
+	generalSearchSource = "búsqueda general RAE"
+	dpdSearchSource     = "Diccionario panhispánico de dudas"
 )
 
 // Module adapts semantic search to the shared module contract.
@@ -38,9 +39,10 @@ func (m *Module) SearcherForTesting() searchsvc.Searcher { return m.searcher }
 // Execute curates the upstream search result and maps semantic URLs into actionable commands.
 func (m *Module) Execute(ctx context.Context, req modules.Request) (modules.Response, error) {
 	searchReq := model.SearchRequest{Query: strings.TrimSpace(req.Query), Format: strings.TrimSpace(req.Format), Sources: append([]string(nil), req.Sources...), NoCache: req.NoCache}
+	responseSource := sourceLabelForProviders(searchReq.Sources)
 	result, err := m.searcher.Search(ctx, searchReq)
 	if err != nil {
-		return modules.Response{Title: searchReq.Query, Source: moduleSource, CacheState: modules.CacheState(false), Format: searchReq.Format, Fallback: modules.FallbackFromError(moduleName, searchReq.Query, searchReq.Format, err)}, nil
+		return modules.Response{Title: searchReq.Query, Source: responseSource, CacheState: modules.CacheState(false), Format: searchReq.Format, Fallback: modules.FallbackFromError(moduleName, searchReq.Query, searchReq.Format, err)}, nil
 	}
 	result.Candidates = curateCandidates(searchReq.Query, result.Candidates)
 	if len(result.Candidates) == 0 {
@@ -56,5 +58,32 @@ func (m *Module) Execute(ctx context.Context, req modules.Request) (modules.Resp
 	if err != nil {
 		return modules.Response{}, err
 	}
-	return modules.Response{Title: searchReq.Query, Source: moduleSource, CacheState: modules.CacheState(result.CacheHit), Format: searchReq.Format, Body: body}, nil
+	return modules.Response{Title: searchReq.Query, Source: sourceLabelForProviders(result.Request.Sources), CacheState: modules.CacheState(result.CacheHit), Format: searchReq.Format, Body: body}, nil
+}
+
+func sourceLabelForProviders(sources []string) string {
+	trimmed := make([]string, 0, len(sources))
+	for _, source := range sources {
+		if candidate := strings.TrimSpace(source); candidate != "" {
+			trimmed = append(trimmed, candidate)
+		}
+	}
+	if len(trimmed) == 0 {
+		return generalSearchSource
+	}
+	if len(trimmed) > 1 {
+		return generalSearchSource
+	}
+	return sourceDisplayLabel(trimmed[0])
+}
+
+func sourceDisplayLabel(source string) string {
+	switch strings.TrimSpace(source) {
+	case "dpd":
+		return dpdSearchSource
+	case "search":
+		return generalSearchSource
+	default:
+		return strings.TrimSpace(source)
+	}
 }

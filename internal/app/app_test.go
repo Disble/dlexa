@@ -13,6 +13,7 @@ import (
 	"github.com/Disble/dlexa/internal/doctor"
 	"github.com/Disble/dlexa/internal/model"
 	"github.com/Disble/dlexa/internal/modules"
+	searchmodule "github.com/Disble/dlexa/internal/modules/search"
 	"github.com/Disble/dlexa/internal/platform"
 	"github.com/Disble/dlexa/internal/render"
 	"github.com/Disble/dlexa/internal/version"
@@ -228,4 +229,54 @@ func TestExecuteModuleAppliesFederatedSearchDefaults(t *testing.T) {
 	if got := searchModule.lastRequest.Sources; !reflect.DeepEqual(got, []string{"search", "dpd"}) {
 		t.Fatalf("search sources = %#v, want federated defaults [\"search\", \"dpd\"]", got)
 	}
+}
+
+func TestExecuteModuleWrapsDPDSearchWithTruthfulSource(t *testing.T) {
+	loader := &appLoader{cfg: config.RuntimeConfig{
+		DefaultFormat:        "markdown",
+		DefaultLookupSources: []string{"dpd"},
+		Search: config.SearchConfig{
+			DefaultProviders: []string{"search", "dpd"},
+		},
+		CacheEnabled: true,
+	}}
+	cli := &fakeCLI{args: []string{version.BinaryName}}
+	searcher := &appSearcherStub{result: model.SearchResult{Request: model.SearchRequest{Query: "solo", Format: "markdown", Sources: []string{"dpd"}}}}
+	renderer := &appSearchRendererStub{payload: []byte("## Resultado semántico\ncontenido")}
+	searchModule := searchmodule.New(searcher, &appSearchRenderersStub{renderer: renderer})
+	application := NewWithDependencies(cli, loader, &appDoctor{}, modules.NewRegistry(searchModule), render.NewEnvelopeRenderer())
+
+	if err := application.ExecuteModule(context.Background(), "search", modules.Request{Query: "solo", Sources: []string{"dpd"}}); err != nil {
+		t.Fatalf("ExecuteModule() error = %v", err)
+	}
+	text := cli.stdout.String()
+	if !strings.Contains(text, "*Fuente: Diccionario panhispánico de dudas | Caché: MISS*") {
+		t.Fatalf("expected truthful DPD source in markdown envelope, got:\n%s", text)
+	}
+	if strings.Contains(text, "*Fuente: búsqueda general RAE | Caché: MISS*") {
+		t.Fatalf("expected not to use general search source for DPD-only search, got:\n%s", text)
+	}
+}
+
+type appSearcherStub struct {
+	result model.SearchResult
+	err    error
+}
+
+func (s *appSearcherStub) Search(context.Context, model.SearchRequest) (model.SearchResult, error) {
+	return s.result, s.err
+}
+
+type appSearchRenderersStub struct{ renderer render.SearchRenderer }
+
+func (s *appSearchRenderersStub) Renderer(string) (render.SearchRenderer, error) {
+	return s.renderer, nil
+}
+
+type appSearchRendererStub struct{ payload []byte }
+
+func (s *appSearchRendererStub) Format() string { return "markdown" }
+
+func (s *appSearchRendererStub) Render(context.Context, model.SearchResult) ([]byte, error) {
+	return s.payload, nil
 }

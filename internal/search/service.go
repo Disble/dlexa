@@ -146,6 +146,44 @@ func firstOutcomeError(outcomes []providerOutcome) error {
 	return nil
 }
 
+func aggregateProblemCode(problems []model.Problem) string {
+	for _, problem := range problems {
+		switch problem.Code {
+		case model.ProblemCodeDPDSearchParseFailed, model.ProblemCodeDPDSearchNormalizeFailed, model.ProblemCodeDPDExtractFailed, model.ProblemCodeDPDTransformFailed:
+			return problem.Code
+		}
+	}
+	for _, problem := range problems {
+		if strings.TrimSpace(problem.Code) != "" {
+			return problem.Code
+		}
+	}
+	return model.ProblemCodeSourceLookupFailed
+}
+
+func aggregateProblemMessage(problems []model.Problem) string {
+	parts := make([]string, 0, len(problems))
+	for _, problem := range problems {
+		source := strings.TrimSpace(problem.Source)
+		message := strings.TrimSpace(problem.Message)
+		if message == "" {
+			message = strings.TrimSpace(problem.Code)
+		}
+		if message == "" {
+			message = "unknown provider failure"
+		}
+		if source == "" {
+			parts = append(parts, message)
+			continue
+		}
+		parts = append(parts, "["+source+"] "+message)
+	}
+	if len(parts) == 0 {
+		return "all search providers failed"
+	}
+	return "all search providers failed: " + strings.Join(parts, "; ")
+}
+
 func (s *Service) searchProvider(ctx context.Context, provider Provider, baseRequest model.SearchRequest) providerOutcome {
 	request := providerRequest(baseRequest, provider)
 	if cached, ok := s.lookupCachedResult(ctx, provider, request); ok {
@@ -267,12 +305,23 @@ func aggregateResults(baseRequest model.SearchRequest, providers []Provider, out
 		if len(result.Problems) == 0 {
 			return model.SearchResult{}, errors.New("all search providers failed")
 		}
-		if len(result.Problems) == 1 {
+		if len(outcomes) == 1 {
 			if err := firstOutcomeError(outcomes); err != nil {
 				return model.SearchResult{}, err
 			}
 		}
-		return model.SearchResult{}, model.NewProblemError(result.Problems[0], errors.New("all search providers failed"))
+		if len(result.Problems) == 1 {
+			if err := firstOutcomeError(outcomes); err != nil {
+				problem, ok := model.AsProblem(err)
+				if ok {
+					problem.Message = aggregateProblemMessage(result.Problems)
+					problem.Source = ""
+					return model.SearchResult{}, model.NewProblemError(problem, errors.New("all search providers failed"))
+				}
+				return model.SearchResult{}, err
+			}
+		}
+		return model.SearchResult{}, model.NewProblemError(model.Problem{Code: aggregateProblemCode(result.Problems), Message: aggregateProblemMessage(result.Problems), Severity: model.ProblemSeverityError}, errors.New("all search providers failed"))
 	}
 	if result.GeneratedAt.IsZero() {
 		result.GeneratedAt = now
