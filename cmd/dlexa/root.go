@@ -78,6 +78,7 @@ func newRootCommand(ctx context.Context, runtime runtimeRunner) *cobra.Command {
 	root.AddCommand(newSearchCommand(ctx, runtime, &format, &noCache))
 	root.AddCommand(newEspanolAlDiaCommand(ctx, runtime, &format, &noCache))
 	root.AddCommand(newDudaLinguisticaCommand(ctx, runtime, &format, &noCache))
+	root.AddCommand(newNoticiaCommand(ctx, runtime, &format, &noCache))
 	return root
 }
 
@@ -86,7 +87,7 @@ func rootHelp(ctx context.Context, runtime runtimeRunner) error {
 		Command:     "dlexa",
 		Summary:     "Consulta dudas normativas del español y usá `search` cuando todavía no conocés la ruta exacta.",
 		Syntax:      "dlexa <query>",
-		Examples:    []string{"dlexa basto", "dlexa dpd solo", "dlexa search solo o sólo", "dlexa duda-linguistica cuando-se-escriben-con-tilde-los-adverbios-en-mente"},
+		Examples:    []string{"dlexa basto", "dlexa dpd solo", "dlexa search solo o sólo", "dlexa duda-linguistica cuando-se-escriben-con-tilde-los-adverbios-en-mente", "dlexa noticia preguntas-frecuentes-tilde-en-las-mayusculas"},
 		NextSteps:   []string{"Si no encontrás el contenido exacto, escalá a `dlexa search <consulta>`."},
 		RecoveryTip: "Si la forma del comando falla, revisá esta ayuda antes de reintentar.",
 	})
@@ -100,5 +101,5 @@ func looksLikeUnknownSyntax(args []string) bool {
 	if first == "" {
 		return false
 	}
-	return strings.HasPrefix(first, "-") || (len(args) > 1 && strings.HasPrefix(strings.TrimSpace(args[1]), "-")) && first != "search" && first != "dpd" && first != "espanol-al-dia" && first != "duda-linguistica"
+	return strings.HasPrefix(first, "-") || (len(args) > 1 && strings.HasPrefix(strings.TrimSpace(args[1]), "-")) && first != "search" && first != "dpd" && first != "espanol-al-dia" && first != "duda-linguistica" && first != "noticia"
 }

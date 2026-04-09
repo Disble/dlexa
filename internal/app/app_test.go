@@ -30,6 +30,7 @@ func TestAppExecuteModuleWrapsMarkdownAndBypassesJSON(t *testing.T) {
 			&stubModule{command: "dpd", response: modules.Response{Title: "solo", Source: "Diccionario panhispánico de dudas", CacheState: "MISS", Format: "markdown", Body: []byte("## Resultado\ncontenido")}},
 			&stubModule{command: "espanol-al-dia", response: modules.Response{Title: "solo", Source: "Español al día", CacheState: "MISS", Format: "markdown", Body: []byte("## Artículo\ncontenido")}},
 			&stubModule{command: "duda-linguistica", response: modules.Response{Title: "tilde", Source: "Duda lingüística", CacheState: "MISS", Format: "markdown", Body: []byte("## Duda\ncontenido")}},
+			&stubModule{command: "noticia", response: modules.Response{Title: "faq", Source: "Preguntas frecuentes RAE", CacheState: "MISS", Format: "markdown", Body: []byte("## FAQ\ncontenido")}},
 			&stubModule{command: "search", response: modules.Response{Title: "solo", Source: "búsqueda general RAE", CacheState: "HIT", Format: "json", Body: []byte(`{"ok":true}`)}},
 		),
 		render.NewEnvelopeRenderer(),
@@ -272,6 +273,27 @@ func TestExecuteModuleUsesLookupDefaultsForDudaLinguistica(t *testing.T) {
 	}
 	if got := dlModule.lastRequest.Sources; !reflect.DeepEqual(got, []string{"duda-linguistica"}) {
 		t.Fatalf("sources = %#v, want module-specific default [\"duda-linguistica\"]", got)
+	}
+}
+
+func TestExecuteModuleUsesLookupDefaultsForNoticia(t *testing.T) {
+	loader := &appLoader{cfg: config.RuntimeConfig{
+		DefaultFormat:        "markdown",
+		DefaultLookupSources: []string{"dpd"},
+		Search: config.SearchConfig{
+			DefaultProviders: []string{"search", "dpd"},
+		},
+		CacheEnabled: true,
+	}}
+	cli := &fakeCLI{args: []string{version.BinaryName}}
+	noticiaModule := &stubModule{command: "noticia", response: modules.Response{Title: "faq", Source: "Preguntas frecuentes RAE", CacheState: "MISS", Format: "markdown", Body: []byte("contenido")}}
+	application := NewWithDependencies(cli, loader, &appDoctor{}, modules.NewRegistry(noticiaModule), render.NewEnvelopeRenderer())
+
+	if err := application.ExecuteModule(context.Background(), "noticia", modules.Request{Query: "preguntas-frecuentes-tilde-en-las-mayusculas"}); err != nil {
+		t.Fatalf("ExecuteModule() error = %v", err)
+	}
+	if got := noticiaModule.lastRequest.Sources; !reflect.DeepEqual(got, []string{"noticia"}) {
+		t.Fatalf("sources = %#v, want module-specific default [\"noticia\"]", got)
 	}
 }
 

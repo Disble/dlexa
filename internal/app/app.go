@@ -174,6 +174,8 @@ func defaultSourcesForModule(moduleName string, runtimeConfig config.RuntimeConf
 		return []string{"espanol-al-dia"}
 	case "duda-linguistica":
 		return []string{"duda-linguistica"}
+	case "noticia":
+		return []string{"noticia"}
 	default:
 		if len(runtimeConfig.DefaultLookupSources) > 0 {
 			return append([]string(nil), runtimeConfig.DefaultLookupSources...)

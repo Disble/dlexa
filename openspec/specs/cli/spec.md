@@ -155,11 +155,18 @@ The active CLI spec MUST describe only commands that are actually registered in 
 - THEN the active CLI spec MUST describe `duda-linguistica` as an implemented subcommand
 - AND the suggestion MUST be treated as executable, not deferred guidance
 
+#### Scenario: Search suggests an implemented noticia command
+
+- GIVEN the semantic gateway suggests a literal command such as `dlexa noticia <slug>`
+- WHEN that destination command is registered in the current CLI tree
+- THEN the active CLI spec MUST describe `noticia` as an implemented subcommand
+- AND the suggestion MUST be treated as executable, not deferred guidance
+
 #### Scenario: Existing command tree remains constrained
 
 - GIVEN the CLI command tree after this change
 - WHEN the available subcommands are inspected
-- THEN the public destination command surface MUST include the supported commands in the current CLI contract (`dpd`, `search`, `espanol-al-dia`, `duda-linguistica`)
+- THEN the public destination command surface MUST include the supported commands in the current CLI contract (`dpd`, `search`, `espanol-al-dia`, `duda-linguistica`, `noticia`)
 - AND root default-to-DPD behavior MUST remain unchanged
 
 ### Requirement: Format Validation at Runtime Boundary

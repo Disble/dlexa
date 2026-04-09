@@ -14,6 +14,7 @@ import (
 	moddpd "github.com/Disble/dlexa/internal/modules/dpd"
 	moddl "github.com/Disble/dlexa/internal/modules/dudalinguistica"
 	modead "github.com/Disble/dlexa/internal/modules/espanolaldia"
+	modnoticia "github.com/Disble/dlexa/internal/modules/noticia"
 	modsearch "github.com/Disble/dlexa/internal/modules/search"
 	"github.com/Disble/dlexa/internal/normalize"
 	"github.com/Disble/dlexa/internal/parse"
@@ -88,6 +89,19 @@ func New(cli platform.CLI) *App {
 		normalize.NewDudaLinguisticaNormalizer(),
 	)
 
+	noticiaSource := source.NewEnginePipelineSource(
+		model.SourceDescriptor{
+			Name:        "noticia",
+			DisplayName: "Preguntas frecuentes RAE",
+			Kind:        "remote-html",
+			Priority:    4,
+			Cacheable:   true,
+		},
+		fetch.NewNoticiaFetcher(runtimeConfig.DPD.BaseURL, runtimeConfig.DPD.Timeout, runtimeConfig.DPD.UserAgent),
+		parseengine.NewNoticiaArticleParser(),
+		normalize.NewNoticiaNormalizer(),
+	)
+
 	demoSource := source.NewPipelineSource(
 		model.SourceDescriptor{
 			Name:        "demo",
@@ -101,7 +115,7 @@ func New(cli platform.CLI) *App {
 		normalize.NewIdentityNormalizer(),
 	)
 
-	registry := source.NewStaticRegistry(dpdSource, espanolAlDiaSource, dudaLinguisticaSource, demoSource)
+	registry := source.NewStaticRegistry(dpdSource, espanolAlDiaSource, dudaLinguisticaSource, noticiaSource, demoSource)
 	lookupService := query.NewService(registry, cacheStore)
 	searchFetcher := fetch.NewLiveSearchFetcher(runtimeConfig.DPD.BaseURL, runtimeConfig.DPD.Timeout, runtimeConfig.DPD.UserAgent)
 	searchFetcher.Client = fetch.NewGovernedDoer(searchFetcher.Client, fetch.GovernanceConfig{
@@ -136,6 +150,7 @@ func New(cli platform.CLI) *App {
 		moddpd.New(lookupService, rendererRegistry),
 		modead.New(lookupService, rendererRegistry),
 		moddl.New(lookupService, rendererRegistry),
+		modnoticia.New(lookupService, rendererRegistry),
 		modsearch.New(searchService, searchRendererRegistry),
 	)
 

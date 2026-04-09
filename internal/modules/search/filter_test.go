@@ -171,9 +171,9 @@ func TestEnrichCandidateMarksDeferredOnlyForNonDPDDestinations(t *testing.T) {
 			want:      false,
 		},
 		{
-			name:      "rescued noticia is deferred",
+			name:      "rescued noticia is executable",
 			candidate: model.SearchCandidate{Title: "Preguntas frecuentes: tildes", URL: "https://www.rae.es/noticia/tildes"},
-			want:      true,
+			want:      false,
 		},
 		{
 			name:      "duda linguistica is executable",
@@ -198,24 +198,24 @@ func TestEnrichCandidateMarksDeferredOnlyForNonDPDDestinations(t *testing.T) {
 	}
 }
 
-func TestIsRescuedNoticiaRequiresFAQGateAndLinguisticSignals(t *testing.T) {
+func TestIsRescuedNoticiaRequiresFAQPrefixOnly(t *testing.T) {
 	tests := []struct {
 		name      string
 		candidate model.SearchCandidate
 		want      bool
 	}{
 		{
-			name:      "faq title with linguistic signal is rescued",
+			name:      "faq title is rescued",
 			candidate: model.SearchCandidate{Title: "Preguntas frecuentes: sobre la tilde", Snippet: "Respuesta normativa breve.", URL: "https://www.rae.es/noticia/preguntas-frecuentes-sobre-la-tilde"},
 			want:      true,
 		},
 		{
-			name:      "faq title without linguistic signal is rejected",
+			name:      "faq title without linguistic signal is still rescued",
 			candidate: model.SearchCandidate{Title: "Preguntas frecuentes: agenda institucional", Snippet: "Horarios y acceso al acto.", URL: "https://www.rae.es/noticia/agenda"},
-			want:      false,
+			want:      true,
 		},
 		{
-			name:      "linguistic words without faq gate are rejected",
+			name:      "non faq noticia is rejected",
 			candidate: model.SearchCandidate{Title: "Nueva normativa del español se presenta en la RAE", Snippet: "Presentación institucional del libro.", URL: "https://www.rae.es/noticia/geopolitica"},
 			want:      false,
 		},
@@ -231,7 +231,7 @@ func TestIsRescuedNoticiaRequiresFAQGateAndLinguisticSignals(t *testing.T) {
 	}
 }
 
-func TestCurateCandidatesRejectsInstitutionalNoticiasEvenWithLinguisticWords(t *testing.T) {
+func TestCurateCandidatesRejectsNonFAQNoticiasEvenWithLinguisticWords(t *testing.T) {
 	candidates := []model.SearchCandidate{
 		{Title: "La obra Geopolítica del español se presenta en la RAE", Snippet: "Libro institucional sobre el español.", URL: "https://www.rae.es/noticia/la-obra-geopolitica-del-espanol-se-presenta-en-la-rae"},
 		{Title: "Preguntas frecuentes: sobre la tilde", Snippet: "FAQ rescatable.", URL: "https://www.rae.es/noticia/preguntas-frecuentes-sobre-la-tilde"},

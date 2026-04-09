@@ -32,14 +32,13 @@ The module MUST drop institutional or non-normative noise from the upstream resu
 
 - GIVEN a result URL points to `/noticia/*`
 - WHEN the title explicitly matches the FAQ gate (e.g., starts with "Preguntas frecuentes:")
-- AND the rescued candidate still carries linguistic/normative signals in its title or snippet
 - THEN the module MUST NOT discard it
 - AND MUST include it in the curated results
 
 #### Scenario: Rejecting institutional noticia with broad language wording
 
 - GIVEN a result URL points to `/noticia/*`
-- AND the title mentions language or Spanish broadly but does not pass the FAQ gate
+- AND the title does not pass the FAQ gate
 - WHEN the filtering phase runs
 - THEN the module MUST discard that result as institutional or non-normative noise
 
@@ -101,8 +100,7 @@ The `search` module MUST filter institutional or otherwise low-value results whi
 #### Scenario: Rescuing linguistically valuable noticia content
 
 - GIVEN a result URL points to `/noticia/*`
-- AND the result title indicates linguistically valuable FAQ-style or normative content
-- AND the candidate still contains linguistic signals after FAQ gating
+- AND the result title indicates FAQ-style content through the editorial prefix `Preguntas frecuentes:`
 - WHEN the filtering phase runs
 - THEN the module MUST retain that result
 - AND the curated output MUST expose it as a valid search candidate instead of discarding it as institutional noise
@@ -132,12 +130,12 @@ The `search` module MUST compress recognized URLs into literal next-step suggest
 - THEN the module MUST expose a literal `dlexa duda-linguistica <slug>` suggestion
 - AND the module MUST flag the candidate as `Deferred: false`
 
-#### Scenario: Compressing known non-DPD surfaces into deferred suggestions
+#### Scenario: Compressing implemented noticia results into executable suggestions
 
-- GIVEN a search candidate URL belongs to a recognized mapped surface not yet implemented in the CLI (e.g., `noticia`)
+- GIVEN a search candidate URL belongs to the implemented `noticia` FAQ surface
 - WHEN the next-step mapping phase runs
-- THEN the module MUST expose a literal suggestion
-- AND the module MUST flag the candidate as `Deferred: true`
+- THEN the module MUST expose a literal `dlexa noticia <slug>` suggestion
+- AND the module MUST flag the candidate as `Deferred: false`
 
 #### Scenario: Unmapped URLs fall back safely
 

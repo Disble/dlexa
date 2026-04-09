@@ -9,6 +9,7 @@ import (
 	moddpd "github.com/Disble/dlexa/internal/modules/dpd"
 	moddl "github.com/Disble/dlexa/internal/modules/dudalinguistica"
 	modead "github.com/Disble/dlexa/internal/modules/espanolaldia"
+	modnoticia "github.com/Disble/dlexa/internal/modules/noticia"
 	modsearch "github.com/Disble/dlexa/internal/modules/search"
 	"github.com/Disble/dlexa/internal/normalize"
 	parseengine "github.com/Disble/dlexa/internal/parse/engine"
@@ -207,5 +208,53 @@ func TestNewWiresDudaLinguisticaModuleToEngineArticleParser(t *testing.T) {
 	}
 	if got := fetch.NewDudaLinguisticaFetcher(config.DefaultDPDBaseURL, config.DefaultDPDTimeout, config.DefaultDPDUserAgent); got == nil {
 		t.Fatal("expected concrete duda-linguistica fetcher constructor to return instance")
+	}
+}
+
+func TestNewWiresNoticiaModuleToEngineArticleParser(t *testing.T) {
+	application := New(&fakeCLI{})
+	module, ok := application.registry.Module("noticia")
+	if !ok {
+		t.Fatal("noticia module not registered")
+	}
+	noticiaModule, ok := module.(*modnoticia.Module)
+	if !ok {
+		t.Fatalf("module type = %T, want *noticia.Module", module)
+	}
+	lookupForTesting := noticiaModule.LookupForTesting()
+	lookup, ok := lookupForTesting.(*query.LookupService)
+	if !ok {
+		t.Fatalf("lookup type = %T, want *query.LookupService", lookupForTesting)
+	}
+	registryForTesting := lookup.RegistryForTesting()
+	registry, ok := registryForTesting.(*source.StaticRegistry)
+	if !ok {
+		t.Fatalf("registry type = %T, want *source.StaticRegistry", registryForTesting)
+	}
+	resolved, err := registry.SourcesFor(model.LookupRequest{Query: "preguntas-frecuentes-tilde-en-las-mayusculas", Sources: []string{"noticia"}})
+	if err != nil {
+		t.Fatalf("SourcesFor() error = %v", err)
+	}
+	if len(resolved) != 1 {
+		t.Fatalf("resolved sources len = %d, want 1", len(resolved))
+	}
+	pipeline, ok := resolved[0].(*source.PipelineSource)
+	if !ok {
+		t.Fatalf("source type = %T, want *source.PipelineSource", resolved[0])
+	}
+	if _, ok := pipeline.ArticleEngineParserForTesting().(*parseengine.NoticiaArticleParser); !ok {
+		t.Fatalf("article engine parser type = %T, want *engine.NoticiaArticleParser", pipeline.ArticleEngineParserForTesting())
+	}
+	if got := pipeline.Descriptor().Name; got != "noticia" {
+		t.Fatalf("descriptor name = %q, want noticia", got)
+	}
+	if got := pipeline.Descriptor().DisplayName; got != "Preguntas frecuentes RAE" {
+		t.Fatalf("descriptor display name = %q, want Preguntas frecuentes RAE", got)
+	}
+	if got := resolved[0].Descriptor().Priority; got != 4 {
+		t.Fatalf("priority = %d, want 4", got)
+	}
+	if got := fetch.NewNoticiaFetcher(config.DefaultDPDBaseURL, config.DefaultDPDTimeout, config.DefaultDPDUserAgent); got == nil {
+		t.Fatal("expected concrete noticia fetcher constructor to return instance")
 	}
 }

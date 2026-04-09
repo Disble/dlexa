@@ -156,14 +156,14 @@ In practice:
 
 `dlexa search` can return two different kinds of follow-up hints:
 
-- `- sugerencia:` → the next step is an executable CLI command right now (for example, a `dpd`, `espanol-al-dia`, or `duda-linguistica` lookup)
+- `- sugerencia:` → the next step is an executable CLI command right now (for example, a `dpd`, `espanol-al-dia`, `duda-linguistica`, or FAQ-style `noticia` lookup)
 - deferred access block (`🌐 ...` + `Acceso futuro via CLI`) → useful navigation text that looks command-shaped, but is **not** an available CLI subcommand yet
 
 This distinction matters for both humans and agents:
 
 - do **not** assume every `next_command`-shaped string can be executed directly
 - when output is JSON, inspect each candidate's `deferred` field before blindly running follow-up automation
-- today, `dlexa dpd <article-key>`, `dlexa espanol-al-dia <slug>`, and `dlexa duda-linguistica <slug>` are executable; deferred destinations such as `noticia` are still guidance only
+- today, `dlexa dpd <article-key>`, `dlexa espanol-al-dia <slug>`, `dlexa duda-linguistica <slug>`, and FAQ-compatible `dlexa noticia <slug>` lookups are executable
 
 Examples:
 
@@ -195,8 +195,7 @@ Example human output shape:
 - snippet: Recurso complementario.
 - clasificación: faq
 - fuente: RAE
-  🌐 https://www.rae.es/noticia/preguntas-frecuentes
-  _(Acceso futuro via CLI: dlexa noticia preguntas-frecuentes)_
+- sugerencia: `dlexa noticia preguntas-frecuentes`
 ```
 
 Example JSON candidate shape:
