@@ -179,49 +179,42 @@ exit 1
 
 ---
 
-## Multi-Source Query Pattern
+## Provider-Scoped Search Pattern
 
-### Query Multiple Sources Sequentially
+### Query Search Providers Sequentially
 
 ```bash
 #!/bin/bash
 
 query="$1"
-sources=("dpd" "demo")
+sources=("dpd" "search")
 
 for source in "${sources[@]}"; do
   echo "Querying source: $source" >&2
-  result=$(dlexa --format json --source "$source" "$query")
+  result=$(dlexa --format json search --source "$source" "$query")
   
   if [ $? -eq 0 ]; then
-    entry_count=$(echo "$result" | jq '.Entries | length')
-    if [ "$entry_count" -gt 0 ]; then
+    candidate_count=$(echo "$result" | jq '.Candidates | length')
+    if [ "$candidate_count" -gt 0 ]; then
       echo "=== Results from $source ===" >&2
-      echo "$result" | jq -r '.Entries[] | "- \(.Headword): \(.Content)"'
+      echo "$result" | jq -r '.Candidates[] | "- \(.display_text): \(.next_command // .article_key)"'
     fi
   fi
 done
 ```
 
-### Aggregate Results from Multiple Sources
+### DPD-Only Search Then Lookup
 
 ```bash
 #!/bin/bash
 
 query="$1"
+search_result=$(dlexa --format json dpd search "$query")
+article_key=$(echo "$search_result" | jq -r '.Candidates[0].article_key // empty')
 
-# Query all configured sources
-result=$(dlexa --format json "$query")
-
-# Group by source
-echo "$result" | jq -r '
-  .Entries 
-  | group_by(.Source) 
-  | .[] 
-  | "Source: \(.[0].Source)\n" + (
-      .[] | "  - \(.Headword): \(.Content)"
-    ) + "\n"
-'
+if [ -n "$article_key" ]; then
+  dlexa --format json "$article_key"
+fi
 ```
 
 ---
@@ -232,10 +225,10 @@ echo "$result" | jq -r '
 |----------|---------|--------|-------|
 | Quick DPD consultation | `dlexa tilde` | markdown | Human-readable, default |
 | Script parsing | `dlexa --format json solo` | json | Use with jq |
-| Discover entry candidates | `dlexa search abu dhabi` | markdown | Candidate labels plus article keys |
-| Search for automation | `dlexa --format json search guion` | json | Parse `.Candidates[]` |
+| Discover DPD entry candidates | `dlexa dpd search abu dhabi` | markdown | DPD-only candidate labels plus article keys |
+| Federated search for automation | `dlexa --format json search guion` | json | Parse `.Candidates[]`, `next_command`, and `deferred` |
+| Search one provider only | `dlexa search --source dpd adecua` | markdown | Repeat `--source` to scope providers |
 | Force refresh | `dlexa --no-cache imprimido` | markdown | Bypass 24h cache |
-| Specific source | `dlexa --source dpd adecua` | markdown | Query single source |
 | Health check | `dlexa --doctor` | text | Exit 0 = healthy |
 | Version info | `dlexa --version` | text | Print version |
 | Error handling | `dlexa solo 2>&1` | any | Capture both stdout/stderr |

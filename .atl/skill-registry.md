@@ -106,7 +106,7 @@ All `sdd-apply` runs MUST follow RED → GREEN → REFACTOR for every task.
 [go-testing] Use table-driven tests. Use net/http/httptest for integration. Shared test utilities in internal/testutil.
 [strict-tdd] Every sdd-apply task: write failing test FIRST, then implement, then refactor. No exceptions.
 [no-build] Never run go build during SDD work. Use go test + golangci-lint only.
-[cobra-surface] CLI uses cobra v1.10.2. Subcommands: dpd, search. Global flags: --format, --source, --no-cache.
+[cobra-surface] CLI uses cobra v1.10.2. Subcommands: dpd (including `dpd search`), search, espanol-al-dia, duda-linguistica, noticia. Global flags: --format, --no-cache, --doctor, --version. Search-only flag: --source (repeatable; `search`, `dpd`).
 ```
 
 ## Sub-Agent Loading Guidance

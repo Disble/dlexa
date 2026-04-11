@@ -162,47 +162,65 @@ Diccionario panhispánico de dudas
 
 ## Search Markdown Output Example
 
-**Command**: `dlexa search abu dhabi`
+**Command**: `dlexa search solo o sólo`
 
 **Validated output shape** (from `internal/render/search_markdown.go` and `internal/render/search_markdown_test.go`):
 
 ```text
-Candidate DPD entries for "abu dhabi":
-- Abu Dhabi -> Abu Dabi
-- ⊗ alicuota -> alícuoto
+## Resultado semántico para "solo o sólo"
+
+- total_candidatos: 2
+- siguiente_paso: `dlexa dpd solo`
+
+### 1. solo
+- snippet: Entrada DPD recomendada.
+- sugerencia: `dlexa dpd solo`
+
+### 2. Tilde en solo
+- snippet: Artículo complementario de orientación.
+- sugerencia: `dlexa espanol-al-dia solo`
 ```
 
 **Parsing guidance**:
 - The heading line echoes the search query
-- Each bullet maps `display_text -> article_key`
-- The right-hand side is the canonical follow-up lookup term
-- Empty search state renders as: `No DPD entry candidates found for "zzz".`
+- `siguiente_paso` is the strongest follow-up suggestion for the first curated candidate
+- Each candidate exposes a snippet plus either an executable `- sugerencia:` line or deferred-access metadata
+- Empty search state renders an explicit no-results message plus `dlexa search <consulta más específica>` guidance
 
 ---
 
 ## Search JSON Output Example
 
-**Command**: `dlexa --format json search guion`
+**Command**: `dlexa --format json search solo o sólo`
 
 **Validated output shape** (from `internal/model/search.go`, `internal/render/search_json.go`, and renderer/service tests):
 
 ```json
 {
   "Request": {
-    "Query": "guion",
+    "Query": "solo o sólo",
     "Format": "json",
+    "Sources": ["search", "dpd"],
     "NoCache": false
   },
+  "Outcome": "results",
   "Candidates": [
     {
-      "raw_label_html": "guion<sup>1</sup>",
-      "display_text": "guion1",
-      "article_key": "guion"
+      "raw_label_html": "<strong>solo</strong>",
+      "display_text": "solo",
+      "article_key": "solo",
+      "next_command": "dlexa dpd solo",
+      "deferred": false
     },
     {
-      "raw_label_html": "<span class=\"vers\">guion<sup>2</sup></span>",
-      "display_text": "var. guion2",
-      "article_key": "guion"
+      "raw_label_html": "<strong>Tilde en solo</strong>",
+      "display_text": "Tilde en solo",
+      "article_key": "solo",
+      "module": "espanol-al-dia",
+      "title": "Tilde en solo",
+      "snippet": "Artículo complementario de orientación.",
+      "next_command": "dlexa espanol-al-dia solo",
+      "deferred": false
     }
   ],
   "Warnings": [],
@@ -217,17 +235,18 @@ Candidate DPD entries for "abu dhabi":
 - Normalized display label: `.Candidates[].display_text`
 - Canonical article key: `.Candidates[].article_key`
 - Preserved upstream label HTML: `.Candidates[].raw_label_html`
+- Automation guardrail: inspect `.Candidates[].deferred` before blindly executing `.Candidates[].next_command`
 - Cache status: `.CacheHit`
 
 **Interpretation note**:
-- Search JSON is an entry-discovery contract, not the full article consultation contract used by `.Entries[]`
+- Search JSON is a semantic-gateway contract, not the full article consultation contract used by `.Entries[]`
 - `raw_label_html` deliberately preserves upstream markup; do not assume it is markdown
 
 ---
 
 ## DPD Semantic Signs Example
 
-**Command**: `dlexa --source dpd --format json alícuota`
+**Command**: `dlexa --format json alícuota`
 
 **Markdown excerpt** (from the current DPD golden fixture):
 

@@ -73,11 +73,14 @@ go install github.com/Disble/dlexa/cmd/dlexa@latest
 ## Quick Start
 
 ```bash
-# default format: markdown, default source: dpd
+# default format: markdown, default lookup source: dpd
 dlexa tilde
 
-# discover DPD entry/index candidates before choosing an article key
+# federated semantic discovery across general RAE search + DPD index
 dlexa search abu dhabi
+
+# DPD-only entry discovery
+dlexa dpd search abu dhabi
 
 # explicit output format for automation
 dlexa --format json solo
@@ -85,8 +88,8 @@ dlexa --format json solo
 # structured entry-search output for automation
 dlexa --format json search guion
 
-# force source selection
-dlexa --source dpd adecua
+# restrict search to one provider
+dlexa search --source dpd adecua
 
 # skip cache reads/writes for this request
 dlexa --no-cache imprimido
@@ -119,7 +122,7 @@ go run ./cmd/dlexa -- --no-cache imprimido
 | Flag | Description |
 | --- | --- |
 | `--format` | Output format: `markdown` or `json` |
-| `--source` | Comma-separated source names (for example: `dpd,demo`) |
+| `--source` | Search-only repeatable provider selector (`search`, `dpd`) |
 | `--no-cache` | Skip cache reads and writes for the request |
 | `--doctor` | Run environment checks |
 | `--version` | Print binary version |
@@ -127,30 +130,35 @@ go run ./cmd/dlexa -- --no-cache imprimido
 Usage:
 
 ```text
-dlexa [--format markdown|json] [--source name1,name2] [--no-cache] <query>
-dlexa [--format markdown|json] [--no-cache] search <query>
+dlexa [--format markdown|json] [--no-cache] <query>
+dlexa [--format markdown|json] [--no-cache] search [--source <id> ...] <query>
+dlexa [--format markdown|json] [--no-cache] dpd search <query>
 ```
 
-## DPD entry search command
+## Search command model
 
-Use `dlexa search <query>` when you need to discover DPD entry terms or indexed expressions before doing a full article lookup.
+Use `dlexa search <query>` when you need semantic discovery before deciding which exact consultation route to run.
 
-- It queries the DPD `/srv/keys` entry-discovery endpoint.
-- It returns candidate labels plus canonical article keys.
-- It can also surface related RAE destinations that are useful as **guidance** even when they are not registered as CLI subcommands yet.
+- By default it federates the general RAE search surface **and** the DPD `/srv/keys` entry-discovery provider.
+- It returns curated candidates plus safe follow-up commands.
+- It can surface executable follow-ups such as `dpd`, `espanol-al-dia`, `duda-linguistica`, and FAQ-compatible `noticia`.
+- It can also surface related RAE destinations as deferred guidance when a mapped CLI command still does not exist.
 - It does **not** search article body content.
 - It does **not** auto-fetch every candidate article.
 - It does **not** turn `dlexa` into a generic dictionary search engine.
 
-> **Current implementation note**
->
-> The active `search` command is currently backed by the **general RAE search surface**, not the specialized DPD entry-discovery index. That means some terms that are discoverable through the DPD-specific search widget may still return no results in `dlexa search` today.
+Provider control:
+
+- `dlexa search <query>` → federated default (`search` + `dpd`)
+- `dlexa search --source dpd <query>` → DPD index only
+- `dlexa search --source search <query>` → general RAE search only
+- `dlexa dpd search <query>` → dedicated DPD-only entry-discovery surface
 
 In practice:
 
-- `dlexa search <query>` is a semantic gateway over the general RAE search surface
+- `dlexa search <query>` is the federated semantic gateway
 - `dlexa dpd <query>` remains the direct DPD consultation path
-- full integration of the specialized DPD search index into `search` is **not** part of the current behavior contract
+- `dlexa dpd search <query>` preserves a dedicated DPD-only discovery path
 
 ### Executable suggestions vs deferred guidance
 
@@ -180,7 +188,7 @@ Example human output shape:
 ```text
 ## Resultado semántico para "solo o sólo"
 
-- total_candidatos: 2
+- total_candidatos: 3
 - siguiente_paso: `dlexa dpd solo`
 
 ### 1. solo
@@ -203,24 +211,27 @@ Example JSON candidate shape:
 ```json
 {
   "Request": {
-    "Query": "alicuota",
+    "Query": "solo o sólo",
     "Format": "json",
+    "Sources": ["search", "dpd"],
     "NoCache": false
   },
+  "Outcome": "results",
   "Candidates": [
-    {
-      "raw_label_html": "<span class=\"bolaspa\">⊗</span>alicuota",
-      "display_text": "⊗ alicuota",
-      "article_key": "alícuoto",
-      "next_command": "dlexa search alicuota",
-      "deferred": false
-    },
     {
       "raw_label_html": "<strong>solo</strong>",
       "display_text": "solo",
+      "article_key": "solo",
+      "next_command": "dlexa dpd solo",
+      "deferred": false
+    },
+    {
+      "raw_label_html": "<strong>Tilde en solo</strong>",
+      "display_text": "Tilde en solo",
+      "article_key": "solo",
       "module": "espanol-al-dia",
       "next_command": "dlexa espanol-al-dia solo",
-      "deferred": true
+      "deferred": false
     }
   ]
 }

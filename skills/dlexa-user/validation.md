@@ -354,12 +354,12 @@ I need the canonical DPD article key for "abu dhabi" before doing the lookup.
 
 **Expected LLM Behavior**:
 - Recognizes this as entry discovery, not direct article consultation
-- Uses `dlexa search abu dhabi` or `dlexa --format json search abu dhabi`
-- Does NOT misuse `--source` with `search`
+- Uses a DPD-discovery command such as `dlexa dpd search abu dhabi`, `dlexa search --source dpd abu dhabi`, or `dlexa --format json dpd search abu dhabi`
+- Explains why a DPD-only path is preferable when the goal is the canonical DPD article key
 
 **Verification Method**:
-- [ ] Command uses `search <query>`
-- [ ] No `--source` flag is added to the search command
+- [ ] Command uses either `dpd search <query>` or `search --source dpd <query>`
+- [ ] LLM keeps the task in DPD-only discovery rather than generic federated search hand-waving
 - [ ] LLM explains that search returns candidates/article keys, not full article content
 
 **Status**: ⬜ Not Tested | ✅ Passed | ❌ Failed
@@ -372,10 +372,11 @@ I need the canonical DPD article key for "abu dhabi" before doing the lookup.
 Provide this JSON output to the LLM:
 ```json
 {
-  "Request": { "Query": "guion", "Format": "json", "NoCache": false },
+  "Request": { "Query": "solo o sólo", "Format": "json", "Sources": ["search", "dpd"], "NoCache": false },
+  "Outcome": "results",
   "Candidates": [
-    { "raw_label_html": "guion<sup>1</sup>", "display_text": "guion1", "article_key": "guion" },
-    { "raw_label_html": "<span class=\"vers\">guion<sup>2</sup></span>", "display_text": "var. guion2", "article_key": "guion" }
+    { "raw_label_html": "<strong>solo</strong>", "display_text": "solo", "article_key": "solo", "next_command": "dlexa dpd solo", "deferred": false },
+    { "raw_label_html": "<strong>Tilde en solo</strong>", "display_text": "Tilde en solo", "article_key": "solo", "module": "espanol-al-dia", "next_command": "dlexa espanol-al-dia solo", "deferred": false }
   ]
 }
 ```
@@ -389,11 +390,13 @@ Extract the canonical article keys and explain which field is safe for human dis
 - Navigates `.Candidates[].article_key`
 - Uses `display_text` as the human-readable label
 - Explains that `raw_label_html` preserves upstream HTML and is not the safest direct display field
+- Mentions that `deferred` should be checked before blindly executing `next_command`
 
 **Verification Method**:
 - [ ] LLM extracts both `article_key` values
 - [ ] LLM identifies `display_text` as the display-safe field
 - [ ] LLM distinguishes `raw_label_html` from normalized display text
+- [ ] LLM treats `next_command` as automation-safe only after checking `deferred`
 
 **Status**: ⬜ Not Tested | ✅ Passed | ❌ Failed
 
@@ -442,12 +445,13 @@ Extract the canonical article keys and explain which field is safe for human dis
 
 - [x] Command syntax matches `internal/app/app.go` flag definitions:
   - [x] `--format` (string, markdown|json)
-  - [x] `--source` (string, comma-separated)
+  - [x] `--source` (search-only, repeatable provider selector)
   - [x] `--no-cache` (bool)
   - [x] `--doctor` (bool)
   - [x] `--version` (bool)
   - [x] Dedicated `search <query>` subcommand usage
-  - [x] `search` excludes `--source` from its usage surface
+  - [x] Dedicated `dpd search <query>` usage
+  - [x] `search` includes `--source` in its usage surface
 - [x] JSON structure documented matches `internal/model/types.go`:
   - [x] LookupResult structure
   - [x] LookupMiss structure
