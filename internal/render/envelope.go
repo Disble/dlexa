@@ -50,53 +50,77 @@ func (r *MarkdownEnvelopeRenderer) RenderSuccess(ctx context.Context, env model.
 func (r *MarkdownEnvelopeRenderer) RenderHelp(ctx context.Context, help model.HelpEnvelope) ([]byte, error) {
 	_ = ctx
 	var builder strings.Builder
-	command := strings.TrimSpace(help.Command)
-	if command == "" {
-		command = "dlexa"
-	}
+	command := helpCommand(help)
 	builder.WriteString("# Ayuda: ")
 	builder.WriteString(command)
 	builder.WriteString("\n\n")
-	if summary := strings.TrimSpace(help.Summary); summary != "" {
+	appendHelpSummary(&builder, help.Summary)
+	appendHelpSyntax(&builder, help.Syntax)
+	appendHelpList(&builder, "## Ejemplos\n", normalizeNonEmpty(help.Examples), true)
+	appendHelpList(&builder, "## Siguiente paso sugerido\n", normalizeNonEmpty(help.NextSteps), false)
+	appendHelpRecovery(&builder, help.RecoveryTip)
+	return []byte(strings.TrimRight(builder.String(), "\n")), nil
+}
+
+func helpCommand(help model.HelpEnvelope) string {
+	command := strings.TrimSpace(help.Command)
+	if command == "" {
+		return "dlexa"
+	}
+	return command
+}
+
+func appendHelpSummary(builder *strings.Builder, summary string) {
+	if summary = strings.TrimSpace(summary); summary != "" {
 		builder.WriteString(summary)
 		builder.WriteString("\n\n")
 	}
-	if syntax := strings.TrimSpace(help.Syntax); syntax != "" {
+}
+
+func appendHelpSyntax(builder *strings.Builder, syntax string) {
+	if syntax = strings.TrimSpace(syntax); syntax != "" {
 		builder.WriteString("## Sintaxis\n")
 		builder.WriteString("`")
 		builder.WriteString(syntax)
 		builder.WriteString("`\n\n")
 	}
-	if len(help.Examples) > 0 {
-		builder.WriteString("## Ejemplos\n")
-		for _, example := range help.Examples {
-			if strings.TrimSpace(example) == "" {
-				continue
-			}
-			builder.WriteString("- `")
-			builder.WriteString(strings.TrimSpace(example))
-			builder.WriteString("`\n")
+}
+
+func appendHelpList(builder *strings.Builder, heading string, items []string, quote bool) {
+	if len(items) == 0 {
+		return
+	}
+	builder.WriteString(heading)
+	for _, item := range items {
+		builder.WriteString("- ")
+		if quote {
+			builder.WriteString("`")
+		}
+		builder.WriteString(item)
+		if quote {
+			builder.WriteString("`")
 		}
 		builder.WriteString("\n")
 	}
-	if len(help.NextSteps) > 0 {
-		builder.WriteString("## Siguiente paso sugerido\n")
-		for _, step := range help.NextSteps {
-			if strings.TrimSpace(step) == "" {
-				continue
-			}
-			builder.WriteString("- ")
-			builder.WriteString(strings.TrimSpace(step))
-			builder.WriteString("\n")
-		}
-		builder.WriteString("\n")
-	}
-	if recovery := strings.TrimSpace(help.RecoveryTip); recovery != "" {
+	builder.WriteString("\n")
+}
+
+func appendHelpRecovery(builder *strings.Builder, recovery string) {
+	if recovery = strings.TrimSpace(recovery); recovery != "" {
 		builder.WriteString("## Si falla\n")
 		builder.WriteString(recovery)
 		builder.WriteString("\n")
 	}
-	return []byte(strings.TrimRight(builder.String(), "\n")), nil
+}
+
+func normalizeNonEmpty(items []string) []string {
+	normalized := make([]string, 0, len(items))
+	for _, item := range items {
+		if trimmed := strings.TrimSpace(item); trimmed != "" {
+			normalized = append(normalized, trimmed)
+		}
+	}
+	return normalized
 }
 
 // RenderFallback renders the explicit fallback tiers.

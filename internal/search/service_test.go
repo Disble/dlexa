@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -170,6 +171,49 @@ func TestServiceNoCacheBypassesCoalescing(t *testing.T) {
 	}
 	if got := provider.calls.Load(); got != 2 {
 		t.Fatalf("provider calls = %d, want 2 when NoCache=true", got)
+	}
+}
+
+func TestAggregateResults_AllProvidersFailRateLimited(t *testing.T) {
+	providers := []Provider{
+		&providerStub{descriptor: model.SourceDescriptor{Name: "search", Priority: 1}},
+		&providerStub{descriptor: model.SourceDescriptor{Name: "dpd", Priority: 2}},
+	}
+	outcomes := []providerOutcome{
+		{
+			provider: providers[0],
+			err: model.NewProblemError(model.Problem{
+				Code:     model.ProblemCodeDPDSearchRateLimited,
+				Message:  "search throttled",
+				Severity: model.ProblemSeverityError,
+			}, errors.New("search throttled")),
+		},
+		{
+			provider: providers[1],
+			err: model.NewProblemError(model.Problem{
+				Code:     model.ProblemCodeDPDSearchRateLimited,
+				Message:  "dpd throttled",
+				Severity: model.ProblemSeverityError,
+			}, errors.New("dpd throttled")),
+		},
+	}
+
+	_, err := aggregateResults(model.SearchRequest{Query: "solo"}, providers, outcomes, time.Date(2026, time.April, 11, 0, 0, 0, 0, time.UTC))
+	if err == nil {
+		t.Fatal("aggregateResults() error = nil, want rate-limited problem")
+	}
+
+	problem, ok := model.AsProblem(err)
+	if !ok {
+		t.Fatalf("aggregateResults() error = %T, want ProblemError", err)
+	}
+	if problem.Code != model.ProblemCodeSearchAllProvidersRateLimited {
+		t.Fatalf("problem.Code = %q, want %q", problem.Code, model.ProblemCodeSearchAllProvidersRateLimited)
+	}
+	for _, want := range []string{"[search] search throttled", "[dpd] dpd throttled"} {
+		if !strings.Contains(problem.Message, want) {
+			t.Fatalf("problem.Message = %q, want substring %q", problem.Message, want)
+		}
 	}
 }
 

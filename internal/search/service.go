@@ -281,72 +281,142 @@ func aggregateRequest(baseRequest model.SearchRequest, providers []Provider) mod
 	return request
 }
 
-func aggregateResults(baseRequest model.SearchRequest, providers []Provider, outcomes []providerOutcome, now time.Time) (model.SearchResult, error) {
-	result := model.SearchResult{Request: aggregateRequest(baseRequest, providers), GeneratedAt: now, CacheHit: len(outcomes) > 0}
-	priorities := make(map[string]int, len(providers))
-	successes := 0
+type aggregateState struct {
+	result     model.SearchResult
+	priorities map[string]int
+	successes  int
+}
 
+func newAggregateState(baseRequest model.SearchRequest, providers []Provider, now time.Time, cached bool) aggregateState {
+	state := aggregateState{
+		result:     model.SearchResult{Request: aggregateRequest(baseRequest, providers), GeneratedAt: now, CacheHit: cached},
+		priorities: make(map[string]int, len(providers)),
+	}
 	for _, provider := range providers {
-		priorities[provider.Descriptor().Name] = provider.Descriptor().Priority
+		state.priorities[provider.Descriptor().Name] = provider.Descriptor().Priority
 	}
+	return state
+}
 
+func (s *aggregateState) addOutcome(outcome providerOutcome) {
+	if outcome.err != nil {
+		s.addFailure(outcome)
+		return
+	}
+	if !outcome.cached {
+		s.result.CacheHit = false
+	}
+	s.successes++
+	s.appendWarnings(outcome)
+	s.appendProblems(outcome)
+	s.appendCandidates(outcome)
+	s.updateGeneratedAt(outcome.result.GeneratedAt)
+}
+
+func (s *aggregateState) addFailure(outcome providerOutcome) {
+	s.result.CacheHit = false
+	s.result.Problems = append(s.result.Problems, problemFromError(outcome.provider, outcome.err))
+}
+
+func (s *aggregateState) appendWarnings(outcome providerOutcome) {
+	for _, warning := range outcome.result.Warnings {
+		if warning.Source == "" {
+			warning.Source = outcome.provider.Descriptor().Name
+		}
+		s.result.Warnings = append(s.result.Warnings, warning)
+	}
+}
+
+func (s *aggregateState) appendProblems(outcome providerOutcome) {
+	for _, problem := range outcome.result.Problems {
+		s.result.Problems = append(s.result.Problems, withProblemSource(problem, outcome.provider))
+	}
+}
+
+func (s *aggregateState) appendCandidates(outcome providerOutcome) {
+	for _, candidate := range outcome.result.Candidates {
+		s.result.Candidates = append(s.result.Candidates, withCandidateSourceHint(candidate, outcome.provider))
+	}
+}
+
+func (s *aggregateState) updateGeneratedAt(generatedAt time.Time) {
+	if generatedAt.IsZero() {
+		return
+	}
+	if s.result.GeneratedAt.IsZero() || generatedAt.Before(s.result.GeneratedAt) {
+		s.result.GeneratedAt = generatedAt
+	}
+}
+
+func (s *aggregateState) sortProblems() {
+	sortProblemsByPriority(s.result.Problems, s.priorities)
+}
+
+func (s *aggregateState) finalize(now time.Time, outcomes []providerOutcome) (model.SearchResult, error) {
+	if s.successes == 0 {
+		return s.finalizeFailure(outcomes)
+	}
+	if s.result.GeneratedAt.IsZero() {
+		s.result.GeneratedAt = now
+	}
+	return s.result, nil
+}
+
+func (s *aggregateState) finalizeFailure(outcomes []providerOutcome) (model.SearchResult, error) {
+	if len(s.result.Problems) == 0 {
+		return model.SearchResult{}, errors.New(allSearchProvidersFailedMessage)
+	}
+	if err := passthroughAggregateError(outcomes, s.result.Problems); err != nil {
+		return model.SearchResult{}, err
+	}
+	if allProblemsRateLimited(s.result.Problems) {
+		return model.SearchResult{}, newAggregateProblemError(
+			model.ProblemCodeSearchAllProvidersRateLimited,
+			aggregateProblemMessage(s.result.Problems),
+			"all search providers rate limited",
+		)
+	}
+	return model.SearchResult{}, newAggregateProblemError(
+		aggregateProblemCode(s.result.Problems),
+		aggregateProblemMessage(s.result.Problems),
+		allSearchProvidersFailedMessage,
+	)
+}
+
+func passthroughAggregateError(outcomes []providerOutcome, problems []model.Problem) error {
+	if len(problems) > 1 {
+		return nil
+	}
+	err := firstOutcomeError(outcomes)
+	if err == nil {
+		return nil
+	}
+	if len(outcomes) == 1 {
+		return err
+	}
+	problem, ok := model.AsProblem(err)
+	if !ok {
+		return err
+	}
+	problem.Message = aggregateProblemMessage(problems)
+	problem.Source = ""
+	return model.NewProblemError(problem, errors.New(allSearchProvidersFailedMessage))
+}
+
+func newAggregateProblemError(code, message, cause string) error {
+	return model.NewProblemError(
+		model.Problem{Code: code, Message: message, Severity: model.ProblemSeverityError},
+		errors.New(cause),
+	)
+}
+
+func aggregateResults(baseRequest model.SearchRequest, providers []Provider, outcomes []providerOutcome, now time.Time) (model.SearchResult, error) {
+	state := newAggregateState(baseRequest, providers, now, len(outcomes) > 0)
 	for _, outcome := range outcomes {
-		if outcome.err != nil {
-			result.CacheHit = false
-			result.Problems = append(result.Problems, problemFromError(outcome.provider, outcome.err))
-			continue
-		}
-		successes++
-		if !outcome.cached {
-			result.CacheHit = false
-		}
-		for _, warning := range outcome.result.Warnings {
-			if warning.Source == "" {
-				warning.Source = outcome.provider.Descriptor().Name
-			}
-			result.Warnings = append(result.Warnings, warning)
-		}
-		for _, problem := range outcome.result.Problems {
-			result.Problems = append(result.Problems, withProblemSource(problem, outcome.provider))
-		}
-		for _, candidate := range outcome.result.Candidates {
-			result.Candidates = append(result.Candidates, withCandidateSourceHint(candidate, outcome.provider))
-		}
-		if result.GeneratedAt.IsZero() || (!outcome.result.GeneratedAt.IsZero() && outcome.result.GeneratedAt.Before(result.GeneratedAt)) {
-			result.GeneratedAt = outcome.result.GeneratedAt
-		}
+		state.addOutcome(outcome)
 	}
-
-	sortProblemsByPriority(result.Problems, priorities)
-	if successes == 0 {
-		if len(result.Problems) == 0 {
-			return model.SearchResult{}, errors.New(allSearchProvidersFailedMessage)
-		}
-		if len(outcomes) == 1 {
-			if err := firstOutcomeError(outcomes); err != nil {
-				return model.SearchResult{}, err
-			}
-		}
-		if len(result.Problems) == 1 {
-			if err := firstOutcomeError(outcomes); err != nil {
-				problem, ok := model.AsProblem(err)
-				if ok {
-					problem.Message = aggregateProblemMessage(result.Problems)
-					problem.Source = ""
-					return model.SearchResult{}, model.NewProblemError(problem, errors.New(allSearchProvidersFailedMessage))
-				}
-				return model.SearchResult{}, err
-			}
-		}
-		if allProblemsRateLimited(result.Problems) {
-			return model.SearchResult{}, model.NewProblemError(model.Problem{Code: model.ProblemCodeSearchAllProvidersRateLimited, Message: aggregateProblemMessage(result.Problems), Severity: model.ProblemSeverityError}, errors.New("all search providers rate limited"))
-		}
-		return model.SearchResult{}, model.NewProblemError(model.Problem{Code: aggregateProblemCode(result.Problems), Message: aggregateProblemMessage(result.Problems), Severity: model.ProblemSeverityError}, errors.New(allSearchProvidersFailedMessage))
-	}
-	if result.GeneratedAt.IsZero() {
-		result.GeneratedAt = now
-	}
-	return result, nil
+	state.sortProblems()
+	return state.finalize(now, outcomes)
 }
 
 // Search runs a semantic search using a format-neutral cached normalized result when available.

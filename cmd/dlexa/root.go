@@ -41,33 +41,8 @@ func newRootCommand(ctx context.Context, runtime runtimeRunner) *cobra.Command {
 		Short:         "Consulta dudas normativas del español para agentes.",
 		SilenceErrors: true,
 		SilenceUsage:  true,
-		Args: func(cmd *cobra.Command, args []string) error {
-			if doctorFlag || versionFlag {
-				return nil
-			}
-			if len(args) == 0 {
-				return nil
-			}
-			if len(args) > 0 && looksLikeUnknownSyntax(args) {
-				return fmt.Errorf("unknown command %q for %q", args[0], cmd.CommandPath())
-			}
-			return nil
-		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if cmd.Flags().Changed("help") {
-				return rootHelp(ctx, runtime)
-			}
-			if versionFlag {
-				return runtime.PrintVersion()
-			}
-			if doctorFlag {
-				return runtime.RunDoctor(ctx)
-			}
-			if len(args) == 0 {
-				return rootHelp(ctx, runtime)
-			}
-			return runtime.RunModule(ctx, commandDPD, modules.Request{Query: strings.TrimSpace(strings.Join(args, " ")), Format: format, NoCache: noCache, Args: append([]string(nil), args...)})
-		},
+		Args:          newRootArgsValidator(&doctorFlag, &versionFlag),
+		RunE:          newRootRunE(ctx, runtime, &format, &noCache, &doctorFlag, &versionFlag),
 	}
 	root.PersistentFlags().StringVar(&format, "format", "", "render format: markdown|json")
 	root.PersistentFlags().BoolVar(&noCache, "no-cache", false, "skip cache reads and writes")
@@ -80,6 +55,80 @@ func newRootCommand(ctx context.Context, runtime runtimeRunner) *cobra.Command {
 	root.AddCommand(newDudaLinguisticaCommand(ctx, runtime, &format, &noCache))
 	root.AddCommand(newNoticiaCommand(ctx, runtime, &format, &noCache))
 	return root
+}
+
+func newRootArgsValidator(doctorFlag, versionFlag *bool) func(cmd *cobra.Command, args []string) error {
+	return func(cmd *cobra.Command, args []string) error {
+		if rootSkipsQueryValidation(doctorFlag, versionFlag, args) {
+			return nil
+		}
+		if looksLikeUnknownSyntax(args) {
+			return fmt.Errorf("unknown command %q for %q", args[0], cmd.CommandPath())
+		}
+		return nil
+	}
+}
+
+func rootSkipsQueryValidation(doctorFlag, versionFlag *bool, args []string) bool {
+	return flagValue(doctorFlag) || flagValue(versionFlag) || len(args) == 0
+}
+
+func newRootRunE(
+	ctx context.Context,
+	runtime runtimeRunner,
+	format *string,
+	noCache *bool,
+	doctorFlag *bool,
+	versionFlag *bool,
+) func(cmd *cobra.Command, args []string) error {
+	return func(cmd *cobra.Command, args []string) error {
+		if ok, action := rootImmediateAction(ctx, runtime, cmd, args, doctorFlag, versionFlag); ok {
+			return action
+		}
+		return runtime.RunModule(ctx, commandDPD, rootModuleRequest(args, format, noCache))
+	}
+}
+
+func rootImmediateAction(
+	ctx context.Context,
+	runtime runtimeRunner,
+	cmd *cobra.Command,
+	args []string,
+	doctorFlag *bool,
+	versionFlag *bool,
+) (bool, error) {
+	switch {
+	case cmd.Flags().Changed("help"):
+		return true, rootHelp(ctx, runtime)
+	case flagValue(versionFlag):
+		return true, runtime.PrintVersion()
+	case flagValue(doctorFlag):
+		return true, runtime.RunDoctor(ctx)
+	case len(args) == 0:
+		return true, rootHelp(ctx, runtime)
+	default:
+		return false, nil
+	}
+}
+
+func rootModuleRequest(args []string, format *string, noCache *bool) modules.Request {
+	return modules.Request{
+		Query:   strings.TrimSpace(strings.Join(args, " ")),
+		Format:  stringValue(format),
+		NoCache: flagValue(noCache),
+		Args:    append([]string(nil), args...),
+	}
+}
+
+func flagValue(flag *bool) bool {
+	return flag != nil && *flag
+}
+
+func stringValue(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }
 
 func rootHelp(ctx context.Context, runtime runtimeRunner) error {

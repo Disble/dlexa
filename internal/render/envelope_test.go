@@ -83,6 +83,29 @@ func TestEnvelopeRendererRendersMarkdownHelp(t *testing.T) {
 	}
 }
 
+func TestEnvelopeRendererRendersHelpSkippingBlankEntries(t *testing.T) {
+	renderer := NewEnvelopeRenderer()
+	payload, err := renderer.RenderHelp(context.Background(), model.HelpEnvelope{
+		Examples:    []string{"", "  ", "dlexa search tilde"},
+		NextSteps:   []string{"", "Usá search."},
+		RecoveryTip: " ",
+	})
+	if err != nil {
+		t.Fatalf("RenderHelp() error = %v", err)
+	}
+	text := string(payload)
+	for _, want := range []string{"# Ayuda: dlexa", "`dlexa search tilde`", "- Usá search."} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("help payload missing %q\n%s", want, text)
+		}
+	}
+	for _, forbidden := range []string{"- ``", "## Si falla"} {
+		if strings.Contains(text, forbidden) {
+			t.Fatalf("help payload contains forbidden %q\n%s", forbidden, text)
+		}
+	}
+}
+
 func TestEnvelopeRendererRendersFourLevelFallbacks(t *testing.T) {
 	renderer := NewEnvelopeRenderer()
 	for _, tc := range fallbackCases {

@@ -701,3 +701,22 @@ func TestMarkdownRendererShowsRedirectURLInCitation(t *testing.T) {
 		[]string{"URL: " + testTildeURL + "\n"}, // must NOT appear alone
 	)
 }
+
+func TestMarkdownRendererUsesDictionaryOnlyCitationFallback(t *testing.T) {
+	renderer := NewMarkdownRenderer()
+	payload, err := renderer.Render(context.Background(), model.LookupResult{Entries: []model.Entry{{
+		Headword: "bien",
+		Article: &model.Article{
+			Dictionary: testDictionary,
+			Citation:   model.Citation{},
+		},
+	}}})
+	if err != nil {
+		t.Fatalf(testErrRender, err)
+	}
+	text := string(payload)
+	assertMarkdownPayloadGuidance(t, text,
+		[]string{"Dictionary: " + testDictionary},
+		[]string{"Source:", "Edition:", "Consulted:"},
+	)
+}

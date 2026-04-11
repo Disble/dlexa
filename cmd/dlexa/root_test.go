@@ -212,3 +212,22 @@ func TestRootCommand_RootRendersHelpEnvelopeWithExpectedContent(t *testing.T) {
 		t.Fatalf("stdout = %q, missing help header", stdout.String())
 	}
 }
+
+func TestRootCommand_UnknownFlagLikeSyntaxUsesSyntaxHandler(t *testing.T) {
+	runtime := &stubRuntime{}
+	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+	runtime.stdout = stdout
+
+	if err := executeRootCommand(context.Background(), runtime, stdout, stderr, []string{"consulta", "--desconocido"}); err != nil {
+		t.Fatalf(unexpectedErrorFormat, err)
+	}
+	if runtime.syntaxErr == nil {
+		t.Fatal("expected HandleSyntaxError to capture unknown syntax")
+	}
+	if runtime.executedModule != "" {
+		t.Fatal("RunModule should NOT be called for unknown syntax")
+	}
+	if !strings.Contains(stdout.String(), "Nivel 1 · Syntax") {
+		t.Fatalf("stdout = %q, want syntax fallback output", stdout.String())
+	}
+}
