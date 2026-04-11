@@ -3,9 +3,7 @@ package espanolaldia
 
 import (
 	"context"
-	"strings"
 
-	"github.com/Disble/dlexa/internal/model"
 	"github.com/Disble/dlexa/internal/modules"
 	"github.com/Disble/dlexa/internal/query"
 	"github.com/Disble/dlexa/internal/render"
@@ -38,30 +36,9 @@ func (m *Module) Command() string { return moduleName }
 
 // Execute resolves the lookup and renders a structured lookup response.
 func (m *Module) Execute(ctx context.Context, req modules.Request) (modules.Response, error) {
-	lookupReq := model.LookupRequest{
-		Query:   strings.TrimSpace(req.Query),
-		Format:  strings.TrimSpace(req.Format),
-		Sources: append([]string(nil), req.Sources...),
-		NoCache: req.NoCache,
-	}
-	if len(lookupReq.Sources) == 0 {
-		lookupReq.Sources = []string{moduleName}
-	}
-	result, err := m.lookup.Lookup(ctx, lookupReq)
-	if err != nil {
-		return modules.Response{Title: lookupReq.Query, Source: moduleSource, CacheState: modules.CacheState(false), Format: lookupReq.Format, Fallback: modules.FallbackFromError(moduleName, lookupReq.Query, lookupReq.Format, err)}, nil
-	}
-	renderer, err := m.renderers.Renderer(lookupReq.Format)
-	if err != nil {
-		return modules.Response{}, err
-	}
-	body, err := renderer.Render(ctx, result)
-	if err != nil {
-		return modules.Response{}, err
-	}
-	response := modules.Response{Title: lookupReq.Query, Source: moduleSource, CacheState: modules.CacheState(result.CacheHit), Format: lookupReq.Format, Body: body}
-	if len(result.Entries) == 0 && len(result.Misses) > 0 {
-		response.Fallback = modules.NotFoundFallback(moduleName, lookupReq.Query, "dlexa search "+strings.TrimSpace(lookupReq.Query))
-	}
-	return response, nil
+	return modules.ExecuteLookupModule(ctx, req, m.lookup, m.renderers, modules.LookupModuleOptions{
+		ModuleName:      moduleName,
+		ModuleSource:    moduleSource,
+		MissingFallback: modules.DefaultLookupMissingFallback(moduleName),
+	})
 }

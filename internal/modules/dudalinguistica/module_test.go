@@ -7,21 +7,21 @@ import (
 
 	"github.com/Disble/dlexa/internal/model"
 	"github.com/Disble/dlexa/internal/modules"
-	"github.com/Disble/dlexa/internal/render"
+	modtest "github.com/Disble/dlexa/internal/modules/testsupport"
 )
 
 const sourceDudaLinguistica = "duda-linguistica"
 
 func TestModuleTargetsDudaLinguisticaSourceAndReturnsBody(t *testing.T) {
-	lookup := &lookupStub{result: model.LookupResult{Request: model.LookupRequest{Query: "tilde", Format: "markdown", Sources: []string{sourceDudaLinguistica}}, CacheHit: true, Entries: []model.Entry{{Headword: "tilde", Content: "contenido"}}}}
-	renderers := &renderersStub{renderer: &rendererStub{payload: []byte("## Duda lingüística\ncontenido")}}
+	lookup := &modtest.LookupStub{Result: model.LookupResult{Request: model.LookupRequest{Query: "tilde", Format: "markdown", Sources: []string{sourceDudaLinguistica}}, CacheHit: true, Entries: []model.Entry{{Headword: "tilde", Content: "contenido"}}}}
+	renderers := &modtest.RenderersStub{RendererValue: &modtest.RendererStub{Payload: []byte("## Duda lingüística\ncontenido")}}
 	module := New(lookup, renderers)
 
 	response, err := module.Execute(context.Background(), modules.Request{Query: "tilde", Format: "markdown"})
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
 	}
-	if got := lookup.request.Sources; len(got) != 1 || got[0] != sourceDudaLinguistica {
+	if got := lookup.Request.Sources; len(got) != 1 || got[0] != sourceDudaLinguistica {
 		t.Fatalf("lookup sources = %#v, want [%q]", got, sourceDudaLinguistica)
 	}
 	if response.Source != "Duda lingüística" || string(response.Body) != "## Duda lingüística\ncontenido" {
@@ -30,8 +30,8 @@ func TestModuleTargetsDudaLinguisticaSourceAndReturnsBody(t *testing.T) {
 }
 
 func TestModuleMapsNotFoundIntoStructuredFallback(t *testing.T) {
-	lookup := &lookupStub{result: model.LookupResult{Request: model.LookupRequest{Query: "tilde", Format: "markdown", Sources: []string{sourceDudaLinguistica}}, Misses: []model.LookupMiss{{Kind: model.LookupMissKindGenericNotFound, Query: "tilde"}}}}
-	renderers := &renderersStub{renderer: &rendererStub{payload: []byte("unused")}}
+	lookup := &modtest.LookupStub{Result: model.LookupResult{Request: model.LookupRequest{Query: "tilde", Format: "markdown", Sources: []string{sourceDudaLinguistica}}, Misses: []model.LookupMiss{{Kind: model.LookupMissKindGenericNotFound, Query: "tilde"}}}}
+	renderers := &modtest.RenderersStub{RendererValue: &modtest.RendererStub{Payload: []byte("unused")}}
 	module := New(lookup, renderers)
 
 	response, err := module.Execute(context.Background(), modules.Request{Query: "tilde", Format: "markdown", Sources: []string{sourceDudaLinguistica}})
@@ -44,30 +44,4 @@ func TestModuleMapsNotFoundIntoStructuredFallback(t *testing.T) {
 	if !strings.Contains(response.Fallback.NextCommand, "dlexa search tilde") {
 		t.Fatalf("next command = %q, want dlexa search tilde", response.Fallback.NextCommand)
 	}
-}
-
-type lookupStub struct {
-	request model.LookupRequest
-	result  model.LookupResult
-	err     error
-}
-
-func (s *lookupStub) Lookup(_ context.Context, request model.LookupRequest) (model.LookupResult, error) {
-	s.request = request
-	return s.result, s.err
-}
-
-type renderersStub struct{ renderer render.Renderer }
-
-func (s *renderersStub) Renderer(string) (render.Renderer, error) { return s.renderer, nil }
-
-type rendererStub struct {
-	payload []byte
-	result  model.LookupResult
-}
-
-func (s *rendererStub) Format() string { return "markdown" }
-func (s *rendererStub) Render(_ context.Context, result model.LookupResult) ([]byte, error) {
-	s.result = result
-	return s.payload, nil
 }

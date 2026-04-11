@@ -38,35 +38,13 @@ func (m *Module) Command() string { return moduleName }
 
 // Execute resolves the lookup, preserving JSON compatibility while offloading final envelope rendering.
 func (m *Module) Execute(ctx context.Context, req modules.Request) (modules.Response, error) {
-	lookupReq := model.LookupRequest{
-		Query:   strings.TrimSpace(req.Query),
-		Format:  strings.TrimSpace(req.Format),
-		Sources: append([]string(nil), req.Sources...),
-		NoCache: req.NoCache,
-	}
-	result, err := m.lookup.Lookup(ctx, lookupReq)
-	if err != nil {
-		return modules.Response{Title: lookupReq.Query, Source: moduleSource, CacheState: modules.CacheState(false), Format: lookupReq.Format, Fallback: modules.FallbackFromError(moduleName, lookupReq.Query, lookupReq.Format, err)}, nil
-	}
-	renderer, err := m.renderers.Renderer(lookupReq.Format)
-	if err != nil {
-		return modules.Response{}, err
-	}
-	body, err := renderer.Render(ctx, result)
-	if err != nil {
-		return modules.Response{}, err
-	}
-	response := modules.Response{
-		Title:      lookupReq.Query,
-		Source:     moduleSource,
-		CacheState: modules.CacheState(result.CacheHit),
-		Format:     lookupReq.Format,
-		Body:       body,
-	}
-	if len(result.Entries) == 0 && len(result.Misses) > 0 {
-		response.Fallback = fallbackFromMiss(lookupReq, result.Misses[0])
-	}
-	return response, nil
+	return modules.ExecuteLookupModule(ctx, req, m.lookup, m.renderers, modules.LookupModuleOptions{
+		ModuleName:   moduleName,
+		ModuleSource: moduleSource,
+		MissingFallback: func(lookupReq model.LookupRequest, result model.LookupResult) *model.FallbackEnvelope {
+			return fallbackFromMiss(lookupReq, result.Misses[0])
+		},
+	})
 }
 
 func fallbackFromMiss(req model.LookupRequest, miss model.LookupMiss) *model.FallbackEnvelope {

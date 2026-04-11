@@ -38,50 +38,28 @@ func (m *Module) Command() string { return moduleName }
 
 // Execute resolves the lookup, enforces the FAQ prefix policy, and renders a structured response.
 func (m *Module) Execute(ctx context.Context, req modules.Request) (modules.Response, error) {
-	lookupReq := model.LookupRequest{
-		Query:   strings.TrimSpace(req.Query),
-		Format:  strings.TrimSpace(req.Format),
-		Sources: append([]string(nil), req.Sources...),
-		NoCache: req.NoCache,
+	return modules.ExecuteLookupModule(ctx, req, m.lookup, m.renderers, modules.LookupModuleOptions{
+		ModuleName:      moduleName,
+		ModuleSource:    moduleSource,
+		MissingFallback: modules.DefaultLookupMissingFallback(moduleName),
+		ResultFallback:  noticiaResultFallback,
+	})
+}
+
+func noticiaResultFallback(req model.LookupRequest, result model.LookupResult) *model.FallbackEnvelope {
+	if isAllowedNoticiaResult(result) {
+		return nil
 	}
-	if len(lookupReq.Sources) == 0 {
-		lookupReq.Sources = []string{moduleName}
+	return &model.FallbackEnvelope{
+		Kind:        model.FallbackKindNotFound,
+		Module:      moduleName,
+		Title:       req.Query,
+		Query:       req.Query,
+		Format:      req.Format,
+		Message:     "Ese slug no expone una pregunta frecuente normativa compatible con este módulo.",
+		Suggestion:  "Probá con `dlexa search <consulta>` para encontrar una FAQ válida o la ruta canónica de Español al día.",
+		NextCommand: "dlexa search " + strings.TrimSpace(req.Query),
 	}
-	result, err := m.lookup.Lookup(ctx, lookupReq)
-	if err != nil {
-		return modules.Response{Title: lookupReq.Query, Source: moduleSource, CacheState: modules.CacheState(false), Format: lookupReq.Format, Fallback: modules.FallbackFromError(moduleName, lookupReq.Query, lookupReq.Format, err)}, nil
-	}
-	if !isAllowedNoticiaResult(result) {
-		return modules.Response{
-			Title:      lookupReq.Query,
-			Source:     moduleSource,
-			CacheState: modules.CacheState(result.CacheHit),
-			Format:     lookupReq.Format,
-			Fallback: &model.FallbackEnvelope{
-				Kind:        model.FallbackKindNotFound,
-				Module:      moduleName,
-				Title:       lookupReq.Query,
-				Query:       lookupReq.Query,
-				Format:      lookupReq.Format,
-				Message:     "Ese slug no expone una pregunta frecuente normativa compatible con este módulo.",
-				Suggestion:  "Probá con `dlexa search <consulta>` para encontrar una FAQ válida o la ruta canónica de Español al día.",
-				NextCommand: "dlexa search " + strings.TrimSpace(lookupReq.Query),
-			},
-		}, nil
-	}
-	renderer, err := m.renderers.Renderer(lookupReq.Format)
-	if err != nil {
-		return modules.Response{}, err
-	}
-	body, err := renderer.Render(ctx, result)
-	if err != nil {
-		return modules.Response{}, err
-	}
-	response := modules.Response{Title: lookupReq.Query, Source: moduleSource, CacheState: modules.CacheState(result.CacheHit), Format: lookupReq.Format, Body: body}
-	if len(result.Entries) == 0 && len(result.Misses) > 0 {
-		response.Fallback = modules.NotFoundFallback(moduleName, lookupReq.Query, "dlexa search "+strings.TrimSpace(lookupReq.Query))
-	}
-	return response, nil
 }
 
 func isAllowedNoticiaResult(result model.LookupResult) bool {

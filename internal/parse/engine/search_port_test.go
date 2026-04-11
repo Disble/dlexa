@@ -36,7 +36,7 @@ func TestLegacySearchAdapterPreservesInputAndOutput(t *testing.T) {
 	if !reflect.DeepEqual(legacy.document, document) {
 		t.Fatalf("legacy document = %#v, want %#v", legacy.document, document)
 	}
-	if legacy.ctx == nil {
+	if !legacy.calledWithContext {
 		t.Fatal("legacy ctx = nil, want context passed through")
 	}
 }
@@ -76,16 +76,16 @@ func TestDPDSearchParserDelegatesToLegacyImplementation(t *testing.T) {
 }
 
 type legacySearchParserStub struct {
-	ctx        context.Context
-	descriptor model.SourceDescriptor
-	document   fetch.Document
-	records    []parse.ParsedSearchRecord
-	warnings   []model.Warning
-	err        error
+	calledWithContext bool
+	descriptor        model.SourceDescriptor
+	document          fetch.Document
+	records           []parse.ParsedSearchRecord
+	warnings          []model.Warning
+	err               error
 }
 
 func (s *legacySearchParserStub) Parse(ctx context.Context, descriptor model.SourceDescriptor, document fetch.Document) ([]parse.ParsedSearchRecord, []model.Warning, error) {
-	s.ctx = ctx
+	s.calledWithContext = ctx != nil
 	s.descriptor = descriptor
 	s.document = document
 	return s.records, s.warnings, s.err

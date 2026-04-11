@@ -35,22 +35,22 @@ func TestLegacyArticleAdapterPreservesInputAndOutput(t *testing.T) {
 	if !reflect.DeepEqual(legacy.document, document) {
 		t.Fatalf("legacy document = %#v, want %#v", legacy.document, document)
 	}
-	if legacy.ctx == nil {
+	if !legacy.calledWithContext {
 		t.Fatal("legacy ctx = nil, want context passed through")
 	}
 }
 
 type legacyArticleParserStub struct {
-	ctx        context.Context
-	descriptor model.SourceDescriptor
-	document   fetch.Document
-	result     parse.Result
-	warnings   []model.Warning
-	err        error
+	calledWithContext bool
+	descriptor        model.SourceDescriptor
+	document          fetch.Document
+	result            parse.Result
+	warnings          []model.Warning
+	err               error
 }
 
 func (s *legacyArticleParserStub) Parse(ctx context.Context, descriptor model.SourceDescriptor, document fetch.Document) (parse.Result, []model.Warning, error) {
-	s.ctx = ctx
+	s.calledWithContext = ctx != nil
 	s.descriptor = descriptor
 	s.document = document
 	return s.result, s.warnings, s.err

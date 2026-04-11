@@ -3,7 +3,9 @@ package fetch
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -94,4 +96,57 @@ func sourceName(descriptor model.SourceDescriptor) string {
 
 func emptyQueryError(kind string) error {
 	return fmt.Errorf("dpd %s term is empty", kind)
+}
+
+func buildArticleLookupURL(baseURL, surface, rawQuery string) (string, error) {
+	trimmedBaseURL := strings.TrimRight(strings.TrimSpace(baseURL), "/")
+	trimmedSurface := strings.Trim(strings.TrimSpace(surface), "/")
+	if trimmedBaseURL == "" {
+		return "", fmt.Errorf("%s base URL is empty", trimmedSurface)
+	}
+
+	slug := normalizeQuery(rawQuery)
+	if slug == "" {
+		return "", fmt.Errorf("article slug is empty")
+	}
+
+	base, err := url.Parse(trimmedBaseURL + "/")
+	if err != nil {
+		return "", fmt.Errorf("parse %s base URL: %w", trimmedSurface, err)
+	}
+	relative, err := url.Parse("../" + trimmedSurface + "/" + url.PathEscape(slug))
+	if err != nil {
+		return "", fmt.Errorf("encode %s slug: %w", trimmedSurface, err)
+	}
+	return base.ResolveReference(relative).String(), nil
+}
+
+func fetchArticleDocument(ctx context.Context, client Doer, nowFn func() time.Time, userAgent, articleURL, sourceLabel string, request Request) (Document, error) {
+	req, err := buildDPDRequest(ctx, http.MethodGet, articleURL, userAgent, "text/html,application/xhtml+xml")
+	if err != nil {
+		return Document{}, newFetchProblem(model.ProblemCodeArticleFetchFailed, fmt.Sprintf("build %s request: %v", sourceLabel, err), request.Source, err)
+	}
+
+	resp, err := resolveClient(client).Do(req)
+	if err != nil {
+		return Document{}, newFetchProblem(model.ProblemCodeArticleFetchFailed, fmt.Sprintf("fetch %s document: %v", sourceLabel, err), request.Source, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return Document{}, newFetchProblem(model.ProblemCodeArticleFetchFailed, fmt.Sprintf("read %s response body: %v", sourceLabel, err), request.Source, err)
+	}
+
+	if resp.StatusCode == http.StatusNotFound {
+		return Document{}, newFetchProblem(model.ProblemCodeArticleNotFound, fmt.Sprintf("article not found for %q", normalizeQuery(request.Query)), request.Source, nil)
+	}
+	if isChallengeBody(body) {
+		return Document{}, newFetchProblem(model.ProblemCodeArticleFetchFailed, fmt.Sprintf("%s request was challenged by upstream; browser-like profile still rejected", sourceLabel), request.Source, nil)
+	}
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return Document{}, newFetchProblem(model.ProblemCodeArticleFetchFailed, fmt.Sprintf("%s request failed with status %d", sourceLabel, resp.StatusCode), request.Source, nil)
+	}
+
+	return buildDocument(nowFn, resp, body, articleURL), nil
 }
