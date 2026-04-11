@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"context"
+
 	"github.com/Disble/dlexa/internal/model"
 	legacyparse "github.com/Disble/dlexa/internal/parse"
 )
@@ -16,6 +18,6 @@ func NewDudaLinguisticaArticleParser() *DudaLinguisticaArticleParser {
 }
 
 // ParseArticle delegates to the legacy parser implementation without behavior changes.
-func (p *DudaLinguisticaArticleParser) ParseArticle(input ParseInput) (ArticleResult, []model.Warning, error) {
-	return p.legacy.Parse(input.Ctx, input.Descriptor, input.Document)
+func (p *DudaLinguisticaArticleParser) ParseArticle(ctx context.Context, input ParseInput) (ArticleResult, []model.Warning, error) {
+	return p.legacy.Parse(ctx, input.Descriptor, input.Document)
 }

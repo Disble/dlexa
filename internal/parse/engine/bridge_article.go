@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"context"
+
 	"github.com/Disble/dlexa/internal/model"
 	"github.com/Disble/dlexa/internal/parse"
 )
@@ -16,11 +18,11 @@ func AdaptLegacyArticleParser(parser parse.Parser) *LegacyArticleAdapter {
 }
 
 // ParseArticle satisfies the engine article parser port.
-func (a *LegacyArticleAdapter) ParseArticle(input ParseInput) (ArticleResult, []model.Warning, error) {
+func (a *LegacyArticleAdapter) ParseArticle(ctx context.Context, input ParseInput) (ArticleResult, []model.Warning, error) {
 	if a == nil || a.legacy == nil {
 		return parse.Result{}, nil, nil
 	}
-	return a.legacy.Parse(input.Ctx, input.Descriptor, input.Document)
+	return a.legacy.Parse(ctx, input.Descriptor, input.Document)
 }
 
 // UnderlyingForTesting exposes the wrapped legacy parser.

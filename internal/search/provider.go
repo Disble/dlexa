@@ -19,8 +19,8 @@ type Provider interface {
 	Search(ctx context.Context, request model.SearchRequest) (model.SearchResult, error)
 }
 
-// Registry selects providers for a given search request.
-type Registry interface {
+// ProviderSelector selects providers for a given search request.
+type ProviderSelector interface {
 	ProvidersFor(request model.SearchRequest) ([]Provider, error)
 }
 
@@ -183,5 +183,5 @@ var _ []parse.ParsedSearchRecord
 type engineSearchParserBridge struct{ parser parseengine.SearchParser }
 
 func (b engineSearchParserBridge) Parse(ctx context.Context, descriptor model.SourceDescriptor, document fetch.Document) ([]parse.ParsedSearchRecord, []model.Warning, error) {
-	return b.parser.ParseSearch(parseengine.ParseInput{Ctx: ctx, Descriptor: descriptor, Document: document})
+	return b.parser.ParseSearch(ctx, parseengine.ParseInput{Descriptor: descriptor, Document: document})
 }

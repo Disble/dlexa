@@ -100,5 +100,5 @@ func (s *PipelineSource) Lookup(ctx context.Context, request model.LookupRequest
 type engineArticleParserBridge struct{ parser parseengine.ArticleParser }
 
 func (b engineArticleParserBridge) Parse(ctx context.Context, descriptor model.SourceDescriptor, document fetch.Document) (parse.Result, []model.Warning, error) {
-	return b.parser.ParseArticle(parseengine.ParseInput{Ctx: ctx, Descriptor: descriptor, Document: document})
+	return b.parser.ParseArticle(ctx, parseengine.ParseInput{Descriptor: descriptor, Document: document})
 }

@@ -11,8 +11,12 @@ import (
 
 func TestResolverRegistersAndResolvesArticleAndSearchParsers(t *testing.T) {
 	resolver := NewResolver()
-	article := articleParserFunc(func(ParseInput) (ArticleResult, []model.Warning, error) { return parse.Result{}, nil, nil })
-	search := searchParserFunc(func(ParseInput) ([]parse.ParsedSearchRecord, []model.Warning, error) { return nil, nil, nil })
+	article := articleParserFunc(func(context.Context, ParseInput) (ArticleResult, []model.Warning, error) {
+		return parse.Result{}, nil, nil
+	})
+	search := searchParserFunc(func(context.Context, ParseInput) ([]parse.ParsedSearchRecord, []model.Warning, error) {
+		return nil, nil, nil
+	})
 
 	resolver.RegisterArticle("dpd", article)
 	resolver.RegisterSearch("search", search)
@@ -21,7 +25,7 @@ func TestResolverRegistersAndResolvesArticleAndSearchParsers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveArticle() error = %v", err)
 	}
-	if _, _, err := gotArticle.ParseArticle(ParseInput{}); err != nil {
+	if _, _, err := gotArticle.ParseArticle(context.Background(), ParseInput{}); err != nil {
 		t.Fatalf("resolved article parser invocation error = %v", err)
 	}
 
@@ -29,7 +33,7 @@ func TestResolverRegistersAndResolvesArticleAndSearchParsers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveSearch() error = %v", err)
 	}
-	if _, _, err := gotSearch.ParseSearch(ParseInput{}); err != nil {
+	if _, _, err := gotSearch.ParseSearch(context.Background(), ParseInput{}); err != nil {
 		t.Fatalf("resolved search parser invocation error = %v", err)
 	}
 }
@@ -48,16 +52,14 @@ func TestResolverReturnsDeterministicErrorForMissingParser(t *testing.T) {
 	}
 }
 
-type articleParserFunc func(ParseInput) (ArticleResult, []model.Warning, error)
+type articleParserFunc func(context.Context, ParseInput) (ArticleResult, []model.Warning, error)
 
-func (f articleParserFunc) ParseArticle(input ParseInput) (ArticleResult, []model.Warning, error) {
-	return f(input)
+func (f articleParserFunc) ParseArticle(ctx context.Context, input ParseInput) (ArticleResult, []model.Warning, error) {
+	return f(ctx, input)
 }
 
-type searchParserFunc func(ParseInput) ([]parse.ParsedSearchRecord, []model.Warning, error)
+type searchParserFunc func(context.Context, ParseInput) ([]parse.ParsedSearchRecord, []model.Warning, error)
 
-func (f searchParserFunc) ParseSearch(input ParseInput) ([]parse.ParsedSearchRecord, []model.Warning, error) {
-	return f(input)
+func (f searchParserFunc) ParseSearch(ctx context.Context, input ParseInput) ([]parse.ParsedSearchRecord, []model.Warning, error) {
+	return f(ctx, input)
 }
-
-var _ = context.Background

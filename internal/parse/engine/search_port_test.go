@@ -20,7 +20,7 @@ func TestLegacySearchAdapterPreservesInputAndOutput(t *testing.T) {
 	legacy := &legacySearchParserStub{records: wantRecords, warnings: wantWarnings}
 
 	adapter := AdaptLegacySearchParser(legacy)
-	records, warnings, err := adapter.ParseSearch(ParseInput{Ctx: context.Background(), Descriptor: descriptor, Document: document})
+	records, warnings, err := adapter.ParseSearch(context.Background(), ParseInput{Descriptor: descriptor, Document: document})
 	if err != nil {
 		t.Fatalf(parseSearchErrFmt, err)
 	}
@@ -46,7 +46,7 @@ func TestLiveSearchParserDelegatesToLegacyImplementation(t *testing.T) {
 	descriptor := model.SourceDescriptor{Name: "search", DisplayName: "RAE Search"}
 	document := fetch.Document{URL: "https://example.invalid/search?q=solo", Body: []byte(`<li><div class="row"><a href="/dpd/solo">solo</a><div class="pb-5"><p>Entrada DPD.</p></div></div></li>`)}
 
-	records, warnings, err := parser.ParseSearch(ParseInput{Ctx: context.Background(), Descriptor: descriptor, Document: document})
+	records, warnings, err := parser.ParseSearch(context.Background(), ParseInput{Descriptor: descriptor, Document: document})
 	if err != nil {
 		t.Fatalf(parseSearchErrFmt, err)
 	}
@@ -63,7 +63,7 @@ func TestDPDSearchParserDelegatesToLegacyImplementation(t *testing.T) {
 	descriptor := model.SourceDescriptor{Name: "dpd", DisplayName: "DPD"}
 	document := fetch.Document{Body: []byte(`["solo|solo"]`)}
 
-	records, warnings, err := parser.ParseSearch(ParseInput{Ctx: context.Background(), Descriptor: descriptor, Document: document})
+	records, warnings, err := parser.ParseSearch(context.Background(), ParseInput{Descriptor: descriptor, Document: document})
 	if err != nil {
 		t.Fatalf(parseSearchErrFmt, err)
 	}

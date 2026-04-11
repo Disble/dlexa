@@ -11,6 +11,13 @@ import (
 	"github.com/Disble/dlexa/internal/model"
 )
 
+type jsonRendererArticleCitation struct {
+	SourceLabel  string `json:"SourceLabel"`
+	CanonicalURL string `json:"CanonicalURL"`
+	Edition      string `json:"Edition"`
+	ConsultedAt  string `json:"ConsultedAt"`
+}
+
 func TestJSONRendererSerializesArticleHierarchyAndCitation(t *testing.T) {
 	renderer := NewJSONRenderer()
 	payload, err := renderer.Render(context.Background(), model.LookupResult{
@@ -46,12 +53,7 @@ func TestJSONRendererSerializesArticleHierarchyAndCitation(t *testing.T) {
 						} `json:"paragraph"`
 					} `json:"Blocks"`
 				} `json:"Sections"`
-				Citation struct {
-					SourceLabel  string `json:"SourceLabel"`
-					CanonicalURL string `json:"CanonicalURL"`
-					Edition      string `json:"Edition"`
-					ConsultedAt  string `json:"ConsultedAt"`
-				} `json:"Citation"`
+				Citation jsonRendererArticleCitation `json:"Citation"`
 			} `json:"Article"`
 		} `json:"Entries"`
 	}

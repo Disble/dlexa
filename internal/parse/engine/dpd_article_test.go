@@ -19,7 +19,6 @@ func TestDPDArticleParser_UnderlyingForTesting(t *testing.T) {
 func TestDPDArticleParser_DelegatesParseArticle(t *testing.T) {
 	parser := NewDPDArticleParser()
 	input := ParseInput{
-		Ctx:        context.Background(),
 		Descriptor: model.SourceDescriptor{Name: "dpd"},
 		Document: fetch.Document{Body: []byte(`
 			<html>
@@ -30,11 +29,12 @@ func TestDPDArticleParser_DelegatesParseArticle(t *testing.T) {
 			</html>`), URL: "https://www.rae.es/dpd/solo"},
 	}
 
-	gotResult, gotWarnings, err := parser.ParseArticle(input)
+	ctx := context.Background()
+	gotResult, gotWarnings, err := parser.ParseArticle(ctx, input)
 	if err != nil {
 		t.Fatalf("ParseArticle() error = %v", err)
 	}
-	wantResult, wantWarnings, err := parser.UnderlyingForTesting().Parse(input.Ctx, input.Descriptor, input.Document)
+	wantResult, wantWarnings, err := parser.UnderlyingForTesting().Parse(ctx, input.Descriptor, input.Document)
 	if err != nil {
 		t.Fatalf("legacy Parse() error = %v", err)
 	}

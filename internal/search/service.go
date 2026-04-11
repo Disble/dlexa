@@ -34,7 +34,7 @@ type Normalizer interface {
 
 // Service orchestrates cache-aside semantic search execution.
 type Service struct {
-	registry        Registry
+	registry        ProviderSelector
 	cache           cache.SearchStore
 	maxConcurrent   int
 	defaultProvider string
@@ -43,7 +43,7 @@ type Service struct {
 }
 
 // NewService creates a search service backed by the given provider registry and cache.
-func NewService(registry Registry, store cache.SearchStore, maxConcurrent int, defaultProvider string) *Service {
+func NewService(registry ProviderSelector, store cache.SearchStore, maxConcurrent int, defaultProvider string) *Service {
 	if maxConcurrent <= 0 {
 		maxConcurrent = 1
 	}
@@ -51,7 +51,7 @@ func NewService(registry Registry, store cache.SearchStore, maxConcurrent int, d
 }
 
 // RegistryForTesting exposes the wired registry for app wiring tests.
-func (s *Service) RegistryForTesting() Registry { return s.registry }
+func (s *Service) RegistryForTesting() ProviderSelector { return s.registry }
 
 // MaxConcurrentForTesting exposes the configured concurrency bound for wiring tests.
 func (s *Service) MaxConcurrentForTesting() int { return s.maxConcurrent }

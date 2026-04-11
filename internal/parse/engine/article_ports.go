@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"context"
+
 	"github.com/Disble/dlexa/internal/model"
 	"github.com/Disble/dlexa/internal/parse"
 )
@@ -10,5 +12,5 @@ type ArticleResult = parse.Result
 
 // ArticleParser parses article-like fetched documents.
 type ArticleParser interface {
-	ParseArticle(input ParseInput) (ArticleResult, []model.Warning, error)
+	ParseArticle(ctx context.Context, input ParseInput) (ArticleResult, []model.Warning, error)
 }

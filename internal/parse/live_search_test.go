@@ -33,7 +33,7 @@ func TestLiveSearchParserExtractsCuratedRecordsFromSearchMarkup(t *testing.T) {
 	if got := records[0]; got.Title != "El adverbio «solo» y los pronombres demostrativos, sin tilde" || got.URL != "https://www.rae.es/espanol-al-dia/el-adverbio-solo-y-los-pronombres-demostrativos-sin-tilde" {
 		t.Fatalf("first record = %#v", got)
 	}
-	if got := records[1].Snippet; got == "" {
+	if records[1].Snippet == "" {
 		t.Fatal("second record snippet = empty, want normalized snippet text")
 	}
 }

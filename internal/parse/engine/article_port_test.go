@@ -19,7 +19,7 @@ func TestLegacyArticleAdapterPreservesInputAndOutput(t *testing.T) {
 	legacy := &legacyArticleParserStub{result: wantResult, warnings: wantWarnings}
 
 	adapter := AdaptLegacyArticleParser(legacy)
-	result, warnings, err := adapter.ParseArticle(ParseInput{Ctx: context.Background(), Descriptor: descriptor, Document: document})
+	result, warnings, err := adapter.ParseArticle(context.Background(), ParseInput{Descriptor: descriptor, Document: document})
 	if err != nil {
 		t.Fatalf("ParseArticle() error = %v", err)
 	}

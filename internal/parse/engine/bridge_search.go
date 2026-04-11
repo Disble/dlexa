@@ -24,11 +24,11 @@ func AdaptLegacySearchParser(parser LegacySearchParser) *LegacySearchAdapter {
 }
 
 // ParseSearch satisfies the engine search parser port.
-func (a *LegacySearchAdapter) ParseSearch(input ParseInput) ([]parse.ParsedSearchRecord, []model.Warning, error) {
+func (a *LegacySearchAdapter) ParseSearch(ctx context.Context, input ParseInput) ([]parse.ParsedSearchRecord, []model.Warning, error) {
 	if a == nil || a.legacy == nil {
 		return nil, nil, nil
 	}
-	return a.legacy.Parse(input.Ctx, input.Descriptor, input.Document)
+	return a.legacy.Parse(ctx, input.Descriptor, input.Document)
 }
 
 // UnderlyingForTesting exposes the wrapped legacy parser.

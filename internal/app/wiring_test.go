@@ -164,7 +164,7 @@ func TestNewWiresEspanolAlDiaModuleToEngineArticleParser(t *testing.T) {
 	if got := resolved[0].Descriptor().Priority; got != 2 {
 		t.Fatalf("priority = %d, want 2", got)
 	}
-	if got := fetch.NewEspanolAlDiaFetcher(config.DefaultDPDBaseURL, config.DefaultDPDTimeout, config.DefaultDPDUserAgent); got == nil {
+	if fetch.NewEspanolAlDiaFetcher(config.DefaultDPDBaseURL, config.DefaultDPDTimeout, config.DefaultDPDUserAgent) == nil {
 		t.Fatal("expected concrete espanol-al-dia fetcher constructor to return instance")
 	}
 }
@@ -212,7 +212,7 @@ func TestNewWiresDudaLinguisticaModuleToEngineArticleParser(t *testing.T) {
 	if got := resolved[0].Descriptor().Priority; got != 3 {
 		t.Fatalf("priority = %d, want 3", got)
 	}
-	if got := fetch.NewDudaLinguisticaFetcher(config.DefaultDPDBaseURL, config.DefaultDPDTimeout, config.DefaultDPDUserAgent); got == nil {
+	if fetch.NewDudaLinguisticaFetcher(config.DefaultDPDBaseURL, config.DefaultDPDTimeout, config.DefaultDPDUserAgent) == nil {
 		t.Fatal("expected concrete duda-linguistica fetcher constructor to return instance")
 	}
 }
@@ -260,7 +260,7 @@ func TestNewWiresNoticiaModuleToEngineArticleParser(t *testing.T) {
 	if got := resolved[0].Descriptor().Priority; got != 4 {
 		t.Fatalf("priority = %d, want 4", got)
 	}
-	if got := fetch.NewNoticiaFetcher(config.DefaultDPDBaseURL, config.DefaultDPDTimeout, config.DefaultDPDUserAgent); got == nil {
+	if fetch.NewNoticiaFetcher(config.DefaultDPDBaseURL, config.DefaultDPDTimeout, config.DefaultDPDUserAgent) == nil {
 		t.Fatal("expected concrete noticia fetcher constructor to return instance")
 	}
 }
