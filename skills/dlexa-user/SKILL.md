@@ -6,7 +6,7 @@ description: >
   Trigger: When invoking dlexa for DPD-covered normative doubts, parsing dlexa output, troubleshooting dlexa, integrating dlexa into scripts, or automating DPD consultation workflows.
 license: Apache-2.0
 metadata:
-  author: gentleman-programming
+  author: Disble
   version: "1.0.0"
 ---
 
