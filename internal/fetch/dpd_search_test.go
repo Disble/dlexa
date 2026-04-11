@@ -17,7 +17,7 @@ import (
 func TestDPDSearchFetcherUsesKeysEndpointAndBrowserProfile(t *testing.T) {
 	fixedNow := time.Date(2026, time.March, 17, 21, 5, 0, 0, time.UTC)
 	request := Request{Query: " abu dhabi ", Source: model.SourceDescriptor{Name: "dpd"}}
-	fetcher := NewDPDSearchFetcher("https://example.invalid/dpd", 2*time.Second, testUserAgent)
+	fetcher := NewDPDSearchFetcher(testBaseURL, 2*time.Second, testUserAgent)
 	fetcher.Client = roundTripFunc(func(req *http.Request) (*http.Response, error) {
 		if got := req.URL.String(); got != "https://example.invalid/dpd/srv/keys?q=abu+dhabi" {
 			return nil, errors.New("unexpected request URL: " + got)
@@ -78,7 +78,7 @@ func TestDPDSearchFetcherClassifiesChallengeAndTransportFailures(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fetcher := NewDPDSearchFetcher("https://example.invalid/dpd", time.Second, testUserAgent)
+			fetcher := NewDPDSearchFetcher(testBaseURL, time.Second, testUserAgent)
 			fetcher.Client = tt.client
 
 			document, err := fetcher.Fetch(context.Background(), Request{Query: "guion", Source: model.SourceDescriptor{Name: "dpd"}})
@@ -94,7 +94,7 @@ func TestDPDSearchFetcherClassifiesRateLimitCooldownsExplicitly(t *testing.T) {
 	}), GovernanceConfig{CooldownBase: 5 * time.Second, CooldownMax: time.Minute, RespectRetryAfter: true})
 	governed.now = func() time.Time { return now }
 
-	fetcher := NewDPDSearchFetcher("https://example.invalid/dpd", time.Second, testUserAgent)
+	fetcher := NewDPDSearchFetcher(testBaseURL, time.Second, testUserAgent)
 	fetcher.Client = governed
 
 	firstDocument, firstErr := fetcher.Fetch(context.Background(), Request{Query: testutil.LiveSearchQuery, Source: model.SourceDescriptor{Name: "dpd"}})

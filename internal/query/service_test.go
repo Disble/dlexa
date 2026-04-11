@@ -20,6 +20,7 @@ const (
 	problemCode1 = "first-problem"
 	entryID2     = "entry-2"
 	warningCode2 = "second-warning"
+	freshEntryID = "fresh-entry"
 )
 
 func TestLookupReturnsCachedResultAsCacheHit(t *testing.T) {
@@ -194,7 +195,7 @@ func TestLookupDegradesWhenCacheReadFails(t *testing.T) {
 			descriptor: model.SourceDescriptor{Name: "demo", Priority: 1},
 			result: model.SourceResult{
 				Source:  model.SourceDescriptor{Name: "demo", Priority: 1},
-				Entries: []model.Entry{{ID: "fresh-entry", Source: "demo"}},
+				Entries: []model.Entry{{ID: freshEntryID, Source: "demo"}},
 			},
 		},
 	}}
@@ -203,7 +204,7 @@ func TestLookupDegradesWhenCacheReadFails(t *testing.T) {
 	if err != nil {
 		t.Fatalf(lookupErrFmt, err)
 	}
-	if len(result.Entries) != 1 || result.Entries[0].ID != "fresh-entry" {
+	if len(result.Entries) != 1 || result.Entries[0].ID != freshEntryID {
 		t.Fatalf("Lookup() entries = %#v, want fresh origin result", result.Entries)
 	}
 	if store.setCalls != 1 {
@@ -219,7 +220,7 @@ func TestLookupDegradesWhenCacheWriteFails(t *testing.T) {
 			descriptor: model.SourceDescriptor{Name: "demo", Priority: 1},
 			result: model.SourceResult{
 				Source:  model.SourceDescriptor{Name: "demo", Priority: 1},
-				Entries: []model.Entry{{ID: "fresh-entry", Source: "demo"}},
+				Entries: []model.Entry{{ID: freshEntryID, Source: "demo"}},
 			},
 		},
 	}}
@@ -228,7 +229,7 @@ func TestLookupDegradesWhenCacheWriteFails(t *testing.T) {
 	if err != nil {
 		t.Fatalf(lookupErrFmt, err)
 	}
-	if len(result.Entries) != 1 || result.Entries[0].ID != "fresh-entry" {
+	if len(result.Entries) != 1 || result.Entries[0].ID != freshEntryID {
 		t.Fatalf("Lookup() entries = %#v, want fresh origin result", result.Entries)
 	}
 	if result.CacheHit {
@@ -240,7 +241,7 @@ func TestLookupCoalescesConcurrentCacheMisses(t *testing.T) {
 	request := model.LookupRequest{Query: "palabra", Format: "json", Sources: []string{"demo"}}
 	lookupSource := newGatedLookupSource(model.SourceDescriptor{Name: "demo", Priority: 1}, model.SourceResult{
 		Source:  model.SourceDescriptor{Name: "demo", Priority: 1},
-		Entries: []model.Entry{{ID: "fresh-entry", Source: "demo"}},
+		Entries: []model.Entry{{ID: freshEntryID, Source: "demo"}},
 	})
 	registry := &countingRegistry{sources: []source.Source{lookupSource}}
 	service := NewService(registry, &stubStore{})
@@ -268,7 +269,7 @@ func TestLookupCoalescesConcurrentCacheMisses(t *testing.T) {
 		if outcome.err != nil {
 			t.Fatalf(lookupErrFmt, outcome.err)
 		}
-		if len(outcome.result.Entries) != 1 || outcome.result.Entries[0].ID != "fresh-entry" {
+		if len(outcome.result.Entries) != 1 || outcome.result.Entries[0].ID != freshEntryID {
 			t.Fatalf("Lookup() entries = %#v, want coalesced fresh result", outcome.result.Entries)
 		}
 	}
@@ -284,7 +285,7 @@ func TestLookupNoCacheBypassesCoalescing(t *testing.T) {
 	request := model.LookupRequest{Query: "palabra", Format: "json", Sources: []string{"demo"}, NoCache: true}
 	lookupSource := newGatedLookupSource(model.SourceDescriptor{Name: "demo", Priority: 1}, model.SourceResult{
 		Source:  model.SourceDescriptor{Name: "demo", Priority: 1},
-		Entries: []model.Entry{{ID: "fresh-entry", Source: "demo"}},
+		Entries: []model.Entry{{ID: freshEntryID, Source: "demo"}},
 	})
 	registry := &countingRegistry{sources: []source.Source{lookupSource}}
 	service := NewService(registry, &stubStore{})

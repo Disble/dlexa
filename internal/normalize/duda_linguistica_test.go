@@ -9,9 +9,11 @@ import (
 	"github.com/Disble/dlexa/internal/parse"
 )
 
+const normalizeDudaLinguisticaSource = "duda-linguistica"
+
 func TestDudaLinguisticaNormalizerBuildsLookupEntry(t *testing.T) {
 	normalizer := NewDudaLinguisticaNormalizer()
-	result, err := normalizer.Normalize(context.Background(), model.SourceDescriptor{Name: "duda-linguistica"}, parse.Result{Articles: []parse.ParsedArticle{{
+	result, err := normalizer.Normalize(context.Background(), model.SourceDescriptor{Name: normalizeDudaLinguisticaSource}, parse.Result{Articles: []parse.ParsedArticle{{
 		Dictionary:   "Duda lingüística",
 		Lemma:        "¿Cuándo se escriben con tilde los adverbios en «-mente»?",
 		CanonicalURL: "https://www.rae.es/duda-linguistica/cuando-se-escriben-con-tilde-los-adverbios-en-mente",
@@ -28,7 +30,7 @@ func TestDudaLinguisticaNormalizerBuildsLookupEntry(t *testing.T) {
 		t.Fatalf("entries len = %d, want 1", len(result.Entries))
 	}
 	entry := result.Entries[0]
-	if entry.Source != "duda-linguistica" {
+	if entry.Source != normalizeDudaLinguisticaSource {
 		t.Fatalf("Source = %q, want duda-linguistica", entry.Source)
 	}
 	if entry.Article == nil {
@@ -40,7 +42,7 @@ func TestDudaLinguisticaNormalizerBuildsLookupEntry(t *testing.T) {
 }
 
 func TestDudaLinguisticaNormalizerRejectsArticlesWithoutSections(t *testing.T) {
-	_, err := NewDudaLinguisticaNormalizer().Normalize(context.Background(), model.SourceDescriptor{Name: "duda-linguistica"}, parse.Result{Articles: []parse.ParsedArticle{{Lemma: "tilde"}}})
+	_, err := NewDudaLinguisticaNormalizer().Normalize(context.Background(), model.SourceDescriptor{Name: normalizeDudaLinguisticaSource}, parse.Result{Articles: []parse.ParsedArticle{{Lemma: "tilde"}}})
 	if err == nil {
 		t.Fatal("Normalize() error = nil, want problem")
 	}

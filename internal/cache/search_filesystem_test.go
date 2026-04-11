@@ -14,6 +14,11 @@ import (
 	"github.com/Disble/dlexa/internal/model"
 )
 
+const (
+	errFmtSearchGetZero = "Get result = %#v, want zero value"
+	hashJSONFmt         = "%x.json"
+)
+
 func sampleSearchResult(query string) model.SearchResult {
 	return model.SearchResult{
 		Request: model.SearchRequest{Query: query},
@@ -38,7 +43,7 @@ func TestSearchFilesystemStoreColdMiss(t *testing.T) {
 		t.Fatal("Get ok = true, want false for cold store")
 	}
 	if result.Request.Query != "" {
-		t.Fatalf("Get result = %#v, want zero value", result)
+		t.Fatalf(errFmtSearchGetZero, result)
 	}
 }
 
@@ -114,7 +119,7 @@ func TestSearchFilesystemStoreExpiredEntry(t *testing.T) {
 		t.Fatal("Get ok = true, want false for expired entry")
 	}
 	if result.Request.Query != "" {
-		t.Fatalf("Get result = %#v, want zero value", result)
+		t.Fatalf(errFmtSearchGetZero, result)
 	}
 }
 
@@ -123,7 +128,7 @@ func TestSearchFilesystemStoreCorruptFile(t *testing.T) {
 	store := NewSearchFilesystemStore(dir, 24*time.Hour)
 	key := BuildSearchKey(model.SearchRequest{Query: "corrupt-key"})
 	hash := sha256.Sum256([]byte(key))
-	corruptPath := filepath.Join(dir, fmt.Sprintf("%x.json", hash))
+	corruptPath := filepath.Join(dir, fmt.Sprintf(hashJSONFmt, hash))
 	if err := os.WriteFile(corruptPath, []byte("this is not valid json{{{"), 0o600); err != nil {
 		t.Fatalf("failed to write corrupt file: %v", err)
 	}
@@ -136,7 +141,7 @@ func TestSearchFilesystemStoreCorruptFile(t *testing.T) {
 		t.Fatal("Get ok = true, want false for corrupt file")
 	}
 	if result.Request.Query != "" {
-		t.Fatalf("Get result = %#v, want zero value", result)
+		t.Fatalf(errFmtSearchGetZero, result)
 	}
 	if _, statErr := os.Stat(corruptPath); !os.IsNotExist(statErr) {
 		t.Fatal("corrupt file should be removed after failed Get")
@@ -179,7 +184,7 @@ func TestSearchFilesystemStoreEnvelopeFormat(t *testing.T) {
 	}
 
 	hash := sha256.Sum256([]byte(key))
-	data, err := os.ReadFile(filepath.Join(dir, fmt.Sprintf("%x.json", hash))) //nolint:gosec // G304: test reads a hashed cache file name in temp dir
+	data, err := os.ReadFile(filepath.Join(dir, fmt.Sprintf(hashJSONFmt, hash))) //nolint:gosec // G304: test reads a hashed cache file name in temp dir
 	if err != nil {
 		t.Fatalf("ReadFile error = %v", err)
 	}
@@ -225,7 +230,7 @@ func TestSearchFilesystemStorePersistsSearchResultsWithoutRendererBlobs(t *testi
 	}
 
 	hash := sha256.Sum256([]byte(key))
-	raw, err := os.ReadFile(filepath.Join(dir, fmt.Sprintf("%x.json", hash))) //nolint:gosec // G304: test reads a hashed cache file name in temp dir
+	raw, err := os.ReadFile(filepath.Join(dir, fmt.Sprintf(hashJSONFmt, hash))) //nolint:gosec // G304: test reads a hashed cache file name in temp dir
 	if err != nil {
 		t.Fatalf("ReadFile() error = %v", err)
 	}

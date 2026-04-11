@@ -47,4 +47,7 @@ func TestNoticiaParserReportsBrokenMarkupExplicitly(t *testing.T) {
 	if problem.Code != model.ProblemCodeArticleExtractFailed {
 		t.Fatalf("problem code = %q, want %q", problem.Code, model.ProblemCodeArticleExtractFailed)
 	}
+	if problem.Message != `extract noticia article for "noticia"` {
+		t.Fatalf("problem message = %q, want exact extraction message", problem.Message)
+	}
 }

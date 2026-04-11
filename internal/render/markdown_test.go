@@ -20,6 +20,8 @@ const (
 	testColConTilde    = "Con tilde"
 	testErrRender      = "Render() error = %v"
 	testPayloadMissing = "payload missing %q\n%s"
+	testTildeURL       = "https://www.rae.es/dpd/tilde"
+	testSoloToTildeURL = "https://www.rae.es/dpd/solo → https://www.rae.es/dpd/tilde"
 )
 
 var reANSITest = regexp.MustCompile(`\x1b\[[0-9;]*m`)
@@ -102,7 +104,7 @@ func sampleTildeEntries() []model.Entry {
 				paragraphBlock("La recomendación vigente depende del contexto y de la ambigüedad."),
 			},
 		}},
-		Citation: model.Citation{SourceLabel: testSourceLabel, CanonicalURL: "https://www.rae.es/dpd/tilde", Edition: testEdition, ConsultedAt: testConsultedAt},
+		Citation: model.Citation{SourceLabel: testSourceLabel, CanonicalURL: testTildeURL, Edition: testEdition, ConsultedAt: testConsultedAt},
 	}
 	second := model.Article{
 		Dictionary: testDictionary,
@@ -112,7 +114,7 @@ func sampleTildeEntries() []model.Entry {
 			Label:  "2.",
 			Blocks: []model.Block{paragraphBlock("En casos enfáticos o diacríticos, la grafía histórica puede mantenerse como referencia."), paragraphBlock("La norma vigente prioriza la claridad sin multiplicar tildes innecesarias.")},
 		}},
-		Citation: model.Citation{SourceLabel: testSourceLabel, CanonicalURL: "https://www.rae.es/dpd/tilde", Edition: testEdition, ConsultedAt: testConsultedAt},
+		Citation: model.Citation{SourceLabel: testSourceLabel, CanonicalURL: testTildeURL, Edition: testEdition, ConsultedAt: testConsultedAt},
 	}
 	for i := range first.Sections {
 		first.Sections[i].Paragraphs = paragraphsFromBlocks(first.Sections[i].Blocks)
@@ -592,10 +594,8 @@ func assertMarkdownPayloadGuidance(t *testing.T, text string, mustHave []string,
 
 func TestMarkdownRendererShowsRedirectWarningAboveArticle(t *testing.T) {
 	result := model.LookupResult{
-		Request: model.LookupRequest{Query: "solo"},
-		Warnings: []model.Warning{
-			{Code: model.WarningCodeDPDRedirected, Message: "https://www.rae.es/dpd/solo → https://www.rae.es/dpd/tilde", Source: "dpd"},
-		},
+		Request:  model.LookupRequest{Query: "solo"},
+		Warnings: []model.Warning{{Code: model.WarningCodeDPDRedirected, Message: testSoloToTildeURL, Source: "dpd"}},
 		Entries: []model.Entry{
 			{
 				ID:       "tilde1",
@@ -632,7 +632,7 @@ func TestMarkdownRendererShowsRedirectWarningAboveArticle(t *testing.T) {
 	}
 
 	mustHave := []string{
-		"https://www.rae.es/dpd/solo → https://www.rae.es/dpd/tilde",
+		testSoloToTildeURL,
 		"\"solo\"",
 		"tilde1",
 	}
@@ -672,10 +672,8 @@ func stripANSITestOutput(text string) string {
 
 func TestMarkdownRendererShowsRedirectURLInCitation(t *testing.T) {
 	result := model.LookupResult{
-		Request: model.LookupRequest{Query: "solo"},
-		Warnings: []model.Warning{
-			{Code: model.WarningCodeDPDRedirected, Message: "https://www.rae.es/dpd/solo → https://www.rae.es/dpd/tilde", Source: "dpd"},
-		},
+		Request:  model.LookupRequest{Query: "solo"},
+		Warnings: []model.Warning{{Code: model.WarningCodeDPDRedirected, Message: testSoloToTildeURL, Source: "dpd"}},
 		Entries: []model.Entry{
 			{
 				ID:       "tilde1",
@@ -685,7 +683,7 @@ func TestMarkdownRendererShowsRedirectURLInCitation(t *testing.T) {
 					Citation: model.Citation{
 						SourceLabel:  testSourceLabel,
 						Edition:      testEdition,
-						CanonicalURL: "https://www.rae.es/dpd/tilde",
+						CanonicalURL: testTildeURL,
 						ConsultedAt:  testConsultedAt,
 					},
 				},
@@ -699,7 +697,7 @@ func TestMarkdownRendererShowsRedirectURLInCitation(t *testing.T) {
 	}
 	text := string(payload)
 	assertMarkdownPayloadGuidance(t, text,
-		[]string{"URL: https://www.rae.es/dpd/solo → https://www.rae.es/dpd/tilde"},
-		[]string{"URL: https://www.rae.es/dpd/tilde\n"}, // must NOT appear alone
+		[]string{"URL: " + testSoloToTildeURL},
+		[]string{"URL: " + testTildeURL + "\n"}, // must NOT appear alone
 	)
 }

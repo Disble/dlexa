@@ -14,9 +14,11 @@ import (
 )
 
 const (
+	testBaseURL    = "https://example.invalid/dpd"
 	testLookupURL  = "https://example.invalid/dpd/bien%20compuesto"
 	testUserAgent  = "dlexa-test"
 	testAcceptLang = "es-ES,es;q=0.9,en;q=0.8"
+	testHTMLType   = "text/html; charset=utf-8"
 )
 
 func TestDPDFetcherClassifiesTransportOutcomesAndCapturesDocuments(t *testing.T) {
@@ -39,7 +41,7 @@ func TestDPDFetcherClassifiesTransportOutcomesAndCapturesDocuments(t *testing.T)
 				return &http.Response{
 					StatusCode: http.StatusOK,
 					Header: http.Header{
-						"Content-Type": []string{"text/html; charset=utf-8"},
+						"Content-Type": []string{testHTMLType},
 					},
 					Body:    io.NopCloser(strings.NewReader("<html>ok</html>")),
 					Request: req,
@@ -47,7 +49,7 @@ func TestDPDFetcherClassifiesTransportOutcomesAndCapturesDocuments(t *testing.T)
 			}),
 			wantDocument: Document{
 				URL:         testLookupURL,
-				ContentType: "text/html; charset=utf-8",
+				ContentType: testHTMLType,
 				StatusCode:  http.StatusOK,
 				Body:        []byte("<html>ok</html>"),
 				RetrievedAt: fixedNow,
@@ -67,7 +69,7 @@ func TestDPDFetcherClassifiesTransportOutcomesAndCapturesDocuments(t *testing.T)
 				return &http.Response{
 					StatusCode: http.StatusOK,
 					Header: http.Header{
-						"Content-Type": []string{"text/html; charset=utf-8"},
+						"Content-Type": []string{testHTMLType},
 					},
 					Body:    io.NopCloser(strings.NewReader("<html>redirected content</html>")),
 					Request: redirectedReq,
@@ -76,7 +78,7 @@ func TestDPDFetcherClassifiesTransportOutcomesAndCapturesDocuments(t *testing.T)
 			wantDocument: Document{
 				URL:            "https://example.invalid/dpd/redirected-target", // final URL after redirect
 				RedirectedFrom: testLookupURL,                                   // original URL the user requested
-				ContentType:    "text/html; charset=utf-8",
+				ContentType:    testHTMLType,
 				StatusCode:     http.StatusOK,
 				Body:           []byte("<html>redirected content</html>"),
 				RetrievedAt:    fixedNow,
@@ -140,7 +142,7 @@ func TestDPDFetcherClassifiesTransportOutcomesAndCapturesDocuments(t *testing.T)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fetcher := NewDPDFetcher("https://example.invalid/dpd", 2*time.Second, testUserAgent)
+			fetcher := NewDPDFetcher(testBaseURL, 2*time.Second, testUserAgent)
 			fetcher.Client = tt.client
 			fetcher.now = func() time.Time { return fixedNow }
 

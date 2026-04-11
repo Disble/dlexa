@@ -9,9 +9,11 @@ import (
 	"github.com/Disble/dlexa/internal/parse"
 )
 
+const normalizeEspanolAlDiaSource = "espanol-al-dia"
+
 func TestEspanolAlDiaNormalizerBuildsLookupEntry(t *testing.T) {
 	normalizer := NewEspanolAlDiaNormalizer()
-	result, err := normalizer.Normalize(context.Background(), model.SourceDescriptor{Name: "espanol-al-dia"}, parse.Result{Articles: []parse.ParsedArticle{{
+	result, err := normalizer.Normalize(context.Background(), model.SourceDescriptor{Name: normalizeEspanolAlDiaSource}, parse.Result{Articles: []parse.ParsedArticle{{
 		Dictionary:   "Español al día",
 		Lemma:        "El adverbio «solo» y los pronombres demostrativos, sin tilde",
 		CanonicalURL: "https://www.rae.es/espanol-al-dia/el-adverbio-solo-y-los-pronombres-demostrativos-sin-tilde",
@@ -29,7 +31,7 @@ func TestEspanolAlDiaNormalizerBuildsLookupEntry(t *testing.T) {
 		t.Fatalf("entries len = %d, want 1", len(result.Entries))
 	}
 	entry := result.Entries[0]
-	if entry.Source != "espanol-al-dia" {
+	if entry.Source != normalizeEspanolAlDiaSource {
 		t.Fatalf("Source = %q, want espanol-al-dia", entry.Source)
 	}
 	if entry.Article == nil {
@@ -41,7 +43,7 @@ func TestEspanolAlDiaNormalizerBuildsLookupEntry(t *testing.T) {
 }
 
 func TestEspanolAlDiaNormalizerRejectsArticlesWithoutSections(t *testing.T) {
-	_, err := NewEspanolAlDiaNormalizer().Normalize(context.Background(), model.SourceDescriptor{Name: "espanol-al-dia"}, parse.Result{Articles: []parse.ParsedArticle{{Lemma: "solo"}}})
+	_, err := NewEspanolAlDiaNormalizer().Normalize(context.Background(), model.SourceDescriptor{Name: normalizeEspanolAlDiaSource}, parse.Result{Articles: []parse.ParsedArticle{{Lemma: "solo"}}})
 	if err == nil {
 		t.Fatal("Normalize() error = nil, want problem")
 	}

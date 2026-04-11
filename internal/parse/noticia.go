@@ -12,10 +12,11 @@ import (
 )
 
 var (
-	reNoticiaTitle     = regexp.MustCompile(`(?is)<h1\b[^>]*class="[^"]*news-title[^"]*"[^>]*>\s*(?:<span>)?(.*?)(?:</span>)?\s*</h1>`)
-	reNoticiaBody      = regexp.MustCompile(`(?is)<div\b[^>]*class="[^"]*bloque-texto[^"]*"[^>]*>(.*?)</div>`)
-	reNoticiaParagraph = regexp.MustCompile(`(?is)<p\b[^>]*>.*?</p>`)
-	reNoticiaTags      = regexp.MustCompile(`(?is)<[^>]+>`)
+	noticiaExtractErrFmt = "extract noticia article for %q"
+	reNoticiaTitle       = regexp.MustCompile(`(?is)<h1\b[^>]*class="[^"]*news-title[^"]*"[^>]*>\s*(?:<span>)?(.*?)(?:</span>)?\s*</h1>`)
+	reNoticiaBody        = regexp.MustCompile(`(?is)<div\b[^>]*class="[^"]*bloque-texto[^"]*"[^>]*>(.*?)</div>`)
+	reNoticiaParagraph   = regexp.MustCompile(`(?is)<p\b[^>]*>.*?</p>`)
+	reNoticiaTags        = regexp.MustCompile(`(?is)<[^>]+>`)
 )
 
 // NoticiaParser extracts FAQ-style article content from the noticia surface.
@@ -33,7 +34,7 @@ func (p *NoticiaParser) Parse(ctx context.Context, descriptor model.SourceDescri
 	if body == "" {
 		return Result{}, nil, model.NewProblemError(model.Problem{
 			Code:     model.ProblemCodeArticleExtractFailed,
-			Message:  fmt.Sprintf("extract noticia article for %q", descriptor.Name),
+			Message:  fmt.Sprintf(noticiaExtractErrFmt, descriptor.Name),
 			Source:   descriptor.Name,
 			Severity: model.ProblemSeverityError,
 		}, nil)
@@ -45,7 +46,7 @@ func (p *NoticiaParser) Parse(ctx context.Context, descriptor model.SourceDescri
 	if title == "" || len(paragraphMatches) == 0 {
 		return Result{}, nil, model.NewProblemError(model.Problem{
 			Code:     model.ProblemCodeArticleExtractFailed,
-			Message:  fmt.Sprintf("extract noticia article for %q", descriptor.Name),
+			Message:  fmt.Sprintf(noticiaExtractErrFmt, descriptor.Name),
 			Source:   descriptor.Name,
 			Severity: model.ProblemSeverityError,
 		}, nil)
@@ -66,7 +67,7 @@ func (p *NoticiaParser) Parse(ctx context.Context, descriptor model.SourceDescri
 	if len(blocks) == 0 {
 		return Result{}, nil, model.NewProblemError(model.Problem{
 			Code:     model.ProblemCodeArticleExtractFailed,
-			Message:  fmt.Sprintf("extract noticia article for %q", descriptor.Name),
+			Message:  fmt.Sprintf(noticiaExtractErrFmt, descriptor.Name),
 			Source:   descriptor.Name,
 			Severity: model.ProblemSeverityError,
 		}, nil)

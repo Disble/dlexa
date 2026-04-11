@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+const firstDoErrFmt = "first Do() error = %v"
+
 func TestGovernedDoerEntersCooldownOnFirst429AndFailsFast(t *testing.T) {
 	now := time.Date(2026, time.April, 8, 19, 0, 0, 0, time.UTC)
 	upstream := &countingDoer{response: httpResponse(http.StatusTooManyRequests, "limited")}
@@ -16,7 +18,7 @@ func TestGovernedDoerEntersCooldownOnFirst429AndFailsFast(t *testing.T) {
 
 	firstResp, err := governed.Do(mustRequest(t))
 	if err != nil {
-		t.Fatalf("first Do() error = %v", err)
+		t.Fatalf(firstDoErrFmt, err)
 	}
 	defer closeResponse(firstResp)
 	if firstResp == nil || firstResp.StatusCode != http.StatusTooManyRequests {
@@ -55,7 +57,7 @@ func TestGovernedDoerUsesRetryAfterBeforeFallbackBackoff(t *testing.T) {
 
 	resp, err := governed.Do(mustRequest(t))
 	if err != nil {
-		t.Fatalf("first Do() error = %v", err)
+		t.Fatalf(firstDoErrFmt, err)
 	}
 	defer closeResponse(resp)
 	now = now.Add(10 * time.Second)
@@ -79,7 +81,7 @@ func TestGovernedDoerFallsBackToBoundedExponentialBackoff(t *testing.T) {
 	firstResp, err := governed.Do(mustRequest(t))
 	defer closeResponse(firstResp)
 	if err != nil {
-		t.Fatalf("first Do() error = %v", err)
+		t.Fatalf(firstDoErrFmt, err)
 	}
 	now = now.Add(6 * time.Second)
 	secondResp, err := governed.Do(mustRequest(t))

@@ -16,6 +16,7 @@ const (
 	dpdTestBaseURL     = "https://www.rae.es/dpd/"
 	dpdHTMLContentType = "text/html; charset=utf-8"
 	dpdDictionaryLabel = "Diccionario panhispánico de dudas"
+	parseErrFmt        = "Parse() error = %v"
 )
 
 func dpdTestArticleURL(term string) string {
@@ -32,7 +33,7 @@ func parseFixtureResult(t *testing.T, descriptor model.SourceDescriptor, documen
 		Body:        loadDPDFixtureHTML(t, fixture),
 	})
 	if err != nil {
-		t.Fatalf("Parse() error = %v", err)
+		t.Fatalf(parseErrFmt, err)
 	}
 	return result
 }
@@ -178,7 +179,7 @@ func TestDPDArticleParserExtractsBienArticleAndSkipsChrome(t *testing.T) {
 		Body:        loadDPDFixtureHTML(t, "bien"),
 	})
 	if err != nil {
-		t.Fatalf("Parse() error = %v", err)
+		t.Fatalf(parseErrFmt, err)
 	}
 	if len(warnings) == 0 || warnings[0].Code != "dpd_access_profile" {
 		t.Fatalf("Parse() warnings = %#v, want access profile warning", warnings)
@@ -215,7 +216,7 @@ func TestDPDArticleParserEmitsRedirectWarningAndUsesOriginalQueryTerm(t *testing
 		Body:           loadDPDFixtureHTML(t, "bien"),
 	})
 	if err != nil {
-		t.Fatalf("Parse() error = %v", err)
+		t.Fatalf(parseErrFmt, err)
 	}
 	if len(result.Articles) != 1 {
 		t.Fatalf("Parse() articles = %d, want 1", len(result.Articles))
@@ -250,7 +251,7 @@ func TestDPDArticleParserNoRedirectWarningWhenNoRedirect(t *testing.T) {
 		Body:        loadDPDFixtureHTML(t, "bien"),
 	})
 	if err != nil {
-		t.Fatalf("Parse() error = %v", err)
+		t.Fatalf(parseErrFmt, err)
 	}
 	for _, w := range warnings {
 		if w.Code == model.WarningCodeDPDRedirected {

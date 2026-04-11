@@ -17,7 +17,7 @@ import (
 func TestLiveSearchFetcherUsesRAESearchPageRatherThanDPDKeys(t *testing.T) {
 	fixedNow := time.Date(2026, time.April, 7, 23, 15, 0, 0, time.UTC)
 	request := Request{Query: " " + testutil.LiveSearchQuery + " ", Source: model.SourceDescriptor{Name: "search"}}
-	fetcher := NewLiveSearchFetcher("https://example.invalid/dpd", 2*time.Second, testUserAgent)
+	fetcher := NewLiveSearchFetcher(testBaseURL, 2*time.Second, testUserAgent)
 	fetcher.Client = roundTripFunc(func(req *http.Request) (*http.Response, error) {
 		gotURL := req.URL.String()
 		if gotURL != "https://example.invalid/search/node?keys=solo+o+solo" {
@@ -59,7 +59,7 @@ func TestLiveSearchFetcherUsesRAESearchPageRatherThanDPDKeys(t *testing.T) {
 }
 
 func TestLiveSearchFetcherClassifiesTransportFailures(t *testing.T) {
-	fetcher := NewLiveSearchFetcher("https://example.invalid/dpd", time.Second, testUserAgent)
+	fetcher := NewLiveSearchFetcher(testBaseURL, time.Second, testUserAgent)
 	fetcher.Client = roundTripFunc(func(_ *http.Request) (*http.Response, error) {
 		return nil, errors.New("dial tcp refused")
 	})
@@ -74,7 +74,7 @@ func TestLiveSearchFetcherClassifiesRateLimitCooldownsExplicitly(t *testing.T) {
 		return &http.Response{StatusCode: http.StatusTooManyRequests, Body: io.NopCloser(strings.NewReader("limited")), Request: req, Header: http.Header{"Retry-After": []string{"30"}}}, nil
 	}), GovernanceConfig{CooldownBase: 5 * time.Second, CooldownMax: time.Minute, RespectRetryAfter: true})
 	governed.now = func() time.Time { return now }
-	fetcher := NewLiveSearchFetcher("https://example.invalid/dpd", time.Second, testUserAgent)
+	fetcher := NewLiveSearchFetcher(testBaseURL, time.Second, testUserAgent)
 	fetcher.Client = governed
 
 	firstDocument, firstErr := fetcher.Fetch(context.Background(), Request{Query: testutil.LiveSearchQuery, Source: model.SourceDescriptor{Name: "search"}})

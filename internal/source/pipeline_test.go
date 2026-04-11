@@ -16,6 +16,9 @@ import (
 const (
 	parseWarningCode     = "parse-warning"
 	normalizeWarningCode = "normalize-warning"
+	lookupErrFmt         = "Lookup() error = %v"
+	demoDocumentURL      = "https://example.invalid/demo/palabra"
+	rawBody              = "raw body"
 )
 
 func TestPipelineSourceFetchesParsesAndNormalizesInOrder(t *testing.T) {
@@ -28,9 +31,9 @@ func TestPipelineSourceFetchesParsesAndNormalizesInOrder(t *testing.T) {
 	fetcher := &recordingFetcher{
 		calls: &callOrder,
 		document: fetch.Document{
-			URL:         "https://example.invalid/demo/palabra",
+			URL:         demoDocumentURL,
 			ContentType: "text/markdown",
-			Body:        []byte("raw body"),
+			Body:        []byte(rawBody),
 			RetrievedAt: retrievedAt,
 		},
 	}
@@ -38,8 +41,8 @@ func TestPipelineSourceFetchesParsesAndNormalizesInOrder(t *testing.T) {
 		calls:          &callOrder,
 		result:         parsedResult,
 		warnings:       []model.Warning{{Code: parseWarningCode, Source: descriptor.Name}},
-		expectedBody:   []byte("raw body"),
-		expectedURL:    "https://example.invalid/demo/palabra",
+		expectedBody:   []byte(rawBody),
+		expectedURL:    demoDocumentURL,
 		expectedSource: descriptor,
 	}
 	normalizer := &recordingNormalizer{
@@ -52,7 +55,7 @@ func TestPipelineSourceFetchesParsesAndNormalizesInOrder(t *testing.T) {
 	pipeline := NewPipelineSource(descriptor, fetcher, parser, normalizer)
 	result, err := pipeline.Lookup(context.Background(), model.LookupRequest{Query: "palabra"})
 	if err != nil {
-		t.Fatalf("Lookup() error = %v", err)
+		t.Fatalf(lookupErrFmt, err)
 	}
 
 	if !reflect.DeepEqual(callOrder, []string{"fetch", "parse", "normalize"}) {
@@ -96,7 +99,7 @@ func TestPipelineSourcePropagatesStructuredMissWithoutProblemFallback(t *testing
 
 	result, err := pipeline.Lookup(context.Background(), model.LookupRequest{Query: "alicuota"})
 	if err != nil {
-		t.Fatalf("Lookup() error = %v", err)
+		t.Fatalf(lookupErrFmt, err)
 	}
 	if result.Miss == nil {
 		t.Fatal("Lookup() miss = nil")
@@ -117,21 +120,21 @@ func TestNewEnginePipelineSourcePreservesLegacyParserBehavior(t *testing.T) {
 		calls:          &callOrder,
 		result:         parsedResult,
 		warnings:       []model.Warning{{Code: parseWarningCode, Source: descriptor.Name}},
-		expectedBody:   []byte("raw body"),
-		expectedURL:    "https://example.invalid/demo/palabra",
+		expectedBody:   []byte(rawBody),
+		expectedURL:    demoDocumentURL,
 		expectedSource: descriptor,
 	}
 
 	pipeline := NewEnginePipelineSource(
 		descriptor,
-		&recordingFetcher{calls: &callOrder, document: fetch.Document{URL: "https://example.invalid/demo/palabra", Body: []byte("raw body")}},
+		&recordingFetcher{calls: &callOrder, document: fetch.Document{URL: demoDocumentURL, Body: []byte(rawBody)}},
 		parseengine.AdaptLegacyArticleParser(legacyParser),
 		&recordingNormalizer{calls: &callOrder, result: normalize.Result{Entries: []model.Entry{{ID: "normalized", Source: descriptor.Name}}}, expectedResult: parsedResult, expectedSource: descriptor},
 	)
 
 	result, err := pipeline.Lookup(context.Background(), model.LookupRequest{Query: "palabra"})
 	if err != nil {
-		t.Fatalf("Lookup() error = %v", err)
+		t.Fatalf(lookupErrFmt, err)
 	}
 	if !reflect.DeepEqual(callOrder, []string{"fetch", "parse", "normalize"}) {
 		t.Fatalf("call order = %#v, want %#v", callOrder, []string{"fetch", "parse", "normalize"})

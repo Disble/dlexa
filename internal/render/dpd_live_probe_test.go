@@ -21,7 +21,7 @@ func TestDPDLiveProbeBienDriftInvariants(t *testing.T) {
 	runtimeConfig := config.DefaultRuntimeConfig()
 	document, err := fetch.NewDPDFetcher(runtimeConfig.DPD.BaseURL, runtimeConfig.DPD.Timeout, runtimeConfig.DPD.UserAgent).Fetch(
 		context.Background(),
-		fetch.Request{Query: "bien", Source: model.SourceDescriptor{Name: "dpd", DisplayName: "Diccionario panhispánico de dudas"}},
+		fetch.Request{Query: "bien", Source: model.SourceDescriptor{Name: "dpd", DisplayName: testDictionary}},
 	)
 	if err != nil {
 		t.Fatalf("Fetch() error = %v", err)
@@ -29,7 +29,7 @@ func TestDPDLiveProbeBienDriftInvariants(t *testing.T) {
 
 	parsed, _, err := parse.NewDPDArticleParser().Parse(
 		context.Background(),
-		model.SourceDescriptor{Name: "dpd", DisplayName: "Diccionario panhispánico de dudas"},
+		model.SourceDescriptor{Name: "dpd", DisplayName: testDictionary},
 		document,
 	)
 	if err != nil {
@@ -38,7 +38,7 @@ func TestDPDLiveProbeBienDriftInvariants(t *testing.T) {
 
 	normalized, err := normalize.NewDPDNormalizer().Normalize(
 		context.Background(),
-		model.SourceDescriptor{Name: "dpd", DisplayName: "Diccionario panhispánico de dudas"},
+		model.SourceDescriptor{Name: "dpd", DisplayName: testDictionary},
 		parsed,
 	)
 	if err != nil {
@@ -59,7 +59,7 @@ func TestDPDLiveProbeBienDriftInvariants(t *testing.T) {
 	text := string(payload)
 	for _, want := range []string{
 		"# bien",
-		"Diccionario panhispánico de dudas",
+		testDictionary,
 		"2.ª edición",
 		"5. bien que.",
 		"6. más bien.",

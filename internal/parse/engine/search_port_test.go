@@ -10,6 +10,8 @@ import (
 	"github.com/Disble/dlexa/internal/parse"
 )
 
+const parseSearchErrFmt = "ParseSearch() error = %v"
+
 func TestLegacySearchAdapterPreservesInputAndOutput(t *testing.T) {
 	descriptor := model.SourceDescriptor{Name: "search", DisplayName: "RAE Search"}
 	document := fetch.Document{URL: "https://example.invalid/search?q=solo", Body: []byte("body")}
@@ -20,7 +22,7 @@ func TestLegacySearchAdapterPreservesInputAndOutput(t *testing.T) {
 	adapter := AdaptLegacySearchParser(legacy)
 	records, warnings, err := adapter.ParseSearch(ParseInput{Ctx: context.Background(), Descriptor: descriptor, Document: document})
 	if err != nil {
-		t.Fatalf("ParseSearch() error = %v", err)
+		t.Fatalf(parseSearchErrFmt, err)
 	}
 	if !reflect.DeepEqual(records, wantRecords) {
 		t.Fatalf("ParseSearch() records = %#v, want %#v", records, wantRecords)
@@ -46,7 +48,7 @@ func TestLiveSearchParserDelegatesToLegacyImplementation(t *testing.T) {
 
 	records, warnings, err := parser.ParseSearch(ParseInput{Ctx: context.Background(), Descriptor: descriptor, Document: document})
 	if err != nil {
-		t.Fatalf("ParseSearch() error = %v", err)
+		t.Fatalf(parseSearchErrFmt, err)
 	}
 	if len(warnings) != 0 {
 		t.Fatalf("ParseSearch() warnings = %#v, want none", warnings)
@@ -63,7 +65,7 @@ func TestDPDSearchParserDelegatesToLegacyImplementation(t *testing.T) {
 
 	records, warnings, err := parser.ParseSearch(ParseInput{Ctx: context.Background(), Descriptor: descriptor, Document: document})
 	if err != nil {
-		t.Fatalf("ParseSearch() error = %v", err)
+		t.Fatalf(parseSearchErrFmt, err)
 	}
 	if len(warnings) != 0 {
 		t.Fatalf("ParseSearch() warnings = %#v, want none", warnings)
