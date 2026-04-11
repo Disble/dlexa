@@ -26,6 +26,8 @@ import (
 	"github.com/Disble/dlexa/internal/source"
 )
 
+const sourceKindRemoteHTML = "remote-html"
+
 // New is the composition root: concrete adapters are chosen here and nowhere else.
 func New(cli platform.CLI) *App {
 	runtimeConfig := config.DefaultRuntimeConfig()
@@ -54,7 +56,7 @@ func New(cli platform.CLI) *App {
 		model.SourceDescriptor{
 			Name:        "dpd",
 			DisplayName: "Diccionario panhispánico de dudas",
-			Kind:        "remote-html",
+			Kind:        sourceKindRemoteHTML,
 			Priority:    1,
 			Cacheable:   true,
 		},
@@ -67,7 +69,7 @@ func New(cli platform.CLI) *App {
 		model.SourceDescriptor{
 			Name:        "espanol-al-dia",
 			DisplayName: "Español al día",
-			Kind:        "remote-html",
+			Kind:        sourceKindRemoteHTML,
 			Priority:    2,
 			Cacheable:   true,
 		},
@@ -80,7 +82,7 @@ func New(cli platform.CLI) *App {
 		model.SourceDescriptor{
 			Name:        "duda-linguistica",
 			DisplayName: "Duda lingüística",
-			Kind:        "remote-html",
+			Kind:        sourceKindRemoteHTML,
 			Priority:    3,
 			Cacheable:   true,
 		},
@@ -93,7 +95,7 @@ func New(cli platform.CLI) *App {
 		model.SourceDescriptor{
 			Name:        "noticia",
 			DisplayName: "Preguntas frecuentes RAE",
-			Kind:        "remote-html",
+			Kind:        sourceKindRemoteHTML,
 			Priority:    4,
 			Cacheable:   true,
 		},
@@ -129,7 +131,7 @@ func New(cli platform.CLI) *App {
 	dpdSearchFetcher := fetch.NewDPDSearchFetcher(runtimeConfig.DPD.BaseURL, runtimeConfig.DPD.Timeout, runtimeConfig.DPD.UserAgent)
 	dpdSearchFetcher.Client = governedSearchClient(dpdSearchFetcher.Client)
 	searchProvider := searchsvc.NewEnginePipelineProvider(
-		model.SourceDescriptor{Name: "search", DisplayName: "Búsqueda general RAE", Kind: "remote-html", Priority: 1, Cacheable: true},
+		model.SourceDescriptor{Name: "search", DisplayName: "Búsqueda general RAE", Kind: sourceKindRemoteHTML, Priority: 1, Cacheable: true},
 		searchFetcher,
 		parseengine.NewLiveSearchParser(),
 		normalize.NewLiveSearchNormalizer(),

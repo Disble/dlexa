@@ -28,10 +28,10 @@ func TestAppExecuteModuleWrapsMarkdownAndBypassesJSON(t *testing.T) {
 		&appDoctor{},
 		modules.NewRegistry(
 			&stubModule{command: "dpd", response: modules.Response{Title: "solo", Source: "Diccionario panhispánico de dudas", CacheState: "MISS", Format: "markdown", Body: []byte("## Resultado\ncontenido")}},
-			&stubModule{command: "espanol-al-dia", response: modules.Response{Title: "solo", Source: "Español al día", CacheState: "MISS", Format: "markdown", Body: []byte("## Artículo\ncontenido")}},
-			&stubModule{command: "duda-linguistica", response: modules.Response{Title: "tilde", Source: "Duda lingüística", CacheState: "MISS", Format: "markdown", Body: []byte("## Duda\ncontenido")}},
+			&stubModule{command: commandEspanolAlDia, response: modules.Response{Title: "solo", Source: "Español al día", CacheState: "MISS", Format: "markdown", Body: []byte("## Artículo\ncontenido")}},
+			&stubModule{command: commandDudaLinguistica, response: modules.Response{Title: "tilde", Source: "Duda lingüística", CacheState: "MISS", Format: "markdown", Body: []byte("## Duda\ncontenido")}},
 			&stubModule{command: "noticia", response: modules.Response{Title: "faq", Source: "Preguntas frecuentes RAE", CacheState: "MISS", Format: "markdown", Body: []byte("## FAQ\ncontenido")}},
-			&stubModule{command: "search", response: modules.Response{Title: "solo", Source: "búsqueda general RAE", CacheState: "HIT", Format: "json", Body: []byte(`{"ok":true}`)}},
+			&stubModule{command: "search", response: modules.Response{Title: "solo", Source: sourceBusquedaGeneralRAE, CacheState: "HIT", Format: "json", Body: []byte(`{"ok":true}`)}},
 		),
 		render.NewEnvelopeRenderer(),
 	)
@@ -76,10 +76,10 @@ func TestAppHandlesStructuredFallbacksAndSyntaxErrors(t *testing.T) {
 	}
 
 	cli.stdout.Reset()
-	if err := application.HandleSyntaxError(context.Background(), errors.New("unknown command \"oops\" for \"dlexa\""), "dlexa <query>"); err != nil {
+	if err := application.HandleSyntaxError(context.Background(), errors.New("unknown command \"oops\" for \"dlexa\""), helpSyntaxDlexaQuery); err != nil {
 		t.Fatalf("HandleSyntaxError() error = %v", err)
 	}
-	if text := cli.stdout.String(); !strings.Contains(text, "Nivel 1 · Syntax") || !strings.Contains(text, "dlexa <query>") {
+	if text := cli.stdout.String(); !strings.Contains(text, "Nivel 1 · Syntax") || !strings.Contains(text, helpSyntaxDlexaQuery) {
 		t.Fatalf("syntax stdout = %q", text)
 	}
 }
@@ -95,7 +95,7 @@ func TestAppRendersMarkdownHelpAndDoctorOutput(t *testing.T) {
 		render.NewEnvelopeRenderer(),
 	)
 
-	if err := application.RenderHelp(context.Background(), model.HelpEnvelope{Command: "dlexa", Summary: "Consulta dudas normativas del español.", Syntax: "dlexa <query>", Examples: []string{"dlexa basto", "dlexa search solo o sólo"}, RecoveryTip: "Usá `dlexa search <consulta>` cuando no conozcas la entrada exacta."}); err != nil {
+	if err := application.RenderHelp(context.Background(), model.HelpEnvelope{Command: "dlexa", Summary: "Consulta dudas normativas del español.", Syntax: helpSyntaxDlexaQuery, Examples: []string{"dlexa basto", "dlexa search solo o sólo"}, RecoveryTip: "Usá `dlexa search <consulta>` cuando no conozcas la entrada exacta."}); err != nil {
 		t.Fatalf("RenderHelp() error = %v", err)
 	}
 	if text := cli.stdout.String(); !strings.Contains(text, "# Ayuda: dlexa") || !strings.Contains(text, "`dlexa basto`") {
@@ -187,7 +187,7 @@ func TestExecuteModuleAppliesModuleSpecificDefaultSources(t *testing.T) {
 	}}
 	cli := &fakeCLI{args: []string{version.BinaryName}}
 	dpdModule := &stubModule{command: "dpd", response: modules.Response{Title: "basto", Source: "DPD", CacheState: "MISS", Format: "markdown", Body: []byte("contenido")}}
-	searchModule := &stubModule{command: "search", response: modules.Response{Title: "basto", Source: "búsqueda general RAE", CacheState: "MISS", Format: "json", Body: []byte(`{"ok":true}`)}}
+	searchModule := &stubModule{command: "search", response: modules.Response{Title: "basto", Source: sourceBusquedaGeneralRAE, CacheState: "MISS", Format: "json", Body: []byte(`{"ok":true}`)}}
 	application := NewWithDependencies(cli, loader, &appDoctor{}, modules.NewRegistry(dpdModule, searchModule), render.NewEnvelopeRenderer())
 
 	if err := application.ExecuteModule(context.Background(), "dpd", modules.Request{Query: "basto"}); err != nil {
@@ -223,7 +223,7 @@ func TestExecuteModuleAppliesFederatedSearchDefaults(t *testing.T) {
 		CacheEnabled: true,
 	}}
 	cli := &fakeCLI{args: []string{version.BinaryName}}
-	searchModule := &stubModule{command: "search", response: modules.Response{Title: "Abu Dhabi", Source: "búsqueda general RAE", CacheState: "MISS", Format: "json", Body: []byte(`{"ok":true}`)}}
+	searchModule := &stubModule{command: "search", response: modules.Response{Title: "Abu Dhabi", Source: sourceBusquedaGeneralRAE, CacheState: "MISS", Format: "json", Body: []byte(`{"ok":true}`)}}
 	application := NewWithDependencies(cli, loader, &appDoctor{}, modules.NewRegistry(searchModule), render.NewEnvelopeRenderer())
 
 	if err := application.ExecuteModule(context.Background(), "search", modules.Request{Query: "Abu Dhabi", Format: "json"}); err != nil {
@@ -244,14 +244,14 @@ func TestExecuteModuleUsesLookupDefaultsForEspanolAlDia(t *testing.T) {
 		CacheEnabled: true,
 	}}
 	cli := &fakeCLI{args: []string{version.BinaryName}}
-	eadModule := &stubModule{command: "espanol-al-dia", response: modules.Response{Title: "solo", Source: "Español al día", CacheState: "MISS", Format: "markdown", Body: []byte("contenido")}}
+	eadModule := &stubModule{command: commandEspanolAlDia, response: modules.Response{Title: "solo", Source: "Español al día", CacheState: "MISS", Format: "markdown", Body: []byte("contenido")}}
 	application := NewWithDependencies(cli, loader, &appDoctor{}, modules.NewRegistry(eadModule), render.NewEnvelopeRenderer())
 
-	if err := application.ExecuteModule(context.Background(), "espanol-al-dia", modules.Request{Query: "solo"}); err != nil {
-		t.Fatalf("ExecuteModule() error = %v", err)
+	if err := application.ExecuteModule(context.Background(), commandEspanolAlDia, modules.Request{Query: "solo"}); err != nil {
+		t.Fatalf(errExecuteModule, err)
 	}
-	if got := eadModule.lastRequest.Sources; !reflect.DeepEqual(got, []string{"espanol-al-dia"}) {
-		t.Fatalf("sources = %#v, want module-specific default [\"espanol-al-dia\"]", got)
+	if got := eadModule.lastRequest.Sources; !reflect.DeepEqual(got, []string{commandEspanolAlDia}) {
+		t.Fatalf("sources = %#v, want module-specific default [\"%s\"]", got, commandEspanolAlDia)
 	}
 }
 
@@ -265,14 +265,14 @@ func TestExecuteModuleUsesLookupDefaultsForDudaLinguistica(t *testing.T) {
 		CacheEnabled: true,
 	}}
 	cli := &fakeCLI{args: []string{version.BinaryName}}
-	dlModule := &stubModule{command: "duda-linguistica", response: modules.Response{Title: "tilde", Source: "Duda lingüística", CacheState: "MISS", Format: "markdown", Body: []byte("contenido")}}
+	dlModule := &stubModule{command: commandDudaLinguistica, response: modules.Response{Title: "tilde", Source: "Duda lingüística", CacheState: "MISS", Format: "markdown", Body: []byte("contenido")}}
 	application := NewWithDependencies(cli, loader, &appDoctor{}, modules.NewRegistry(dlModule), render.NewEnvelopeRenderer())
 
-	if err := application.ExecuteModule(context.Background(), "duda-linguistica", modules.Request{Query: "tilde"}); err != nil {
-		t.Fatalf("ExecuteModule() error = %v", err)
+	if err := application.ExecuteModule(context.Background(), commandDudaLinguistica, modules.Request{Query: "tilde"}); err != nil {
+		t.Fatalf(errExecuteModule, err)
 	}
-	if got := dlModule.lastRequest.Sources; !reflect.DeepEqual(got, []string{"duda-linguistica"}) {
-		t.Fatalf("sources = %#v, want module-specific default [\"duda-linguistica\"]", got)
+	if got := dlModule.lastRequest.Sources; !reflect.DeepEqual(got, []string{commandDudaLinguistica}) {
+		t.Fatalf("sources = %#v, want module-specific default [\"%s\"]", got, commandDudaLinguistica)
 	}
 }
 
@@ -290,7 +290,7 @@ func TestExecuteModuleUsesLookupDefaultsForNoticia(t *testing.T) {
 	application := NewWithDependencies(cli, loader, &appDoctor{}, modules.NewRegistry(noticiaModule), render.NewEnvelopeRenderer())
 
 	if err := application.ExecuteModule(context.Background(), "noticia", modules.Request{Query: "preguntas-frecuentes-tilde-en-las-mayusculas"}); err != nil {
-		t.Fatalf("ExecuteModule() error = %v", err)
+		t.Fatalf(errExecuteModule, err)
 	}
 	if got := noticiaModule.lastRequest.Sources; !reflect.DeepEqual(got, []string{"noticia"}) {
 		t.Fatalf("sources = %#v, want module-specific default [\"noticia\"]", got)
@@ -313,13 +313,13 @@ func TestExecuteModuleWrapsDPDSearchWithTruthfulSource(t *testing.T) {
 	application := NewWithDependencies(cli, loader, &appDoctor{}, modules.NewRegistry(searchModule), render.NewEnvelopeRenderer())
 
 	if err := application.ExecuteModule(context.Background(), "search", modules.Request{Query: "solo", Sources: []string{"dpd"}}); err != nil {
-		t.Fatalf("ExecuteModule() error = %v", err)
+		t.Fatalf(errExecuteModule, err)
 	}
 	text := cli.stdout.String()
 	if !strings.Contains(text, "*Fuente: Diccionario panhispánico de dudas | Caché: MISS*") {
 		t.Fatalf("expected truthful DPD source in markdown envelope, got:\n%s", text)
 	}
-	if strings.Contains(text, "*Fuente: búsqueda general RAE | Caché: MISS*") {
+	if strings.Contains(text, "*Fuente: "+sourceBusquedaGeneralRAE+" | Caché: MISS*") {
 		t.Fatalf("expected not to use general search source for DPD-only search, got:\n%s", text)
 	}
 }

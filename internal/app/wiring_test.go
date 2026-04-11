@@ -31,23 +31,23 @@ func TestNewWiresDPDModuleToEngineArticleParser(t *testing.T) {
 	lookupForTesting := dpdModule.LookupForTesting()
 	lookup, ok := lookupForTesting.(*query.LookupService)
 	if !ok {
-		t.Fatalf("lookup type = %T, want *query.LookupService", lookupForTesting)
+		t.Fatalf(errLookupType, lookupForTesting)
 	}
 	registryForTesting := lookup.RegistryForTesting()
 	registry, ok := registryForTesting.(*source.StaticRegistry)
 	if !ok {
-		t.Fatalf("registry type = %T, want *source.StaticRegistry", registryForTesting)
+		t.Fatalf(errRegistryType, registryForTesting)
 	}
 	resolved, err := registry.SourcesFor(model.LookupRequest{Query: "solo", Sources: []string{"dpd"}})
 	if err != nil {
-		t.Fatalf("SourcesFor() error = %v", err)
+		t.Fatalf(errSourcesFor, err)
 	}
 	if len(resolved) != 1 {
-		t.Fatalf("resolved sources len = %d, want 1", len(resolved))
+		t.Fatalf(errResolvedSourcesLen, len(resolved))
 	}
 	pipeline, ok := resolved[0].(*source.PipelineSource)
 	if !ok {
-		t.Fatalf("source type = %T, want *source.PipelineSource", resolved[0])
+		t.Fatalf(errPipelineSourceType, resolved[0])
 	}
 	if _, ok := pipeline.ArticleEngineParserForTesting().(*parseengine.DPDArticleParser); !ok {
 		t.Fatalf("article engine parser type = %T, want *engine.DPDArticleParser", pipeline.ArticleEngineParserForTesting())
@@ -123,9 +123,9 @@ func TestNewWiresSearchModuleToLiveSearchAdapters(t *testing.T) {
 
 func TestNewWiresEspanolAlDiaModuleToEngineArticleParser(t *testing.T) {
 	application := New(&fakeCLI{})
-	module, ok := application.registry.Module("espanol-al-dia")
+	module, ok := application.registry.Module(commandEspanolAlDia)
 	if !ok {
-		t.Fatal("espanol-al-dia module not registered")
+		t.Fatalf("%s module not registered", commandEspanolAlDia)
 	}
 	eadModule, ok := module.(*modead.Module)
 	if !ok {
@@ -134,29 +134,29 @@ func TestNewWiresEspanolAlDiaModuleToEngineArticleParser(t *testing.T) {
 	lookupForTesting := eadModule.LookupForTesting()
 	lookup, ok := lookupForTesting.(*query.LookupService)
 	if !ok {
-		t.Fatalf("lookup type = %T, want *query.LookupService", lookupForTesting)
+		t.Fatalf(errLookupType, lookupForTesting)
 	}
 	registryForTesting := lookup.RegistryForTesting()
 	registry, ok := registryForTesting.(*source.StaticRegistry)
 	if !ok {
-		t.Fatalf("registry type = %T, want *source.StaticRegistry", registryForTesting)
+		t.Fatalf(errRegistryType, registryForTesting)
 	}
-	resolved, err := registry.SourcesFor(model.LookupRequest{Query: "solo", Sources: []string{"espanol-al-dia"}})
+	resolved, err := registry.SourcesFor(model.LookupRequest{Query: "solo", Sources: []string{commandEspanolAlDia}})
 	if err != nil {
-		t.Fatalf("SourcesFor() error = %v", err)
+		t.Fatalf(errSourcesFor, err)
 	}
 	if len(resolved) != 1 {
-		t.Fatalf("resolved sources len = %d, want 1", len(resolved))
+		t.Fatalf(errResolvedSourcesLen, len(resolved))
 	}
 	pipeline, ok := resolved[0].(*source.PipelineSource)
 	if !ok {
-		t.Fatalf("source type = %T, want *source.PipelineSource", resolved[0])
+		t.Fatalf(errPipelineSourceType, resolved[0])
 	}
 	if _, ok := pipeline.ArticleEngineParserForTesting().(*parseengine.EspanolAlDiaArticleParser); !ok {
 		t.Fatalf("article engine parser type = %T, want *engine.EspanolAlDiaArticleParser", pipeline.ArticleEngineParserForTesting())
 	}
-	if got := pipeline.Descriptor().Name; got != "espanol-al-dia" {
-		t.Fatalf("descriptor name = %q, want espanol-al-dia", got)
+	if got := pipeline.Descriptor().Name; got != commandEspanolAlDia {
+		t.Fatalf("descriptor name = %q, want %s", got, commandEspanolAlDia)
 	}
 	if got := pipeline.Descriptor().DisplayName; got != "Español al día" {
 		t.Fatalf("descriptor display name = %q, want Español al día", got)
@@ -171,9 +171,9 @@ func TestNewWiresEspanolAlDiaModuleToEngineArticleParser(t *testing.T) {
 
 func TestNewWiresDudaLinguisticaModuleToEngineArticleParser(t *testing.T) {
 	application := New(&fakeCLI{})
-	module, ok := application.registry.Module("duda-linguistica")
+	module, ok := application.registry.Module(commandDudaLinguistica)
 	if !ok {
-		t.Fatal("duda-linguistica module not registered")
+		t.Fatalf("%s module not registered", commandDudaLinguistica)
 	}
 	dlModule, ok := module.(*moddl.Module)
 	if !ok {
@@ -182,29 +182,29 @@ func TestNewWiresDudaLinguisticaModuleToEngineArticleParser(t *testing.T) {
 	lookupForTesting := dlModule.LookupForTesting()
 	lookup, ok := lookupForTesting.(*query.LookupService)
 	if !ok {
-		t.Fatalf("lookup type = %T, want *query.LookupService", lookupForTesting)
+		t.Fatalf(errLookupType, lookupForTesting)
 	}
 	registryForTesting := lookup.RegistryForTesting()
 	registry, ok := registryForTesting.(*source.StaticRegistry)
 	if !ok {
-		t.Fatalf("registry type = %T, want *source.StaticRegistry", registryForTesting)
+		t.Fatalf(errRegistryType, registryForTesting)
 	}
-	resolved, err := registry.SourcesFor(model.LookupRequest{Query: "tilde", Sources: []string{"duda-linguistica"}})
+	resolved, err := registry.SourcesFor(model.LookupRequest{Query: "tilde", Sources: []string{commandDudaLinguistica}})
 	if err != nil {
-		t.Fatalf("SourcesFor() error = %v", err)
+		t.Fatalf(errSourcesFor, err)
 	}
 	if len(resolved) != 1 {
-		t.Fatalf("resolved sources len = %d, want 1", len(resolved))
+		t.Fatalf(errResolvedSourcesLen, len(resolved))
 	}
 	pipeline, ok := resolved[0].(*source.PipelineSource)
 	if !ok {
-		t.Fatalf("source type = %T, want *source.PipelineSource", resolved[0])
+		t.Fatalf(errPipelineSourceType, resolved[0])
 	}
 	if _, ok := pipeline.ArticleEngineParserForTesting().(*parseengine.DudaLinguisticaArticleParser); !ok {
 		t.Fatalf("article engine parser type = %T, want *engine.DudaLinguisticaArticleParser", pipeline.ArticleEngineParserForTesting())
 	}
-	if got := pipeline.Descriptor().Name; got != "duda-linguistica" {
-		t.Fatalf("descriptor name = %q, want duda-linguistica", got)
+	if got := pipeline.Descriptor().Name; got != commandDudaLinguistica {
+		t.Fatalf("descriptor name = %q, want %s", got, commandDudaLinguistica)
 	}
 	if got := pipeline.Descriptor().DisplayName; got != "Duda lingüística" {
 		t.Fatalf("descriptor display name = %q, want Duda lingüística", got)
@@ -230,23 +230,23 @@ func TestNewWiresNoticiaModuleToEngineArticleParser(t *testing.T) {
 	lookupForTesting := noticiaModule.LookupForTesting()
 	lookup, ok := lookupForTesting.(*query.LookupService)
 	if !ok {
-		t.Fatalf("lookup type = %T, want *query.LookupService", lookupForTesting)
+		t.Fatalf(errLookupType, lookupForTesting)
 	}
 	registryForTesting := lookup.RegistryForTesting()
 	registry, ok := registryForTesting.(*source.StaticRegistry)
 	if !ok {
-		t.Fatalf("registry type = %T, want *source.StaticRegistry", registryForTesting)
+		t.Fatalf(errRegistryType, registryForTesting)
 	}
 	resolved, err := registry.SourcesFor(model.LookupRequest{Query: "preguntas-frecuentes-tilde-en-las-mayusculas", Sources: []string{"noticia"}})
 	if err != nil {
-		t.Fatalf("SourcesFor() error = %v", err)
+		t.Fatalf(errSourcesFor, err)
 	}
 	if len(resolved) != 1 {
-		t.Fatalf("resolved sources len = %d, want 1", len(resolved))
+		t.Fatalf(errResolvedSourcesLen, len(resolved))
 	}
 	pipeline, ok := resolved[0].(*source.PipelineSource)
 	if !ok {
-		t.Fatalf("source type = %T, want *source.PipelineSource", resolved[0])
+		t.Fatalf(errPipelineSourceType, resolved[0])
 	}
 	if _, ok := pipeline.ArticleEngineParserForTesting().(*parseengine.NoticiaArticleParser); !ok {
 		t.Fatalf("article engine parser type = %T, want *engine.NoticiaArticleParser", pipeline.ArticleEngineParserForTesting())
