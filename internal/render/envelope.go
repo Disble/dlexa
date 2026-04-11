@@ -99,7 +99,7 @@ func (r *MarkdownEnvelopeRenderer) RenderHelp(ctx context.Context, help model.He
 	return []byte(strings.TrimRight(builder.String(), "\n")), nil
 }
 
-// RenderFallback renders one of the four explicit fallback tiers.
+// RenderFallback renders the explicit fallback tiers.
 func (r *MarkdownEnvelopeRenderer) RenderFallback(ctx context.Context, fb model.FallbackEnvelope) ([]byte, error) {
 	_ = ctx
 	if strings.EqualFold(strings.TrimSpace(fb.Format), "json") {
@@ -156,6 +156,8 @@ func fallbackLevel(kind model.FallbackKind) int {
 		return 1
 	case model.FallbackKindNotFound:
 		return 2
+	case model.FallbackKindRateLimited:
+		return 3
 	case model.FallbackKindUpstreamUnavailable:
 		return 3
 	case model.FallbackKindParseFailure:
@@ -171,6 +173,8 @@ func fallbackLabel(kind model.FallbackKind) string {
 		return "Syntax"
 	case model.FallbackKindNotFound:
 		return "Not Found"
+	case model.FallbackKindRateLimited:
+		return "Rate Limited"
 	case model.FallbackKindUpstreamUnavailable:
 		return "Upstream Unavailable"
 	case model.FallbackKindParseFailure:

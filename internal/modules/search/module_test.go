@@ -86,6 +86,19 @@ func TestModuleKeepsFailuresOnExplicitFallbackPath(t *testing.T) {
 	}
 }
 
+func TestModuleMapsRateLimitedFailuresToDedicatedFallback(t *testing.T) {
+	searcher := &searchStub{err: model.NewProblemError(model.Problem{Code: model.ProblemCodeDPDSearchRateLimited, Message: "limited", Source: "search", Severity: model.ProblemSeverityError}, nil)}
+	module := New(searcher, &searchRenderersStub{renderer: &searchRendererStub{payload: []byte("unused")}})
+
+	response, err := module.Execute(context.Background(), modules.Request{Query: "zzz", Format: "markdown"})
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+	if response.Fallback == nil || response.Fallback.Kind != model.FallbackKindRateLimited {
+		t.Fatalf("Fallback = %#v, want rate limited", response.Fallback)
+	}
+}
+
 func TestModuleForwardsExplicitSourcesToSearcher(t *testing.T) {
 	searcher := &searchStub{result: model.SearchResult{Request: model.SearchRequest{Query: "tilde", Format: "json"}}}
 	module := New(searcher, &searchRenderersStub{renderer: &searchRendererStub{payload: []byte("{}")}})

@@ -8,19 +8,21 @@ import (
 
 // Problem codes, severity levels, and inline content kinds.
 const (
-	ProblemCodeSourceLookupFailed       = "source_lookup_failed"
-	ProblemCodeSourcePipelineIncomplete = "source_pipeline_incomplete"
-	ProblemCodeDPDFetchFailed           = "dpd_fetch_failed"
-	ProblemCodeDPDNotFound              = "dpd_not_found"
-	ProblemCodeDPDExtractFailed         = "dpd_extract_failed"
-	ProblemCodeDPDTransformFailed       = "dpd_transform_failed"
-	ProblemCodeDPDSearchFetchFailed     = "dpd_search_fetch_failed"
-	ProblemCodeDPDSearchParseFailed     = "dpd_search_parse_failed"
-	ProblemCodeDPDSearchNormalizeFailed = "dpd_search_normalize_failed"
-	ProblemCodeArticleFetchFailed       = "article_fetch_failed"
-	ProblemCodeArticleNotFound          = "article_not_found"
-	ProblemCodeArticleExtractFailed     = "article_extract_failed"
-	ProblemCodeArticleTransformFailed   = "article_transform_failed"
+	ProblemCodeSourceLookupFailed            = "source_lookup_failed"
+	ProblemCodeSourcePipelineIncomplete      = "source_pipeline_incomplete"
+	ProblemCodeDPDFetchFailed                = "dpd_fetch_failed"
+	ProblemCodeDPDNotFound                   = "dpd_not_found"
+	ProblemCodeDPDExtractFailed              = "dpd_extract_failed"
+	ProblemCodeDPDTransformFailed            = "dpd_transform_failed"
+	ProblemCodeDPDSearchFetchFailed          = "dpd_search_fetch_failed"
+	ProblemCodeDPDSearchRateLimited          = "dpd_search_rate_limited"
+	ProblemCodeDPDSearchParseFailed          = "dpd_search_parse_failed"
+	ProblemCodeDPDSearchNormalizeFailed      = "dpd_search_normalize_failed"
+	ProblemCodeSearchAllProvidersRateLimited = "search_all_providers_rate_limited"
+	ProblemCodeArticleFetchFailed            = "article_fetch_failed"
+	ProblemCodeArticleNotFound               = "article_not_found"
+	ProblemCodeArticleExtractFailed          = "article_extract_failed"
+	ProblemCodeArticleTransformFailed        = "article_transform_failed"
 
 	// WarningCodeDPDRedirected is emitted when the DPD server transparently redirects
 	// a lookup URL to a different entry (e.g. /dpd/solo → /dpd/tilde).
@@ -129,7 +131,7 @@ type LookupNextAction struct {
 	Command string               `json:"command"`
 }
 
-// FallbackKind classifies one of the four explicit fallback ladder levels.
+// FallbackKind classifies the explicit fallback ladder kinds.
 type FallbackKind string
 
 const (
@@ -137,6 +139,8 @@ const (
 	FallbackKindSyntax FallbackKind = "syntax"
 	// FallbackKindNotFound indicates the command was valid but the content was not found.
 	FallbackKindNotFound FallbackKind = "not_found"
+	// FallbackKindRateLimited indicates the remote provider asked us to stop temporarily.
+	FallbackKindRateLimited FallbackKind = "rate_limited"
 	// FallbackKindUpstreamUnavailable indicates the remote provider is unavailable.
 	FallbackKindUpstreamUnavailable FallbackKind = "upstream_unavailable"
 	// FallbackKindParseFailure indicates upstream changed and parsing failed.

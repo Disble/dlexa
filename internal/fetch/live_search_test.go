@@ -78,9 +78,9 @@ func TestLiveSearchFetcherClassifiesRateLimitCooldownsExplicitly(t *testing.T) {
 	fetcher.Client = governed
 
 	firstDocument, firstErr := fetcher.Fetch(context.Background(), Request{Query: testutil.LiveSearchQuery, Source: model.SourceDescriptor{Name: "search"}})
-	assertFetchProblem(t, firstErr, firstDocument, &model.Problem{Code: model.ProblemCodeDPDSearchFetchFailed, Message: "live search request failed with status 429", Source: "search", Severity: model.ProblemSeverityError})
+	assertFetchProblem(t, firstErr, firstDocument, &model.Problem{Code: model.ProblemCodeDPDSearchRateLimited, Message: "live search request was rate-limited by upstream (status 429)", Source: "search", Severity: model.ProblemSeverityError})
 
 	now = now.Add(5 * time.Second)
 	secondDocument, secondErr := fetcher.Fetch(context.Background(), Request{Query: testutil.LiveSearchQuery, Source: model.SourceDescriptor{Name: "search"}})
-	assertFetchProblem(t, secondErr, secondDocument, &model.Problem{Code: model.ProblemCodeDPDSearchFetchFailed, Message: "fetch live search page: search transport cooling down for 25s after upstream rate limiting", Source: "search", Severity: model.ProblemSeverityError})
+	assertFetchProblem(t, secondErr, secondDocument, &model.Problem{Code: model.ProblemCodeDPDSearchRateLimited, Message: "live search temporarily rate-limited: search transport cooling down for 25s after upstream rate limiting", Source: "search", Severity: model.ProblemSeverityError})
 }

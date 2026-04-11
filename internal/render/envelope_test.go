@@ -29,6 +29,11 @@ var fallbackCases = []struct {
 		mustHave: []string{"Nivel 3 · Upstream Unavailable", "NO reintentes"},
 	},
 	{
+		name:     "rate limited fallback stops retries but names rate limit",
+		fallback: model.FallbackEnvelope{Kind: model.FallbackKindRateLimited, Module: "search", Query: "tilde", Suggestion: "NO reintentes en loop automático; respetá el enfriamiento y reintentá más tarde."},
+		mustHave: []string{"Nivel 3 · Rate Limited", "respetá el enfriamiento"},
+	},
+	{
 		name:     "parse fallback requests maintenance",
 		fallback: model.FallbackEnvelope{Kind: model.FallbackKindParseFailure, Module: "search", Query: "tilde", Suggestion: "Hace falta intervención humana de mantenimiento."},
 		mustHave: []string{"Nivel 4 · Parse Failure", "intervención humana"},

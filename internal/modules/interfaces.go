@@ -81,7 +81,7 @@ func NotFoundFallback(moduleName, query, nextCommand string) *model.FallbackEnve
 	}
 }
 
-// FallbackFromError maps known problem codes into the 4-level fallback ladder.
+// FallbackFromError maps known problem codes into the explicit fallback ladder.
 func FallbackFromError(moduleName, query, format string, err error) *model.FallbackEnvelope {
 	problem, ok := model.AsProblem(err)
 	if !ok {
@@ -111,6 +111,10 @@ func FallbackFromError(moduleName, query, format string, err error) *model.Fallb
 		base.Message = "No se encontró contenido en este módulo."
 		base.Suggestion = "Probá con `dlexa search <consulta>` para descubrir una ruta válida."
 		base.NextCommand = "dlexa search " + query
+	case model.ProblemCodeDPDSearchRateLimited, model.ProblemCodeSearchAllProvidersRateLimited:
+		base.Kind = model.FallbackKindRateLimited
+		base.Message = "La fuente externa pidió frenar temporalmente por rate limit."
+		base.Suggestion = "NO reintentes en loop automático; respetá el enfriamiento y reintentá más tarde."
 	case model.ProblemCodeDPDFetchFailed, model.ProblemCodeDPDSearchFetchFailed, model.ProblemCodeArticleFetchFailed, model.ProblemCodeSourceLookupFailed:
 		base.Kind = model.FallbackKindUpstreamUnavailable
 		base.Message = "La fuente externa no está disponible ahora mismo."

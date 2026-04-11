@@ -147,6 +147,9 @@ func firstOutcomeError(outcomes []providerOutcome) error {
 }
 
 func aggregateProblemCode(problems []model.Problem) string {
+	if allProblemsRateLimited(problems) {
+		return model.ProblemCodeSearchAllProvidersRateLimited
+	}
 	for _, problem := range problems {
 		switch problem.Code {
 		case model.ProblemCodeDPDSearchParseFailed, model.ProblemCodeDPDSearchNormalizeFailed, model.ProblemCodeDPDExtractFailed, model.ProblemCodeDPDTransformFailed:
@@ -159,6 +162,18 @@ func aggregateProblemCode(problems []model.Problem) string {
 		}
 	}
 	return model.ProblemCodeSourceLookupFailed
+}
+
+func allProblemsRateLimited(problems []model.Problem) bool {
+	if len(problems) == 0 {
+		return false
+	}
+	for _, problem := range problems {
+		if problem.Code != model.ProblemCodeDPDSearchRateLimited {
+			return false
+		}
+	}
+	return true
 }
 
 func aggregateProblemMessage(problems []model.Problem) string {
@@ -320,6 +335,9 @@ func aggregateResults(baseRequest model.SearchRequest, providers []Provider, out
 				}
 				return model.SearchResult{}, err
 			}
+		}
+		if allProblemsRateLimited(result.Problems) {
+			return model.SearchResult{}, model.NewProblemError(model.Problem{Code: model.ProblemCodeSearchAllProvidersRateLimited, Message: aggregateProblemMessage(result.Problems), Severity: model.ProblemSeverityError}, errors.New("all search providers rate limited"))
 		}
 		return model.SearchResult{}, model.NewProblemError(model.Problem{Code: aggregateProblemCode(result.Problems), Message: aggregateProblemMessage(result.Problems), Severity: model.ProblemSeverityError}, errors.New("all search providers failed"))
 	}

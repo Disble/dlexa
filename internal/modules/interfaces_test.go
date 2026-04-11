@@ -37,6 +37,21 @@ func TestRequestResponseContractsExposeSharedModuleData(t *testing.T) {
 	}
 }
 
+func TestFallbackFromErrorDistinguishesRateLimitedFromGenericUpstream(t *testing.T) {
+	rateLimited := FallbackFromError("search", "solo", "markdown", model.NewProblemError(model.Problem{Code: model.ProblemCodeDPDSearchRateLimited, Message: "limited", Severity: model.ProblemSeverityError}, nil))
+	if rateLimited == nil || rateLimited.Kind != model.FallbackKindRateLimited {
+		t.Fatalf("rateLimited fallback = %#v, want rate_limited", rateLimited)
+	}
+	if rateLimited.Message != "La fuente externa pidió frenar temporalmente por rate limit." {
+		t.Fatalf("rateLimited message = %q", rateLimited.Message)
+	}
+
+	upstream := FallbackFromError("search", "solo", "markdown", model.NewProblemError(model.Problem{Code: model.ProblemCodeDPDSearchFetchFailed, Message: "down", Severity: model.ProblemSeverityError}, nil))
+	if upstream == nil || upstream.Kind != model.FallbackKindUpstreamUnavailable {
+		t.Fatalf("upstream fallback = %#v, want upstream_unavailable", upstream)
+	}
+}
+
 type stubModule struct {
 	name     string
 	command  string

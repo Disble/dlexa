@@ -2,6 +2,7 @@ package fetch
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -53,6 +54,10 @@ func (f *LiveSearchFetcher) Fetch(ctx context.Context, request Request) (Documen
 
 	resp, err := resolveClient(f.Client).Do(req)
 	if err != nil {
+		var cooldownErr *RateLimitCooldownError
+		if errors.As(err, &cooldownErr) {
+			return Document{}, newFetchProblem(model.ProblemCodeDPDSearchRateLimited, fmt.Sprintf("live search temporarily rate-limited: %v", err), request.Source, err)
+		}
 		return Document{}, newFetchProblem(model.ProblemCodeDPDSearchFetchFailed, fmt.Sprintf("fetch live search page: %v", err), request.Source, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
@@ -67,6 +72,9 @@ func (f *LiveSearchFetcher) Fetch(ctx context.Context, request Request) (Documen
 	}
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		if resp.StatusCode == http.StatusTooManyRequests {
+			return Document{}, newFetchProblem(model.ProblemCodeDPDSearchRateLimited, "live search request was rate-limited by upstream (status 429)", request.Source, nil)
+		}
 		return Document{}, newFetchProblem(model.ProblemCodeDPDSearchFetchFailed, fmt.Sprintf("live search request failed with status %d", resp.StatusCode), request.Source, nil)
 	}
 

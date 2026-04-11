@@ -13,6 +13,10 @@ import (
 	"github.com/Disble/dlexa/internal/model"
 )
 
+func rateLimitedProblem(source, message string) error {
+	return model.NewProblemError(model.Problem{Code: model.ProblemCodeDPDSearchRateLimited, Message: message, Source: source, Severity: model.ProblemSeverityError}, errors.New("429"))
+}
+
 func TestServiceUsesRequestedSourcesAndOrdersCandidatesByPriority(t *testing.T) {
 	providerP3 := &providerStub{
 		descriptor: model.SourceDescriptor{Name: "priority-3", Priority: 3},
@@ -198,6 +202,30 @@ func TestServiceReturnsTopLevelErrorWhenAllProvidersFail(t *testing.T) {
 		if problem.Message != want {
 			t.Fatalf("Problem.Message = %q, want %q", problem.Message, want)
 		}
+	}
+}
+
+func TestServiceReturnsRateLimitedAggregateWhenAllProvidersRateLimited(t *testing.T) {
+	providerA := &providerStub{
+		descriptor: model.SourceDescriptor{Name: "search", Priority: 1},
+		err:        rateLimitedProblem("search", "search limited"),
+	}
+	providerB := &providerStub{
+		descriptor: model.SourceDescriptor{Name: "dpd", Priority: 2},
+		err:        rateLimitedProblem("dpd", "dpd limited"),
+	}
+
+	service := NewService(NewStaticRegistry("search", providerA, providerB), cache.NewSearchMemoryStore(), 2, "search")
+	_, err := service.Search(context.Background(), model.SearchRequest{Query: "tilde", Sources: []string{"search", "dpd"}, NoCache: true})
+	if err == nil {
+		t.Fatal("Search() error = nil, want top-level error when all providers are rate limited")
+	}
+	problem, ok := model.AsProblem(err)
+	if !ok {
+		t.Fatalf("Search() error = %T, want ProblemError", err)
+	}
+	if problem.Code != model.ProblemCodeSearchAllProvidersRateLimited {
+		t.Fatalf("Problem.Code = %q, want %q", problem.Code, model.ProblemCodeSearchAllProvidersRateLimited)
 	}
 }
 
