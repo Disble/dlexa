@@ -100,10 +100,10 @@ func TestRootCommand_QueryDefaultsToDPD(t *testing.T) {
 	runtime.stdout = stdout
 
 	if err := executeRootCommand(context.Background(), runtime, stdout, stderr, []string{"basto"}); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrorFormat, err)
 	}
-	if runtime.executedModule != "dpd" {
-		t.Fatalf("module = %q, want dpd", runtime.executedModule)
+	if runtime.executedModule != commandDPD {
+		t.Fatalf(moduleWantDPDFormat, runtime.executedModule)
 	}
 	if runtime.request.Query != "basto" {
 		t.Fatalf("query = %q, want basto", runtime.request.Query)
@@ -116,7 +116,7 @@ func TestRootCommand_HelpFlag(t *testing.T) {
 	runtime.stdout = stdout
 
 	if err := executeRootCommand(context.Background(), runtime, stdout, stderr, []string{"--help"}); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrorFormat, err)
 	}
 	if !runtime.helpCalled {
 		t.Fatal("expected RenderHelp to be called")
@@ -132,7 +132,7 @@ func TestRootCommand_VersionFlag(t *testing.T) {
 	runtime.stdout = stdout
 
 	if err := executeRootCommand(context.Background(), runtime, stdout, stderr, []string{"--version"}); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrorFormat, err)
 	}
 	if !runtime.versionCalled {
 		t.Fatal("expected PrintVersion to be called")
@@ -145,7 +145,7 @@ func TestRootCommand_DoctorFlag(t *testing.T) {
 	runtime.stdout = stdout
 
 	if err := executeRootCommand(context.Background(), runtime, stdout, stderr, []string{"--doctor"}); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrorFormat, err)
 	}
 	if !runtime.doctorCalled {
 		t.Fatal("expected RunDoctor to be called")
@@ -158,7 +158,7 @@ func TestRootCommand_NoArgs(t *testing.T) {
 	runtime.stdout = stdout
 
 	if err := executeRootCommand(context.Background(), runtime, stdout, stderr, []string{}); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrorFormat, err)
 	}
 	if !runtime.helpCalled {
 		t.Fatal("expected RenderHelp to be called for no args")
@@ -171,10 +171,10 @@ func TestRootCommand_RootFormatFlagPropagates(t *testing.T) {
 	runtime.stdout = stdout
 
 	if err := executeRootCommand(context.Background(), runtime, stdout, stderr, []string{"basto", "--format", "json"}); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrorFormat, err)
 	}
-	if runtime.executedModule != "dpd" {
-		t.Fatalf("module = %q, want dpd", runtime.executedModule)
+	if runtime.executedModule != commandDPD {
+		t.Fatalf(moduleWantDPDFormat, runtime.executedModule)
 	}
 	if runtime.request.Format != "json" {
 		t.Fatalf("format = %q, want json", runtime.request.Format)
@@ -187,10 +187,10 @@ func TestRootCommand_RootNoCacheFlagPropagates(t *testing.T) {
 	runtime.stdout = stdout
 
 	if err := executeRootCommand(context.Background(), runtime, stdout, stderr, []string{"basto", "--no-cache"}); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrorFormat, err)
 	}
-	if runtime.executedModule != "dpd" {
-		t.Fatalf("module = %q, want dpd", runtime.executedModule)
+	if runtime.executedModule != commandDPD {
+		t.Fatalf(moduleWantDPDFormat, runtime.executedModule)
 	}
 	if !runtime.request.NoCache {
 		t.Fatal("expected noCache=true")
@@ -203,7 +203,7 @@ func TestRootCommand_RootRendersHelpEnvelopeWithExpectedContent(t *testing.T) {
 	runtime.stdout = stdout
 
 	if err := executeRootCommand(context.Background(), runtime, stdout, stderr, []string{"--help"}); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrorFormat, err)
 	}
 	if runtime.help.Command != "dlexa" {
 		t.Fatalf("help.Command = %q, want dlexa", runtime.help.Command)

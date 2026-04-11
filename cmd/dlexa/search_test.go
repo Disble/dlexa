@@ -43,7 +43,7 @@ func executeSearchArgs(t *testing.T, args []string) (*stubRuntime, *bytes.Buffer
 	runtime.stdout = stdout
 	stderr := &bytes.Buffer{}
 	if err := executeRootCommand(context.Background(), runtime, stdout, stderr, args); err != nil {
-		t.Fatalf("executeRootCommand() error = %v", err)
+		t.Fatalf(executeRootCommandErrorFormat, err)
 	}
 	return runtime, stdout, stderr
 }
@@ -53,8 +53,8 @@ func TestSearchCommandRoutesSemanticSearchModule(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	runtime.stdout = stdout
 	stderr := &bytes.Buffer{}
-	if err := executeRootCommand(context.Background(), runtime, stdout, stderr, []string{"search", "solo", "o", "sólo"}); err != nil {
-		t.Fatalf("executeRootCommand() error = %v", err)
+	if err := executeRootCommand(context.Background(), runtime, stdout, stderr, []string{commandSearch, "solo", "o", "sólo"}); err != nil {
+		t.Fatalf(executeRootCommandErrorFormat, err)
 	}
 	if runtime.executedModule != "search" {
 		t.Fatalf("module = %q, want search", runtime.executedModule)
@@ -69,8 +69,8 @@ func TestSearchCommandRendersMarkdownHelp(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	runtime.stdout = stdout
 	stderr := &bytes.Buffer{}
-	if err := executeRootCommand(context.Background(), runtime, stdout, stderr, []string{"search", "--help"}); err != nil {
-		t.Fatalf("executeRootCommand() error = %v", err)
+	if err := executeRootCommand(context.Background(), runtime, stdout, stderr, []string{commandSearch, "--help"}); err != nil {
+		t.Fatalf(executeRootCommandErrorFormat, err)
 	}
 	if runtime.help.Command != "dlexa search" || !bytes.Contains(stdout.Bytes(), []byte("# Ayuda: dlexa search")) {
 		t.Fatalf("help envelope = %#v stdout=%q", runtime.help, stdout.String())
@@ -88,8 +88,8 @@ func TestSearchCommandTurnsMissingArgsIntoSyntaxFallback(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	runtime.stdout = stdout
 	stderr := &bytes.Buffer{}
-	if err := executeRootCommand(context.Background(), runtime, stdout, stderr, []string{"search"}); err != nil {
-		t.Fatalf("executeRootCommand() error = %v", err)
+	if err := executeRootCommand(context.Background(), runtime, stdout, stderr, []string{commandSearch}); err != nil {
+		t.Fatalf(executeRootCommandErrorFormat, err)
 	}
 	if runtime.syntaxErr == nil || !bytes.Contains(stdout.Bytes(), []byte("Nivel 1 · Syntax")) {
 		t.Fatalf("syntax err = %v stdout=%q", runtime.syntaxErr, stdout.String())

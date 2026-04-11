@@ -18,7 +18,7 @@ func newDPDCommand(ctx context.Context, runtime runtimeRunner, format *string, n
 		SilenceUsage:  true,
 		Args:          cobra.MinimumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			return runtime.RunModule(ctx, "dpd", modules.Request{Query: strings.TrimSpace(strings.Join(args, " ")), Format: strings.TrimSpace(*format), NoCache: *noCache, Args: append([]string(nil), args...)})
+			return runtime.RunModule(ctx, commandDPD, modules.Request{Query: strings.TrimSpace(strings.Join(args, " ")), Format: strings.TrimSpace(*format), NoCache: *noCache, Args: append([]string(nil), args...)})
 		},
 	}
 	cmd.AddCommand(newDPDSearchCommand(ctx, runtime, format, noCache))
@@ -26,18 +26,18 @@ func newDPDCommand(ctx context.Context, runtime runtimeRunner, format *string, n
 		_ = runtime.RenderHelp(ctx, model.HelpEnvelope{
 			Command:     "dlexa dpd",
 			Summary:     "Consulta una entrada concreta del Diccionario panhispánico de dudas.",
-			Syntax:      "dlexa dpd <termino>",
+			Syntax:      syntaxDPD,
 			Examples:    []string{"dlexa dpd basto", "dlexa dpd que"},
 			NextSteps:   []string{"Si no aparece la entrada, probá primero `dlexa search <consulta>`."},
 			RecoveryTip: "Si te equivocás de sintaxis, mirá esta ayuda y corregí el comando.",
 		})
 	})
 	cmd.SetFlagErrorFunc(func(_ *cobra.Command, err error) error {
-		return runtime.HandleSyntaxError(ctx, err, "dlexa dpd <termino>")
+		return runtime.HandleSyntaxError(ctx, err, syntaxDPD)
 	})
 	cmd.Args = func(_ *cobra.Command, args []string) error {
 		if len(args) == 0 {
-			return runtime.HandleSyntaxError(ctx, fmt.Errorf("dpd command requires a query"), "dlexa dpd <termino>")
+			return runtime.HandleSyntaxError(ctx, fmt.Errorf("dpd command requires a query"), syntaxDPD)
 		}
 		return nil
 	}
@@ -52,7 +52,7 @@ func newDPDSearchCommand(ctx context.Context, runtime runtimeRunner, format *str
 		SilenceUsage:  true,
 		Args:          cobra.MinimumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			return runtime.RunModule(ctx, "search", modules.Request{
+			return runtime.RunModule(ctx, commandSearch, modules.Request{
 				Query:   strings.TrimSpace(strings.Join(args, " ")),
 				Format:  strings.TrimSpace(*format),
 				NoCache: *noCache,
@@ -65,18 +65,18 @@ func newDPDSearchCommand(ctx context.Context, runtime runtimeRunner, format *str
 		_ = runtime.RenderHelp(ctx, model.HelpEnvelope{
 			Command:     "dlexa dpd search",
 			Summary:     "Busca en el índice específico del DPD y devuelve candidatos en el formato del gateway search.",
-			Syntax:      "dlexa dpd search <termino-de-busqueda>",
+			Syntax:      syntaxDPDSearch,
 			Examples:    []string{"dlexa dpd search Abu Dhabi", "dlexa dpd search solo"},
 			NextSteps:   []string{"Usá este comando cuando quieras consultar solo el buscador específico del DPD sin mezclarlo con el search general de la RAE."},
 			RecoveryTip: "Si querés federación entre buscadores, usá `dlexa search <consulta>`; si querés solo el índice DPD, usá este subcomando.",
 		})
 	})
 	cmd.SetFlagErrorFunc(func(_ *cobra.Command, err error) error {
-		return runtime.HandleSyntaxError(ctx, err, "dlexa dpd search <termino-de-busqueda>")
+		return runtime.HandleSyntaxError(ctx, err, syntaxDPDSearch)
 	})
 	cmd.Args = func(_ *cobra.Command, args []string) error {
 		if len(args) == 0 {
-			return runtime.HandleSyntaxError(ctx, fmt.Errorf("dpd search command requires a query"), "dlexa dpd search <termino-de-busqueda>")
+			return runtime.HandleSyntaxError(ctx, fmt.Errorf("dpd search command requires a query"), syntaxDPDSearch)
 		}
 		return nil
 	}

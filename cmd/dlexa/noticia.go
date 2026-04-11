@@ -25,18 +25,18 @@ func newNoticiaCommand(ctx context.Context, runtime runtimeRunner, format *strin
 		_ = runtime.RenderHelp(ctx, model.HelpEnvelope{
 			Command:     "dlexa noticia",
 			Summary:     "Consulta una FAQ normativa publicada bajo la superficie Noticia de la RAE.",
-			Syntax:      "dlexa noticia <slug>",
+			Syntax:      syntaxNoticia,
 			Examples:    []string{"dlexa noticia preguntas-frecuentes-tilde-en-las-mayusculas"},
 			NextSteps:   []string{"Usá `dlexa search <consulta>` si todavía no conocés el slug exacto de la FAQ."},
 			RecoveryTip: "Este comando acepta solo slugs de noticias FAQ compatibles; no sirve para noticias institucionales generales.",
 		})
 	})
 	cmd.SetFlagErrorFunc(func(_ *cobra.Command, err error) error {
-		return runtime.HandleSyntaxError(ctx, err, "dlexa noticia <slug>")
+		return runtime.HandleSyntaxError(ctx, err, syntaxNoticia)
 	})
 	cmd.Args = func(_ *cobra.Command, args []string) error {
 		if len(args) == 0 {
-			return runtime.HandleSyntaxError(ctx, fmt.Errorf("noticia command requires an article slug"), "dlexa noticia <slug>")
+			return runtime.HandleSyntaxError(ctx, fmt.Errorf("noticia command requires an article slug"), syntaxNoticia)
 		}
 		return nil
 	}

@@ -66,7 +66,7 @@ func newRootCommand(ctx context.Context, runtime runtimeRunner) *cobra.Command {
 			if len(args) == 0 {
 				return rootHelp(ctx, runtime)
 			}
-			return runtime.RunModule(ctx, "dpd", modules.Request{Query: strings.TrimSpace(strings.Join(args, " ")), Format: format, NoCache: noCache, Args: append([]string(nil), args...)})
+			return runtime.RunModule(ctx, commandDPD, modules.Request{Query: strings.TrimSpace(strings.Join(args, " ")), Format: format, NoCache: noCache, Args: append([]string(nil), args...)})
 		},
 	}
 	root.PersistentFlags().StringVar(&format, "format", "", "render format: markdown|json")
@@ -101,5 +101,5 @@ func looksLikeUnknownSyntax(args []string) bool {
 	if first == "" {
 		return false
 	}
-	return strings.HasPrefix(first, "-") || (len(args) > 1 && strings.HasPrefix(strings.TrimSpace(args[1]), "-")) && first != "search" && first != "dpd" && first != "espanol-al-dia" && first != "duda-linguistica" && first != "noticia"
+	return strings.HasPrefix(first, "-") || (len(args) > 1 && strings.HasPrefix(strings.TrimSpace(args[1]), "-")) && first != commandSearch && first != commandDPD && first != commandEspanolAlDia && first != commandDudaLinguistica && first != commandNoticia
 }

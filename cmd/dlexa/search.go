@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var knownSearchSources = []string{"search", "dpd"}
+var knownSearchSources = []string{commandSearch, commandDPD}
 
 func validateSources(sources []string) error {
 	known := make(map[string]struct{}, len(knownSearchSources))
@@ -38,7 +38,7 @@ func newSearchCommand(ctx context.Context, runtime runtimeRunner, format *string
 			if err := validateSources(sources); err != nil {
 				return err
 			}
-			return runtime.RunModule(ctx, "search", modules.Request{Query: strings.TrimSpace(strings.Join(args, " ")), Format: strings.TrimSpace(*format), NoCache: *noCache, Args: append([]string(nil), args...), Sources: append([]string(nil), sources...)})
+			return runtime.RunModule(ctx, commandSearch, modules.Request{Query: strings.TrimSpace(strings.Join(args, " ")), Format: strings.TrimSpace(*format), NoCache: *noCache, Args: append([]string(nil), args...), Sources: append([]string(nil), sources...)})
 		},
 	}
 	cmd.Flags().StringArrayVar(&sources, "source", nil, "limit search to specific provider(s): search, dpd (repeatable; omit to federate all)")
