@@ -88,6 +88,12 @@ func TestNewWiresSearchModuleToLiveSearchAdapters(t *testing.T) {
 	if got := secondary.Descriptor().Name; got != "dpd" {
 		t.Fatalf("second provider name = %q, want dpd", got)
 	}
+	if got := secondary.FetcherForTesting(); got == nil || got.(*fetch.DPDSearchFetcher) == nil {
+		t.Fatalf("second fetcher type = %T, want *fetch.DPDSearchFetcher", got)
+	}
+	if governed, ok := secondary.FetcherForTesting().(*fetch.DPDSearchFetcher).Client.(*fetch.GovernedDoer); !ok || governed == nil {
+		t.Fatalf("second fetcher client = %T, want *fetch.GovernedDoer", secondary.FetcherForTesting().(*fetch.DPDSearchFetcher).Client)
+	}
 	if _, ok := secondary.EngineSearchParserForTesting().(*parseengine.DPDSearchParser); !ok {
 		t.Fatalf("second engine parser type = %T, want *engine.DPDSearchParser", secondary.EngineSearchParserForTesting())
 	}

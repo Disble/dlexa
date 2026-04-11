@@ -2,6 +2,7 @@ package fetch
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -53,6 +54,10 @@ func (f *DPDSearchFetcher) Fetch(ctx context.Context, request Request) (Document
 
 	resp, err := resolveClient(f.Client).Do(req)
 	if err != nil {
+		var cooldownErr *RateLimitCooldownError
+		if errors.As(err, &cooldownErr) {
+			return Document{}, newFetchProblem(model.ProblemCodeDPDSearchRateLimited, fmt.Sprintf("DPD entry search temporarily rate-limited: dpd transport cooling down for %s after upstream rate limiting", cooldownErr.Remaining.Round(time.Second)), request.Source, err)
+		}
 		return Document{}, newFetchProblem(model.ProblemCodeDPDSearchFetchFailed, fmt.Sprintf("fetch DPD entry search payload: %v", err), request.Source, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
@@ -67,6 +72,9 @@ func (f *DPDSearchFetcher) Fetch(ctx context.Context, request Request) (Document
 	}
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		if resp.StatusCode == http.StatusTooManyRequests {
+			return Document{}, newFetchProblem(model.ProblemCodeDPDSearchRateLimited, "DPD entry search was rate-limited by upstream (status 429)", request.Source, nil)
+		}
 		return Document{}, newFetchProblem(model.ProblemCodeDPDSearchFetchFailed, fmt.Sprintf("DPD entry search request failed with status %d", resp.StatusCode), request.Source, nil)
 	}
 

@@ -117,12 +117,17 @@ func New(cli platform.CLI) *App {
 
 	registry := source.NewStaticRegistry(dpdSource, espanolAlDiaSource, dudaLinguisticaSource, noticiaSource, demoSource)
 	lookupService := query.NewService(registry, cacheStore)
+	governedSearchClient := func(next fetch.Doer) fetch.Doer {
+		return fetch.NewGovernedDoer(next, fetch.GovernanceConfig{
+			CooldownBase:      runtimeConfig.Search.Governance.CooldownBase,
+			CooldownMax:       runtimeConfig.Search.Governance.CooldownMax,
+			RespectRetryAfter: runtimeConfig.Search.Governance.RespectRetryAfter,
+		})
+	}
 	searchFetcher := fetch.NewLiveSearchFetcher(runtimeConfig.DPD.BaseURL, runtimeConfig.DPD.Timeout, runtimeConfig.DPD.UserAgent)
-	searchFetcher.Client = fetch.NewGovernedDoer(searchFetcher.Client, fetch.GovernanceConfig{
-		CooldownBase:      runtimeConfig.Search.Governance.CooldownBase,
-		CooldownMax:       runtimeConfig.Search.Governance.CooldownMax,
-		RespectRetryAfter: runtimeConfig.Search.Governance.RespectRetryAfter,
-	})
+	searchFetcher.Client = governedSearchClient(searchFetcher.Client)
+	dpdSearchFetcher := fetch.NewDPDSearchFetcher(runtimeConfig.DPD.BaseURL, runtimeConfig.DPD.Timeout, runtimeConfig.DPD.UserAgent)
+	dpdSearchFetcher.Client = governedSearchClient(dpdSearchFetcher.Client)
 	searchProvider := searchsvc.NewEnginePipelineProvider(
 		model.SourceDescriptor{Name: "search", DisplayName: "Búsqueda general RAE", Kind: "remote-html", Priority: 1, Cacheable: true},
 		searchFetcher,
@@ -131,7 +136,7 @@ func New(cli platform.CLI) *App {
 	)
 	dpdSearchProvider := searchsvc.NewEnginePipelineProvider(
 		model.SourceDescriptor{Name: "dpd", DisplayName: "Diccionario panhispánico de dudas", Kind: "remote-json", Priority: 2, Cacheable: true},
-		fetch.NewDPDSearchFetcher(runtimeConfig.DPD.BaseURL, runtimeConfig.DPD.Timeout, runtimeConfig.DPD.UserAgent),
+		dpdSearchFetcher,
 		parseengine.NewDPDSearchParser(),
 		normalize.NewDPDSearchNormalizer(),
 	)

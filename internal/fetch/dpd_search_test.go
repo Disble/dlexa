@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Disble/dlexa/internal/model"
+	"github.com/Disble/dlexa/internal/testutil"
 )
 
 func TestDPDSearchFetcherUsesKeysEndpointAndBrowserProfile(t *testing.T) {
@@ -84,4 +85,22 @@ func TestDPDSearchFetcherClassifiesChallengeAndTransportFailures(t *testing.T) {
 			assertFetchProblem(t, err, document, &tt.wantProblem)
 		})
 	}
+}
+
+func TestDPDSearchFetcherClassifiesRateLimitCooldownsExplicitly(t *testing.T) {
+	now := time.Date(2026, time.April, 11, 22, 0, 0, 0, time.UTC)
+	governed := NewGovernedDoer(roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusTooManyRequests, Body: io.NopCloser(strings.NewReader("rate limited")), Request: req, Header: http.Header{"Retry-After": []string{"30"}}}, nil
+	}), GovernanceConfig{CooldownBase: 5 * time.Second, CooldownMax: time.Minute, RespectRetryAfter: true})
+	governed.now = func() time.Time { return now }
+
+	fetcher := NewDPDSearchFetcher("https://example.invalid/dpd", time.Second, testUserAgent)
+	fetcher.Client = governed
+
+	firstDocument, firstErr := fetcher.Fetch(context.Background(), Request{Query: testutil.LiveSearchQuery, Source: model.SourceDescriptor{Name: "dpd"}})
+	assertFetchProblem(t, firstErr, firstDocument, &model.Problem{Code: model.ProblemCodeDPDSearchRateLimited, Message: "DPD entry search was rate-limited by upstream (status 429)", Source: "dpd", Severity: model.ProblemSeverityError})
+
+	now = now.Add(5 * time.Second)
+	secondDocument, secondErr := fetcher.Fetch(context.Background(), Request{Query: testutil.LiveSearchQuery, Source: model.SourceDescriptor{Name: "dpd"}})
+	assertFetchProblem(t, secondErr, secondDocument, &model.Problem{Code: model.ProblemCodeDPDSearchRateLimited, Message: "DPD entry search temporarily rate-limited: dpd transport cooling down for 25s after upstream rate limiting", Source: "dpd", Severity: model.ProblemSeverityError})
 }
