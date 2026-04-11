@@ -19,11 +19,11 @@ func rateLimitedProblem(source, message string) error {
 
 func TestServiceUsesRequestedSourcesAndOrdersCandidatesByPriority(t *testing.T) {
 	providerP3 := &providerStub{
-		descriptor: model.SourceDescriptor{Name: "priority-3", Priority: 3},
+		descriptor: model.SourceDescriptor{Name: providerPriority3, Priority: 3},
 		result:     model.SearchResult{Candidates: []model.SearchCandidate{{Title: "p3"}}},
 	}
 	providerP1 := &providerStub{
-		descriptor: model.SourceDescriptor{Name: "priority-1", Priority: 1},
+		descriptor: model.SourceDescriptor{Name: providerPriority1, Priority: 1},
 		result:     model.SearchResult{Candidates: []model.SearchCandidate{{Title: "p1"}}},
 	}
 	providerP2 := &providerStub{
@@ -31,8 +31,8 @@ func TestServiceUsesRequestedSourcesAndOrdersCandidatesByPriority(t *testing.T) 
 		result:     model.SearchResult{Candidates: []model.SearchCandidate{{Title: "p2"}}},
 	}
 
-	service := NewService(NewStaticRegistry("priority-1", providerP3, providerP1, providerP2), cache.NewSearchMemoryStore(), 2, "priority-1")
-	request := model.SearchRequest{Query: "ordenado", Sources: []string{"priority-3", "priority-1"}, NoCache: true}
+	service := NewService(NewStaticRegistry(providerPriority1, providerP3, providerP1, providerP2), cache.NewSearchMemoryStore(), 2, providerPriority1)
+	request := model.SearchRequest{Query: "ordenado", Sources: []string{providerPriority3, providerPriority1}, NoCache: true}
 
 	result, err := service.Search(context.Background(), request)
 	if err != nil {
@@ -45,32 +45,32 @@ func TestServiceUsesRequestedSourcesAndOrdersCandidatesByPriority(t *testing.T) 
 	if got := candidateTitles(result.Candidates); !reflect.DeepEqual(got, []string{"p1", "p3"}) {
 		t.Fatalf("candidate order = %v, want [p1 p3]", got)
 	}
-	assertSingletonSourceRequest(t, providerP1, "priority-1")
-	assertSingletonSourceRequest(t, providerP3, "priority-3")
+	assertSingletonSourceRequest(t, providerP1, providerPriority1)
+	assertSingletonSourceRequest(t, providerP3, providerPriority3)
 }
 
 func TestServiceFederatesDPDAndGeneralSearchProvidersByPriority(t *testing.T) {
 	dpdProvider := &providerStub{
 		descriptor: model.SourceDescriptor{Name: "dpd", DisplayName: "Diccionario panhispánico de dudas", Priority: 1},
-		result:     model.SearchResult{Candidates: []model.SearchCandidate{{Title: "Abu Dhabi", ArticleKey: "Abu Dabi"}}},
+		result:     model.SearchResult{Candidates: []model.SearchCandidate{{Title: abuDhabiQuery, ArticleKey: "Abu Dabi"}}},
 	}
 	searchProvider := &providerStub{
-		descriptor: model.SourceDescriptor{Name: "search", DisplayName: "Búsqueda general RAE", Priority: 2},
-		result:     model.SearchResult{Candidates: []model.SearchCandidate{{Title: "Abu Dhabi", URL: "https://www.rae.es/espanol-al-dia/abu-dhabi"}}},
+		descriptor: model.SourceDescriptor{Name: "search", DisplayName: sourceBusquedaGeneral, Priority: 2},
+		result:     model.SearchResult{Candidates: []model.SearchCandidate{{Title: abuDhabiQuery, URL: "https://www.rae.es/espanol-al-dia/abu-dhabi"}}},
 	}
 
 	service := NewService(NewStaticRegistry("search", searchProvider, dpdProvider), cache.NewSearchMemoryStore(), 2, "search")
-	result, err := service.Search(context.Background(), model.SearchRequest{Query: "Abu Dhabi", Sources: []string{"dpd", "search"}, NoCache: true})
+	result, err := service.Search(context.Background(), model.SearchRequest{Query: abuDhabiQuery, Sources: []string{"dpd", "search"}, NoCache: true})
 	if err != nil {
 		t.Fatalf(searchErrFormat, err)
 	}
-	if got := candidateTitles(result.Candidates); !reflect.DeepEqual(got, []string{"Abu Dhabi", "Abu Dhabi"}) {
-		t.Fatalf("candidate order = %v, want [Abu Dhabi Abu Dhabi] preserving provider priority", got)
+	if got := candidateTitles(result.Candidates); !reflect.DeepEqual(got, []string{abuDhabiQuery, abuDhabiQuery}) {
+		t.Fatalf("candidate order = %v, want [%s %s] preserving provider priority", got, abuDhabiQuery, abuDhabiQuery)
 	}
 	if result.Candidates[0].SourceHint != "Diccionario panhispánico de dudas" {
 		t.Fatalf("first source hint = %q, want DPD attribution", result.Candidates[0].SourceHint)
 	}
-	if result.Candidates[1].SourceHint != "Búsqueda general RAE" {
+	if result.Candidates[1].SourceHint != sourceBusquedaGeneral {
 		t.Fatalf("second source hint = %q, want general search attribution", result.Candidates[1].SourceHint)
 	}
 	assertSingletonSourceRequest(t, dpdProvider, "dpd")
@@ -114,7 +114,7 @@ func TestServiceBoundsConcurrentProviderSearches(t *testing.T) {
 func TestServiceReturnsPartialCacheHitsAndFreshResultsTogether(t *testing.T) {
 	store := cache.NewSearchMemoryStore()
 	cachedProvider := &providerStub{
-		descriptor: model.SourceDescriptor{Name: "search", DisplayName: "Búsqueda general RAE", Priority: 1},
+		descriptor: model.SourceDescriptor{Name: "search", DisplayName: sourceBusquedaGeneral, Priority: 1},
 		result:     model.SearchResult{Candidates: []model.SearchCandidate{{Title: "cached"}}},
 	}
 	freshProvider := &providerStub{
@@ -137,7 +137,7 @@ func TestServiceReturnsPartialCacheHitsAndFreshResultsTogether(t *testing.T) {
 	if got := candidateTitles(result.Candidates); !reflect.DeepEqual(got, []string{"cached", "fresh"}) {
 		t.Fatalf("candidate order = %v, want [cached fresh]", got)
 	}
-	if result.Candidates[0].SourceHint != "Búsqueda general RAE" {
+	if result.Candidates[0].SourceHint != sourceBusquedaGeneral {
 		t.Fatalf("cached candidate source hint = %q, want provider display name", result.Candidates[0].SourceHint)
 	}
 	if result.Candidates[1].SourceHint != "Academia" {
@@ -193,12 +193,12 @@ func TestServiceReturnsTopLevelErrorWhenAllProvidersFail(t *testing.T) {
 	} else {
 		problem, ok := model.AsProblem(err)
 		if !ok {
-			t.Fatalf("Search() error = %T, want ProblemError", err)
+			t.Fatalf(problemErrorTypeFormat, err)
 		}
 		if problem.Code != model.ProblemCodeDPDSearchFetchFailed {
 			t.Fatalf("Problem.Code = %q, want %q", problem.Code, model.ProblemCodeDPDSearchFetchFailed)
 		}
-		want := "all search providers failed: [search] search unavailable; [academia] academia unavailable"
+		want := allSearchProvidersFailedMessage + ": [search] search unavailable; [academia] academia unavailable"
 		if problem.Message != want {
 			t.Fatalf("Problem.Message = %q, want %q", problem.Message, want)
 		}
@@ -222,7 +222,7 @@ func TestServiceReturnsRateLimitedAggregateWhenAllProvidersRateLimited(t *testin
 	}
 	problem, ok := model.AsProblem(err)
 	if !ok {
-		t.Fatalf("Search() error = %T, want ProblemError", err)
+		t.Fatalf(problemErrorTypeFormat, err)
 	}
 	if problem.Code != model.ProblemCodeSearchAllProvidersRateLimited {
 		t.Fatalf("Problem.Code = %q, want %q", problem.Code, model.ProblemCodeSearchAllProvidersRateLimited)
@@ -246,7 +246,7 @@ func TestServiceUsesDeterministicAggregateProblemCodeWhenAllProvidersFail(t *tes
 	}
 	problem, ok := model.AsProblem(err)
 	if !ok {
-		t.Fatalf("Search() error = %T, want ProblemError", err)
+		t.Fatalf(problemErrorTypeFormat, err)
 	}
 	if problem.Code != model.ProblemCodeDPDSearchParseFailed {
 		t.Fatalf("Problem.Code = %q, want %q so fallback kind is parse failure", problem.Code, model.ProblemCodeDPDSearchParseFailed)

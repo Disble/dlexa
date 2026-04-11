@@ -22,7 +22,7 @@ func TestModuleFiltersNoiseRescuesFAQAndMapsCommands(t *testing.T) {
 
 	response, err := module.Execute(context.Background(), modules.Request{Query: "solo o sólo", Format: "json"})
 	if err != nil {
-		t.Fatalf("Execute() error = %v", err)
+		t.Fatalf(executeErrFormat, err)
 	}
 	if response.Fallback != nil {
 		t.Fatalf("fallback = %#v, want nil", response.Fallback)
@@ -60,7 +60,7 @@ func TestModuleReturnsExplicitNoResultsWhenCuratedResultsAreEmpty(t *testing.T) 
 
 	response, err := module.Execute(context.Background(), modules.Request{Query: "zzz", Format: "markdown"})
 	if err != nil {
-		t.Fatalf("Execute() error = %v", err)
+		t.Fatalf(executeErrFormat, err)
 	}
 	if response.Fallback != nil {
 		t.Fatalf("fallback = %#v, want nil", response.Fallback)
@@ -79,7 +79,7 @@ func TestModuleKeepsFailuresOnExplicitFallbackPath(t *testing.T) {
 
 	response, err := module.Execute(context.Background(), modules.Request{Query: "zzz", Format: "markdown"})
 	if err != nil {
-		t.Fatalf("Execute() error = %v", err)
+		t.Fatalf(executeErrFormat, err)
 	}
 	if response.Fallback == nil || response.Fallback.Kind != model.FallbackKindParseFailure {
 		t.Fatalf("Fallback = %#v, want parse failure", response.Fallback)
@@ -92,7 +92,7 @@ func TestModuleMapsRateLimitedFailuresToDedicatedFallback(t *testing.T) {
 
 	response, err := module.Execute(context.Background(), modules.Request{Query: "zzz", Format: "markdown"})
 	if err != nil {
-		t.Fatalf("Execute() error = %v", err)
+		t.Fatalf(executeErrFormat, err)
 	}
 	if response.Fallback == nil || response.Fallback.Kind != model.FallbackKindRateLimited {
 		t.Fatalf("Fallback = %#v, want rate limited", response.Fallback)
@@ -105,7 +105,7 @@ func TestModuleForwardsExplicitSourcesToSearcher(t *testing.T) {
 	request := modules.Request{Query: "tilde", Format: "json", Sources: []string{"search", "academia"}}
 
 	if _, err := module.Execute(context.Background(), request); err != nil {
-		t.Fatalf("Execute() error = %v", err)
+		t.Fatalf(executeErrFormat, err)
 	}
 	if !reflect.DeepEqual(searcher.request.Sources, request.Sources) {
 		t.Fatalf("searcher request sources = %#v, want %#v", searcher.request.Sources, request.Sources)
@@ -152,7 +152,7 @@ func TestModuleDerivesSourceFromRequestedProviders(t *testing.T) {
 
 			response, err := module.Execute(context.Background(), tt.request)
 			if err != nil {
-				t.Fatalf("Execute() error = %v", err)
+				t.Fatalf(executeErrFormat, err)
 			}
 			if response.Source != tt.wantSource {
 				t.Fatalf("Source = %q, want %q", response.Source, tt.wantSource)
@@ -167,7 +167,7 @@ func TestModuleDerivesFallbackSourceFromRequestedProviders(t *testing.T) {
 
 	response, err := module.Execute(context.Background(), modules.Request{Query: "solo", Format: "markdown", Sources: []string{"dpd"}})
 	if err != nil {
-		t.Fatalf("Execute() error = %v", err)
+		t.Fatalf(executeErrFormat, err)
 	}
 	if response.Source != "Diccionario panhispánico de dudas" {
 		t.Fatalf("Source = %q, want DPD label on fallback path", response.Source)

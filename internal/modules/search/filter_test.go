@@ -9,36 +9,36 @@ import (
 
 var (
 	soloRankingCandidates = []model.SearchCandidate{
-		{Title: "solo", Classification: "dpd-entry", ArticleKey: "solo"},
-		{Title: "El uso de tilde en solo", Classification: "faq"},
+		{Title: "solo", Classification: classificationDPDEntry, ArticleKey: "solo"},
+		{Title: "El uso de tilde en solo", Classification: classificationFAQ},
 	}
 	alicuotaRankingCandidates = []model.SearchCandidate{
-		{Title: "Alícuota", Classification: "dpd-entry", ArticleKey: "alicuota"},
-		{Title: "Dudas sobre tildes en esdrújulas", Classification: "faq"},
+		{Title: alicuotaTitle, Classification: classificationDPDEntry, ArticleKey: "alicuota"},
+		{Title: "Dudas sobre tildes en esdrújulas", Classification: classificationFAQ},
 	}
 	asimismoRankingCandidates = []model.SearchCandidate{
-		{Title: "asimismo", Classification: "dpd-entry", ArticleKey: "asimismo"},
-		{Title: "así mismo", Classification: "dpd-entry", ArticleKey: "asimismo"},
-		{Title: "a sí mismo", Classification: "dpd-entry", ArticleKey: "asimismo"},
+		{Title: "asimismo", Classification: classificationDPDEntry, ArticleKey: "asimismo"},
+		{Title: "así mismo", Classification: classificationDPDEntry, ArticleKey: "asimismo"},
+		{Title: "a sí mismo", Classification: classificationDPDEntry, ArticleKey: "asimismo"},
 	}
 	exRankingCandidates = []model.SearchCandidate{
-		{Title: "ex", Classification: "dpd-entry", ArticleKey: "ex"},
-		{Title: "Texto de ejemplo", Classification: "faq"},
-		{Title: "expresión", Classification: "linguistic-article"},
+		{Title: "ex", Classification: classificationDPDEntry, ArticleKey: "ex"},
+		{Title: "Texto de ejemplo", Classification: classificationFAQ},
+		{Title: "expresión", Classification: classificationLinguisticArticle},
 	}
 	guionRankingCandidates = []model.SearchCandidate{
-		{Title: "guion", Classification: "dpd-entry", ArticleKey: "guion"},
-		{Title: "guión", Classification: "dpd-entry", ArticleKey: "guion"},
-		{Title: "Usos del guion en la escritura", Classification: "faq"},
+		{Title: "guion", Classification: classificationDPDEntry, ArticleKey: "guion"},
+		{Title: "guión", Classification: classificationDPDEntry, ArticleKey: "guion"},
+		{Title: "Usos del guion en la escritura", Classification: classificationFAQ},
 	}
 )
 
 func TestCurateCandidatesRanksAndDeduplicatesCrossProviderResults(t *testing.T) {
 	candidates := []model.SearchCandidate{
-		{Title: "Ruta rara", URL: "https://www.rae.es/archivo/ruta-rara"},
+		{Title: rutaRaraTitle, URL: rutaRaraURL},
 		{Title: "La conjuncion o", URL: "https://www.rae.es/espanol-al-dia/la-conjuncion-o"},
 		{Title: "Solo", ArticleKey: "solo", URL: "https://www.rae.es/dpd/solo"},
-		{Title: "Preguntas frecuentes: tilde en solo", URL: "https://www.rae.es/noticia/preguntas-frecuentes-sobre-la-tilde"},
+		{Title: "Preguntas frecuentes: tilde en solo", URL: faqSobreTildeURL},
 		{Title: "Solo", ArticleKey: "solo", URL: "https://www.rae.es/dpd/solo", Snippet: "entrada con snippet mas rico"},
 	}
 
@@ -57,12 +57,12 @@ func TestCurateCandidatesRanksAndDeduplicatesCrossProviderResults(t *testing.T) 
 
 func TestCurateCandidatesPrefersDPDIndexHitForEquivalentDPDDestination(t *testing.T) {
 	candidates := []model.SearchCandidate{
-		{Title: "Abu Dhabi", Snippet: "resultado del buscador general", URL: "https://www.rae.es/dpd/Abu_Dabi", SourceHint: "Búsqueda general RAE"},
-		{DisplayText: "Abu Dhabi", ArticleKey: "Abu Dabi", SourceHint: "Diccionario panhispánico de dudas"},
-		{Title: "Ruta rara", URL: "https://www.rae.es/archivo/ruta-rara"},
+		{Title: abuDhabiTitle, Snippet: "resultado del buscador general", URL: "https://www.rae.es/dpd/Abu_Dabi", SourceHint: sourceBusquedaGeneral},
+		{DisplayText: abuDhabiTitle, ArticleKey: "Abu Dabi", SourceHint: "Diccionario panhispánico de dudas"},
+		{Title: rutaRaraTitle, URL: rutaRaraURL},
 	}
 
-	got := curateCandidates("Abu Dhabi", candidates)
+	got := curateCandidates(abuDhabiTitle, candidates)
 
 	if len(got) != 2 {
 		t.Fatalf("Candidates len = %d, want 2 after semantic DPD deduplication", len(got))
@@ -77,14 +77,14 @@ func TestCurateCandidatesPrefersDPDIndexHitForEquivalentDPDDestination(t *testin
 
 func TestCurateCandidatesBoostsQueryAffinityAcrossComplementaryHits(t *testing.T) {
 	candidates := []model.SearchCandidate{
-		{Title: "Preguntas frecuentes: sobre la tilde", Snippet: "faq rescatable pero genérica", URL: "https://www.rae.es/noticia/preguntas-frecuentes-sobre-la-tilde", SourceHint: "Búsqueda general RAE"},
-		{Title: "Alícuota", Snippet: "artículo complementario exacto", URL: "https://www.rae.es/espanol-al-dia/alicuota", SourceHint: "Búsqueda general RAE"},
-		{Title: "Ruta rara", URL: "https://www.rae.es/archivo/ruta-rara"},
+		{Title: faqSobreTildeTitle, Snippet: "faq rescatable pero genérica", URL: faqSobreTildeURL, SourceHint: sourceBusquedaGeneral},
+		{Title: alicuotaTitle, Snippet: "artículo complementario exacto", URL: "https://www.rae.es/espanol-al-dia/alicuota", SourceHint: sourceBusquedaGeneral},
+		{Title: rutaRaraTitle, URL: rutaRaraURL},
 	}
 
 	got := curateCandidates("alicuota", candidates)
 
-	if want := []string{"Alícuota", "Preguntas frecuentes: sobre la tilde", "Ruta rara"}; !reflect.DeepEqual(candidateTitles(got), want) {
+	if want := []string{alicuotaTitle, faqSobreTildeTitle, rutaRaraTitle}; !reflect.DeepEqual(candidateTitles(got), want) {
 		t.Fatalf("candidate order = %v, want %v", candidateTitles(got), want)
 	}
 }
@@ -106,13 +106,13 @@ func TestCurateCandidatesCalibratesRankingForExactVariantsAndShortQueries(t *tes
 			name:         "alicuota unaccented",
 			query:        "alicuota",
 			candidates:   alicuotaRankingCandidates,
-			wantTopTitle: "Alícuota",
+			wantTopTitle: alicuotaTitle,
 		},
 		{
 			name:         "alicuota accented",
 			query:        "alícuota",
 			candidates:   alicuotaRankingCandidates,
-			wantTopTitle: "Alícuota",
+			wantTopTitle: alicuotaTitle,
 		},
 		{
 			name:         "asimismo disambiguation",
@@ -206,7 +206,7 @@ func TestIsRescuedNoticiaRequiresFAQPrefixOnly(t *testing.T) {
 	}{
 		{
 			name:      "faq title is rescued",
-			candidate: model.SearchCandidate{Title: "Preguntas frecuentes: sobre la tilde", Snippet: "Respuesta normativa breve.", URL: "https://www.rae.es/noticia/preguntas-frecuentes-sobre-la-tilde"},
+			candidate: model.SearchCandidate{Title: faqSobreTildeTitle, Snippet: "Respuesta normativa breve.", URL: faqSobreTildeURL},
 			want:      true,
 		},
 		{
@@ -234,14 +234,14 @@ func TestIsRescuedNoticiaRequiresFAQPrefixOnly(t *testing.T) {
 func TestCurateCandidatesRejectsNonFAQNoticiasEvenWithLinguisticWords(t *testing.T) {
 	candidates := []model.SearchCandidate{
 		{Title: "La obra Geopolítica del español se presenta en la RAE", Snippet: "Libro institucional sobre el español.", URL: "https://www.rae.es/noticia/la-obra-geopolitica-del-espanol-se-presenta-en-la-rae"},
-		{Title: "Preguntas frecuentes: sobre la tilde", Snippet: "FAQ rescatable.", URL: "https://www.rae.es/noticia/preguntas-frecuentes-sobre-la-tilde"},
+		{Title: faqSobreTildeTitle, Snippet: "FAQ rescatable.", URL: faqSobreTildeURL},
 	}
 
 	got := curateCandidates("tilde", candidates)
 	if len(got) != 1 {
 		t.Fatalf("Candidates len = %d, want 1 rescued noticia only", len(got))
 	}
-	if got[0].Title != "Preguntas frecuentes: sobre la tilde" {
+	if got[0].Title != faqSobreTildeTitle {
 		t.Fatalf("candidate titles = %v, want rescued FAQ only", candidateTitles(got))
 	}
 }

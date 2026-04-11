@@ -8,6 +8,8 @@ import (
 	"github.com/Disble/dlexa/internal/model"
 )
 
+const humanMaintenanceSuggestion = "Hace falta intervención humana de mantenimiento."
+
 // Request is the shared application-facing module contract.
 type Request struct {
 	Query   string
@@ -93,7 +95,7 @@ func FallbackFromError(moduleName, query, format string, err error) *model.Fallb
 			Format:     format,
 			Message:    "La respuesta no pudo interpretarse de forma segura.",
 			Detail:     err.Error(),
-			Suggestion: "Hace falta intervención humana de mantenimiento.",
+			Suggestion: humanMaintenanceSuggestion,
 		}
 	}
 
@@ -122,11 +124,11 @@ func FallbackFromError(moduleName, query, format string, err error) *model.Fallb
 	case model.ProblemCodeDPDExtractFailed, model.ProblemCodeDPDTransformFailed, model.ProblemCodeDPDSearchParseFailed, model.ProblemCodeDPDSearchNormalizeFailed, model.ProblemCodeArticleExtractFailed, model.ProblemCodeArticleTransformFailed:
 		base.Kind = model.FallbackKindParseFailure
 		base.Message = "La fuente respondió, pero cambió el contrato que esperamos."
-		base.Suggestion = "Hace falta intervención humana de mantenimiento."
+		base.Suggestion = humanMaintenanceSuggestion
 	default:
 		base.Kind = model.FallbackKindParseFailure
 		base.Message = "La respuesta no pudo interpretarse de forma segura."
-		base.Suggestion = "Hace falta intervención humana de mantenimiento."
+		base.Suggestion = humanMaintenanceSuggestion
 	}
 
 	return base

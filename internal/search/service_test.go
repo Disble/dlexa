@@ -17,9 +17,9 @@ import (
 const searchErrFormat = "Search() error = %v"
 
 func TestServiceReturnsCachedResultAndRefreshesRequestFields(t *testing.T) {
-	request := model.SearchRequest{Query: " Abu Dhabi ", Format: "json"}
+	request := model.SearchRequest{Query: " " + abuDhabiQuery + " ", Format: "json"}
 	stored := model.SearchResult{
-		Request:    model.SearchRequest{Query: "Abu Dhabi", Format: "markdown", Sources: []string{"search"}},
+		Request:    model.SearchRequest{Query: abuDhabiQuery, Format: "markdown", Sources: []string{"search"}},
 		Candidates: []model.SearchCandidate{{Title: "Abu Dabi"}},
 	}
 	store := &stubSearchStore{getResult: stored, getOK: true}
@@ -36,7 +36,7 @@ func TestServiceReturnsCachedResultAndRefreshesRequestFields(t *testing.T) {
 	if provider.calls.Load() != 0 {
 		t.Fatalf("provider calls = %d, want 0 on cache hit", provider.calls.Load())
 	}
-	if !reflect.DeepEqual(result.Request, model.SearchRequest{Query: " Abu Dhabi ", Format: "json", Sources: []string{"search"}}) {
+	if !reflect.DeepEqual(result.Request, model.SearchRequest{Query: " " + abuDhabiQuery + " ", Format: "json", Sources: []string{"search"}}) {
 		t.Fatalf("Request = %#v", result.Request)
 	}
 }
@@ -107,7 +107,7 @@ func TestServiceCoalescesConcurrentCacheMissesPerProvider(t *testing.T) {
 	}
 	results := make(chan outcome, 2)
 	requestA := model.SearchRequest{Query: " Abu   Dhabi ", Format: "json"}
-	requestB := model.SearchRequest{Query: "Abu Dhabi", Format: "markdown"}
+	requestB := model.SearchRequest{Query: abuDhabiQuery, Format: "markdown"}
 
 	go func() {
 		result, err := service.Search(context.Background(), requestA)
@@ -152,7 +152,7 @@ func TestServiceNoCacheBypassesCoalescing(t *testing.T) {
 	service := NewService(NewStaticRegistry("search", provider), &stubSearchStore{}, 1, "search")
 
 	results := make(chan error, 2)
-	request := model.SearchRequest{Query: "Abu Dhabi", NoCache: true}
+	request := model.SearchRequest{Query: abuDhabiQuery, NoCache: true}
 	for range 2 {
 		go func() {
 			_, err := service.Search(context.Background(), request)

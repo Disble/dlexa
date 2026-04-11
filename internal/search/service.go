@@ -15,6 +15,8 @@ import (
 	"github.com/Disble/dlexa/internal/parse"
 )
 
+const allSearchProvidersFailedMessage = "all search providers failed"
+
 // Searcher defines the contract for performing semantic search queries.
 type Searcher interface {
 	Search(ctx context.Context, request model.SearchRequest) (model.SearchResult, error)
@@ -194,9 +196,9 @@ func aggregateProblemMessage(problems []model.Problem) string {
 		parts = append(parts, "["+source+"] "+message)
 	}
 	if len(parts) == 0 {
-		return "all search providers failed"
+		return allSearchProvidersFailedMessage
 	}
-	return "all search providers failed: " + strings.Join(parts, "; ")
+	return allSearchProvidersFailedMessage + ": " + strings.Join(parts, "; ")
 }
 
 func (s *Service) searchProvider(ctx context.Context, provider Provider, baseRequest model.SearchRequest) providerOutcome {
@@ -318,7 +320,7 @@ func aggregateResults(baseRequest model.SearchRequest, providers []Provider, out
 	sortProblemsByPriority(result.Problems, priorities)
 	if successes == 0 {
 		if len(result.Problems) == 0 {
-			return model.SearchResult{}, errors.New("all search providers failed")
+			return model.SearchResult{}, errors.New(allSearchProvidersFailedMessage)
 		}
 		if len(outcomes) == 1 {
 			if err := firstOutcomeError(outcomes); err != nil {
@@ -331,7 +333,7 @@ func aggregateResults(baseRequest model.SearchRequest, providers []Provider, out
 				if ok {
 					problem.Message = aggregateProblemMessage(result.Problems)
 					problem.Source = ""
-					return model.SearchResult{}, model.NewProblemError(problem, errors.New("all search providers failed"))
+					return model.SearchResult{}, model.NewProblemError(problem, errors.New(allSearchProvidersFailedMessage))
 				}
 				return model.SearchResult{}, err
 			}
@@ -339,7 +341,7 @@ func aggregateResults(baseRequest model.SearchRequest, providers []Provider, out
 		if allProblemsRateLimited(result.Problems) {
 			return model.SearchResult{}, model.NewProblemError(model.Problem{Code: model.ProblemCodeSearchAllProvidersRateLimited, Message: aggregateProblemMessage(result.Problems), Severity: model.ProblemSeverityError}, errors.New("all search providers rate limited"))
 		}
-		return model.SearchResult{}, model.NewProblemError(model.Problem{Code: aggregateProblemCode(result.Problems), Message: aggregateProblemMessage(result.Problems), Severity: model.ProblemSeverityError}, errors.New("all search providers failed"))
+		return model.SearchResult{}, model.NewProblemError(model.Problem{Code: aggregateProblemCode(result.Problems), Message: aggregateProblemMessage(result.Problems), Severity: model.ProblemSeverityError}, errors.New(allSearchProvidersFailedMessage))
 	}
 	if result.GeneratedAt.IsZero() {
 		result.GeneratedAt = now

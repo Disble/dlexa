@@ -11,17 +11,22 @@ import (
 	"github.com/Disble/dlexa/internal/render"
 )
 
+const (
+	sourceEspanolAlDia = "espanol-al-dia"
+	executeErrFormat   = "Execute() error = %v"
+)
+
 func TestModuleTargetsEspanolAlDiaSourceAndReturnsBody(t *testing.T) {
-	lookup := &lookupStub{result: model.LookupResult{Request: model.LookupRequest{Query: "solo", Format: "markdown", Sources: []string{"espanol-al-dia"}}, CacheHit: true, Entries: []model.Entry{{Headword: "solo", Content: "contenido"}}}}
+	lookup := &lookupStub{result: model.LookupResult{Request: model.LookupRequest{Query: "solo", Format: "markdown", Sources: []string{sourceEspanolAlDia}}, CacheHit: true, Entries: []model.Entry{{Headword: "solo", Content: "contenido"}}}}
 	renderers := &renderersStub{renderer: &rendererStub{payload: []byte("## Español al día\ncontenido")}}
 	module := New(lookup, renderers)
 
 	response, err := module.Execute(context.Background(), modules.Request{Query: "solo", Format: "markdown"})
 	if err != nil {
-		t.Fatalf("Execute() error = %v", err)
+		t.Fatalf(executeErrFormat, err)
 	}
-	if got := lookup.request.Sources; len(got) != 1 || got[0] != "espanol-al-dia" {
-		t.Fatalf("lookup sources = %#v, want [\"espanol-al-dia\"]", got)
+	if got := lookup.request.Sources; len(got) != 1 || got[0] != sourceEspanolAlDia {
+		t.Fatalf("lookup sources = %#v, want [%q]", got, sourceEspanolAlDia)
 	}
 	if response.Source != "Español al día" || string(response.Body) != "## Español al día\ncontenido" {
 		t.Fatalf("response = %#v", response)
@@ -29,13 +34,13 @@ func TestModuleTargetsEspanolAlDiaSourceAndReturnsBody(t *testing.T) {
 }
 
 func TestModuleMapsNotFoundIntoStructuredFallback(t *testing.T) {
-	lookup := &lookupStub{result: model.LookupResult{Request: model.LookupRequest{Query: "solo", Format: "json", Sources: []string{"espanol-al-dia"}}, Misses: []model.LookupMiss{{Kind: model.LookupMissKindGenericNotFound, Query: "solo"}}}}
+	lookup := &lookupStub{result: model.LookupResult{Request: model.LookupRequest{Query: "solo", Format: "json", Sources: []string{sourceEspanolAlDia}}, Misses: []model.LookupMiss{{Kind: model.LookupMissKindGenericNotFound, Query: "solo"}}}}
 	renderers := &renderersStub{renderer: &rendererStub{payload: []byte("{}")}}
 	module := New(lookup, renderers)
 
-	response, err := module.Execute(context.Background(), modules.Request{Query: "solo", Format: "json", Sources: []string{"espanol-al-dia"}})
+	response, err := module.Execute(context.Background(), modules.Request{Query: "solo", Format: "json", Sources: []string{sourceEspanolAlDia}})
 	if err != nil {
-		t.Fatalf("Execute() error = %v", err)
+		t.Fatalf(executeErrFormat, err)
 	}
 	if response.Fallback == nil || response.Fallback.Kind != model.FallbackKindNotFound {
 		t.Fatalf("fallback = %#v, want not_found fallback", response.Fallback)
@@ -46,13 +51,13 @@ func TestModuleMapsNotFoundIntoStructuredFallback(t *testing.T) {
 }
 
 func TestModulePreservesJSONLookupSchema(t *testing.T) {
-	lookup := &lookupStub{result: model.LookupResult{Request: model.LookupRequest{Query: "solo", Format: "json", Sources: []string{"espanol-al-dia"}}, Entries: []model.Entry{{Headword: "solo", Content: "contenido"}}}}
+	lookup := &lookupStub{result: model.LookupResult{Request: model.LookupRequest{Query: "solo", Format: "json", Sources: []string{sourceEspanolAlDia}}, Entries: []model.Entry{{Headword: "solo", Content: "contenido"}}}}
 	jsonBody, _ := json.Marshal(lookup.result)
 	module := New(lookup, &renderersStub{renderer: &rendererStub{payload: jsonBody}})
 
-	response, err := module.Execute(context.Background(), modules.Request{Query: "solo", Format: "json", Sources: []string{"espanol-al-dia"}})
+	response, err := module.Execute(context.Background(), modules.Request{Query: "solo", Format: "json", Sources: []string{sourceEspanolAlDia}})
 	if err != nil {
-		t.Fatalf("Execute() error = %v", err)
+		t.Fatalf(executeErrFormat, err)
 	}
 	if response.Fallback != nil {
 		t.Fatalf("fallback = %#v, want nil", response.Fallback)

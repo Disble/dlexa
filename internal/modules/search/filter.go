@@ -61,9 +61,9 @@ func enrichCandidate(query string, candidate model.SearchCandidate) model.Search
 	candidate.Module = moduleName
 	candidate.ID = id
 	candidate.NextCommand = nextCommand
-	candidate.Deferred = moduleName != "dpd" && moduleName != "espanol-al-dia" && moduleName != "duda-linguistica" && moduleName != "noticia" && moduleName != "unknown"
+	candidate.Deferred = moduleName != moduleDPD && moduleName != moduleEspanolAlDia && moduleName != moduleDudaLinguistica && moduleName != moduleNoticia && moduleName != moduleUnknown
 	if strings.TrimSpace(candidate.SourceHint) == "" {
-		candidate.SourceHint = firstNonEmpty(candidate.SourceHint, "RAE")
+		candidate.SourceHint = firstNonEmpty(candidate.SourceHint, sourceRAEDefault)
 	}
 	return candidate
 }
@@ -80,26 +80,26 @@ func firstNonEmpty(values ...string) string {
 func classifyCandidate(candidate model.SearchCandidate) string {
 	url := strings.TrimSpace(candidate.URL)
 	if strings.Contains(url, "/noticia/") && isRescuedNoticia(candidate) {
-		return "faq"
+		return classificationFAQ
 	}
 	if strings.Contains(url, "/espanol-al-dia/") {
-		return "linguistic-article"
+		return classificationLinguisticArticle
 	}
 	if strings.Contains(url, "/duda-linguistica/") {
-		return "linguistic-article"
+		return classificationLinguisticArticle
 	}
 	if strings.Contains(url, "/dpd/") {
-		return "dpd-entry"
+		return classificationDPDEntry
 	}
 	if candidate.ArticleKey != "" {
-		return "dpd-entry"
+		return classificationDPDEntry
 	}
-	return "unknown"
+	return moduleUnknown
 }
 
 func isRescuedNoticia(candidate model.SearchCandidate) bool {
 	title := normalizeSearchText(firstNonEmpty(candidate.Title, candidate.DisplayText))
-	return strings.HasPrefix(title, normalizeSearchText("Preguntas frecuentes:"))
+	return strings.HasPrefix(title, normalizeSearchText(faqTitlePrefix))
 }
 
 func candidateRankScore(query string, candidate model.SearchCandidate) int {
@@ -174,11 +174,11 @@ func tokenizeNormalized(s string) []string {
 
 func classificationRank(classification string) int {
 	switch strings.TrimSpace(classification) {
-	case "dpd-entry":
+	case classificationDPDEntry:
 		return 4
-	case "faq":
+	case classificationFAQ:
 		return 3
-	case "linguistic-article":
+	case classificationLinguisticArticle:
 		return 2
 	default:
 		return 1
