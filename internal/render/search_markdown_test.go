@@ -19,6 +19,13 @@ var (
 	searchMarkdownNonDeferredCandidate        = model.SearchCandidate{Title: "solo", Deferred: false, NextCommand: "dlexa dpd solo", Module: "dpd"}
 )
 
+type searchMarkdownExpectationCase struct {
+	name        string
+	result      model.SearchResult
+	contains    []string
+	notContains []string
+}
+
 func TestSearchMarkdownRendererRendersOrderedCandidatesAndEmptyState(t *testing.T) {
 	renderer := NewSearchMarkdownRenderer()
 	result := model.SearchResult{Request: model.SearchRequest{Query: "abu dhabi"}, Outcome: model.SearchOutcomeResults, Candidates: searchMarkdownOrderedCandidates, Problems: []model.Problem{{Source: "academia", Message: "timeout", Severity: model.ProblemSeverityError}}}
@@ -51,12 +58,7 @@ func TestSearchMarkdownRendererRendersOrderedCandidatesAndEmptyState(t *testing.
 
 func TestSearchMarkdownDeferredAccessAndWarnings(t *testing.T) {
 	renderer := NewSearchMarkdownRenderer()
-	tests := []struct {
-		name        string
-		result      model.SearchResult
-		contains    []string
-		notContains []string
-	}{
+	tests := []searchMarkdownExpectationCase{
 		{
 			name: "deferred with url",
 			result: model.SearchResult{
@@ -121,23 +123,39 @@ func TestSearchMarkdownDeferredAccessAndWarnings(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			payload, err := renderer.Render(context.Background(), tt.result)
-			if err != nil {
-				t.Fatalf("Render() error = %v", err)
-			}
+		t.Run(tt.name, func(t *testing.T) { assertSearchMarkdownCase(t, renderer, tt) })
+	}
+}
 
-			text := string(payload)
-			for _, want := range tt.contains {
-				if !strings.Contains(text, want) {
-					t.Fatalf("payload missing %q\n%s", want, text)
-				}
-			}
-			for _, want := range tt.notContains {
-				if strings.Contains(text, want) {
-					t.Fatalf("payload unexpectedly contained %q\n%s", want, text)
-				}
-			}
-		})
+func assertSearchMarkdownCase(t *testing.T, renderer *SearchMarkdownRenderer, tc searchMarkdownExpectationCase) {
+	t.Helper()
+
+	payload, err := renderer.Render(context.Background(), tc.result)
+	if err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+
+	text := string(payload)
+	assertTextContainsAll(t, text, tc.contains)
+	assertTextExcludesAll(t, text, tc.notContains)
+}
+
+func assertTextContainsAll(t *testing.T, text string, wants []string) {
+	t.Helper()
+
+	for _, want := range wants {
+		if !strings.Contains(text, want) {
+			t.Fatalf("payload missing %q\n%s", want, text)
+		}
+	}
+}
+
+func assertTextExcludesAll(t *testing.T, text string, wants []string) {
+	t.Helper()
+
+	for _, want := range wants {
+		if strings.Contains(text, want) {
+			t.Fatalf("payload unexpectedly contained %q\n%s", want, text)
+		}
 	}
 }

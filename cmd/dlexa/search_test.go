@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -10,12 +11,22 @@ import (
 	"github.com/Disble/dlexa/internal/modules"
 )
 
-var validateSourcesCases = []struct {
+type validateSourcesCase struct {
 	name       string
 	input      []string
 	wantErr    bool
 	wantErrSub string
-}{
+}
+
+type searchCommandSourceCase struct {
+	name             string
+	args             []string
+	wantSources      []string
+	wantSyntaxErr    bool
+	wantSyntaxErrSub string
+}
+
+var validateSourcesCases = []validateSourcesCase{
 	{name: "nil input", input: nil},
 	{name: "dpd source", input: []string{"dpd"}},
 	{name: "search source", input: []string{"search"}},
@@ -24,13 +35,7 @@ var validateSourcesCases = []struct {
 	{name: "mixed known and bad source", input: []string{"dpd", "bad"}, wantErr: true, wantErrSub: "bad"},
 }
 
-var searchCommandSourceCases = []struct {
-	name             string
-	args             []string
-	wantSources      []string
-	wantSyntaxErr    bool
-	wantSyntaxErrSub string
-}{
+var searchCommandSourceCases = []searchCommandSourceCase{
 	{name: "source flag routes dpd only", args: []string{"search", "--source", "dpd", "solo", "o", "sólo"}, wantSources: []string{"dpd"}},
 	{name: "no source keeps federation", args: []string{"search", "solo", "o", "sólo"}},
 	{name: "unknown source returns syntax fallback", args: []string{"search", "--source", "unknown", "solo"}, wantSyntaxErr: true, wantSyntaxErrSub: "unknown"},
@@ -101,46 +106,56 @@ func TestSearchCommandTurnsMissingArgsIntoSyntaxFallback(t *testing.T) {
 
 func TestValidateSources(t *testing.T) {
 	for _, tc := range validateSourcesCases {
-		t.Run(tc.name, func(t *testing.T) {
-			err := validateSources(tc.input)
-			if tc.wantErr {
-				if err == nil {
-					t.Fatalf("validateSources(%v) error = nil, want error containing %q", tc.input, tc.wantErrSub)
-				}
-				if !strings.Contains(err.Error(), tc.wantErrSub) {
-					t.Fatalf("validateSources(%v) error = %q, want substring %q", tc.input, err.Error(), tc.wantErrSub)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("validateSources(%v) error = %v, want nil", tc.input, err)
-			}
-		})
+		t.Run(tc.name, func(t *testing.T) { assertValidateSourcesCase(t, tc) })
 	}
 }
 
 func TestSearchCommandSourceFlag(t *testing.T) {
 	for _, tc := range searchCommandSourceCases {
-		t.Run(tc.name, func(t *testing.T) {
-			runtime, _, _ := executeSearchArgs(t, tc.args)
-			if tc.wantSyntaxErr {
-				if runtime.syntaxErr == nil {
-					t.Fatalf("syntax err = nil, want error containing %q", tc.wantSyntaxErrSub)
-				}
-				if !strings.Contains(runtime.syntaxErr.Error(), tc.wantSyntaxErrSub) {
-					t.Fatalf("syntax err = %q, want substring %q", runtime.syntaxErr.Error(), tc.wantSyntaxErrSub)
-				}
-				if runtime.executedModule != "" {
-					t.Fatalf("executedModule = %q, want empty on invalid source", runtime.executedModule)
-				}
-				return
-			}
-			if runtime.executedModule != "search" {
-				t.Fatalf("module = %q, want search", runtime.executedModule)
-			}
-			if !reflect.DeepEqual(runtime.request.Sources, tc.wantSources) {
-				t.Fatalf("sources = %#v, want %#v", runtime.request.Sources, tc.wantSources)
-			}
-		})
+		t.Run(tc.name, func(t *testing.T) { assertSearchCommandSourceCase(t, tc) })
+	}
+}
+
+func assertValidateSourcesCase(t *testing.T, tc validateSourcesCase) {
+	t.Helper()
+
+	err := validateSources(tc.input)
+	if tc.wantErr {
+		assertErrorContains(t, err, tc.wantErrSub, "validateSources(%v)", tc.input)
+		return
+	}
+	if err != nil {
+		t.Fatalf("validateSources(%v) error = %v, want nil", tc.input, err)
+	}
+}
+
+func assertSearchCommandSourceCase(t *testing.T, tc searchCommandSourceCase) {
+	t.Helper()
+
+	runtime, _, _ := executeSearchArgs(t, tc.args)
+	if tc.wantSyntaxErr {
+		assertErrorContains(t, runtime.syntaxErr, tc.wantSyntaxErrSub, "syntax err")
+		if runtime.executedModule != "" {
+			t.Fatalf("executedModule = %q, want empty on invalid source", runtime.executedModule)
+		}
+		return
+	}
+	if runtime.executedModule != "search" {
+		t.Fatalf("module = %q, want search", runtime.executedModule)
+	}
+	if !reflect.DeepEqual(runtime.request.Sources, tc.wantSources) {
+		t.Fatalf("sources = %#v, want %#v", runtime.request.Sources, tc.wantSources)
+	}
+}
+
+func assertErrorContains(t *testing.T, err error, wantSub string, label string, args ...any) {
+	t.Helper()
+
+	message := fmt.Sprintf(label, args...)
+	if err == nil {
+		t.Fatalf("%s error = nil, want error containing %q", message, wantSub)
+	}
+	if !strings.Contains(err.Error(), wantSub) {
+		t.Fatalf("%s error = %q, want substring %q", message, err.Error(), wantSub)
 	}
 }
