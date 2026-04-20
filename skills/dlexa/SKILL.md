@@ -46,7 +46,7 @@ Do **not** use this skill to present `dlexa` as:
 Primary command forms:
 
 ```text
-dlexa [--no-cache] <query>
+dlexa [--no-cache] dpd <query>
 dlexa [--no-cache] search [--source <id> ...] <query>
 dlexa [--no-cache] dpd search <query>
 ```
@@ -54,7 +54,7 @@ dlexa [--no-cache] dpd search <query>
 | Flag | Type | Description | Example |
 |------|------|-------------|---------|
 | `--source` | string array | Provider selector for search (`search`, `dpd`) | `dlexa search --source dpd solo` |
-| `--no-cache` | bool | Skip cache read/write (default: false) | `dlexa --no-cache imprimido` |
+| `--no-cache` | bool | Skip cache read/write (default: false) | `dlexa --no-cache dpd imprimido` |
 | `--doctor` | bool | Run diagnostic checks | `dlexa --doctor` |
 
 ## Common Workflows
@@ -89,13 +89,13 @@ dlexa dpd alícuota
 ### 3. Force Fresh Data
 
 ```bash
-dlexa --no-cache tilde
+dlexa --no-cache dpd tilde
 ```
 Bypasses cache (24-hour TTL) and fetches directly from sources. Use when data seems stale.
 
 ### 4. Handle a Lookup Miss Explicitly
 
-If a standard consultation (`dlexa <query>`) unexpectedly misses, read the markdown output. It will explicitly suggest a related entry or command like `dlexa search <query>`. Run that exact suggested command.
+If a standard consultation (`dlexa dpd <query>`) unexpectedly misses, read the markdown output. It will explicitly suggest a related entry or command like `dlexa search <query>`. Run that exact suggested command.
 
 ### 5. Redirect an Out-of-Scope Task
 

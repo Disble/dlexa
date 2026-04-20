@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/Disble/dlexa/internal/model"
 	"github.com/Disble/dlexa/internal/modules"
@@ -25,7 +24,7 @@ func executeRootCommand(ctx context.Context, runtime runtimeRunner, stdout io.Wr
 	root.SetErr(stderr)
 	root.SetArgs(args)
 	if err := root.ExecuteContext(ctx); err != nil {
-		return runtime.HandleSyntaxError(ctx, err, "dlexa <query>")
+		return runtime.HandleSyntaxError(ctx, err, syntaxRoot)
 	}
 	return nil
 }
@@ -37,12 +36,12 @@ func newRootCommand(ctx context.Context, runtime runtimeRunner) *cobra.Command {
 	var versionFlag bool
 
 	root := &cobra.Command{
-		Use:           "dlexa [query]",
+		Use:           "dlexa <command>",
 		Short:         "Consulta dudas normativas del español para agentes.",
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		Args:          newRootArgsValidator(&doctorFlag, &versionFlag),
-		RunE:          newRootRunE(ctx, runtime, &format, &noCache, &doctorFlag, &versionFlag),
+		RunE:          newRootRunE(ctx, runtime, &doctorFlag, &versionFlag),
 	}
 	root.PersistentFlags().StringVar(&format, "format", "", "render format: markdown|json")
 	root.PersistentFlags().BoolVar(&noCache, "no-cache", false, "skip cache reads and writes")
@@ -62,10 +61,7 @@ func newRootArgsValidator(doctorFlag, versionFlag *bool) func(cmd *cobra.Command
 		if rootSkipsQueryValidation(doctorFlag, versionFlag, args) {
 			return nil
 		}
-		if looksLikeUnknownSyntax(args) {
-			return fmt.Errorf("unknown command %q for %q", args[0], cmd.CommandPath())
-		}
-		return nil
+		return fmt.Errorf("unknown command %q for %q", args[0], cmd.CommandPath())
 	}
 }
 
@@ -76,8 +72,6 @@ func rootSkipsQueryValidation(doctorFlag, versionFlag *bool, args []string) bool
 func newRootRunE(
 	ctx context.Context,
 	runtime runtimeRunner,
-	format *string,
-	noCache *bool,
 	doctorFlag *bool,
 	versionFlag *bool,
 ) func(cmd *cobra.Command, args []string) error {
@@ -85,7 +79,7 @@ func newRootRunE(
 		if ok, action := rootImmediateAction(ctx, runtime, cmd, args, doctorFlag, versionFlag); ok {
 			return action
 		}
-		return runtime.RunModule(ctx, commandDPD, rootModuleRequest(args, format, noCache))
+		return fmt.Errorf("unknown command %q for %q", args[0], cmd.CommandPath())
 	}
 }
 
@@ -111,15 +105,6 @@ func rootImmediateAction(
 	}
 }
 
-func rootModuleRequest(args []string, format *string, noCache *bool) modules.Request {
-	return modules.Request{
-		Query:   strings.TrimSpace(strings.Join(args, " ")),
-		Format:  stringValue(format),
-		NoCache: flagValue(noCache),
-		Args:    append([]string(nil), args...),
-	}
-}
-
 func flagValue(flag *bool) bool {
 	return flag != nil && *flag
 }
@@ -133,22 +118,11 @@ func stringValue(value *string) string {
 
 func rootHelp(ctx context.Context, runtime runtimeRunner) error {
 	return runtime.RenderHelp(ctx, model.HelpEnvelope{
-		Command:     "dlexa",
+		Command:     helpCommandRoot,
 		Summary:     "Consulta dudas normativas del español y usá `search` cuando todavía no conocés la ruta exacta.",
-		Syntax:      "dlexa <query>",
-		Examples:    []string{"dlexa basto", "dlexa dpd solo", "dlexa search solo o sólo", "dlexa duda-linguistica cuando-se-escriben-con-tilde-los-adverbios-en-mente", "dlexa noticia preguntas-frecuentes-tilde-en-las-mayusculas"},
-		NextSteps:   []string{"Si no encontrás el contenido exacto, escalá a `dlexa search <consulta>`."},
+		Syntax:      syntaxRoot,
+		Examples:    []string{"dlexa dpd basto", "dlexa dpd solo", "dlexa search solo o sólo", "dlexa duda-linguistica cuando-se-escriben-con-tilde-los-adverbios-en-mente", "dlexa noticia preguntas-frecuentes-tilde-en-las-mayusculas"},
+		NextSteps:   []string{"Usá `dlexa dpd <termino>` para consultas directas al DPD.", "Si no encontrás el contenido exacto, escalá a `dlexa search <consulta>`."},
 		RecoveryTip: "Si la forma del comando falla, revisá esta ayuda antes de reintentar.",
 	})
-}
-
-func looksLikeUnknownSyntax(args []string) bool {
-	if len(args) == 0 {
-		return false
-	}
-	first := strings.TrimSpace(args[0])
-	if first == "" {
-		return false
-	}
-	return strings.HasPrefix(first, "-") || (len(args) > 1 && strings.HasPrefix(strings.TrimSpace(args[1]), "-")) && first != commandSearch && first != commandDPD && first != commandEspanolAlDia && first != commandDudaLinguistica && first != commandNoticia
 }

@@ -17,11 +17,12 @@ The CLI MUST expose a thin formal command tree from `cmd/dlexa` and MUST delegat
 - THEN the system MUST route execution to the corresponding module
 - AND return a structured response payload
 
-#### Scenario: Root command defaults to DPD lookup
+#### Scenario: Root command rejects bare lookup queries
 
 - GIVEN the `dlexa` CLI is invoked without a specific subcommand
 - WHEN the agent provides a query argument (e.g., `dlexa basto`)
-- THEN the system MUST implicitly route the query to the `dpd` module
+- THEN the system MUST return a syntax fallback
+- AND the system MUST NOT implicitly route the query to the `dpd` module
 
 ### Requirement: Agent-Optimized Markdown Help
 
@@ -41,15 +42,16 @@ The CLI MUST provide help documentation formatted in Markdown, tailored for LLM 
 - THEN the system MUST return a Nivel 1 (Syntax) fallback error
 - AND suggest using `--help` to view correct usage
 
-### Requirement: Search Command Remains the Explicit Gateway Entry
+### Requirement: Explicit Lookup and Search Entrypoints
 
-The CLI MUST keep `search` as the explicit entrypoint for semantic discovery, while preserving the existing root default-to-DPD behavior.
+The CLI MUST keep `dpd` as the explicit lookup entrypoint and `search` as the explicit semantic-discovery entrypoint.
 
-#### Scenario: Root query still defaults to DPD
+#### Scenario: Root query does not default to DPD
 
 - GIVEN the CLI is invoked without an explicit subcommand
 - WHEN the user provides a query argument such as `dlexa bien`
-- THEN the system MUST route the request to the `dpd` module
+- THEN the system MUST reject the invocation as invalid syntax
+- AND the system MUST NOT automatically invoke the `dpd` module
 - AND the system MUST NOT automatically invoke the live semantic search gateway
 
 #### Scenario: Search command invokes the semantic gateway
@@ -72,7 +74,7 @@ The application runtime MUST distinguish between default sources for lookup and 
 
 #### Scenario: Injecting lookup defaults
 
-- GIVEN the `dpd` module is invoked via `dlexa <query>` without explicit sources
+- GIVEN the `dpd` module is invoked via `dlexa dpd <query>` without explicit sources
 - WHEN `App.ExecuteModule` applies configuration defaults
 - THEN the runtime MUST apply the lookup-specific default source (`dpd`)
 
@@ -92,12 +94,12 @@ The application runtime MUST distinguish between default sources for lookup and 
 
 ### Requirement: Preservation of Current CLI Surface
 
-The external CLI surface and fallback semantics MUST remain unchanged. The `search` command remains the explicit gateway entry, and root queries default to DPD.
+The external CLI surface and fallback semantics MUST preserve explicit command entrypoints. The `search` command remains the explicit gateway entry, and DPD lookups require the `dpd` subcommand.
 
 #### Scenario: CLI surface remains stable
 
 - GIVEN the CLI is invoked
-- WHEN a user runs existing commands (`dlexa basto`, `dlexa search basto`)
+- WHEN a user runs existing commands (`dlexa dpd basto`, `dlexa search basto`)
 - THEN the commands MUST route correctly to their respective modules using the correct provider defaults
 
 ### Requirement: Independent DPD Search Surface
@@ -167,7 +169,7 @@ The active CLI spec MUST describe only commands that are actually registered in 
 - GIVEN the CLI command tree after this change
 - WHEN the available subcommands are inspected
 - THEN the public destination command surface MUST include the supported commands in the current CLI contract (`dpd`, `search`, `espanol-al-dia`, `duda-linguistica`, `noticia`)
-- AND root default-to-DPD behavior MUST remain unchanged
+- AND root bare-query aliasing to `dpd` MUST remain disabled
 
 ### Requirement: Format Validation at Runtime Boundary
 
@@ -198,11 +200,12 @@ The runtime MUST validate `req.Format` against the set of registered formats aft
 
 The Cobra command surface in `cmd/dlexa` MUST have black-box tests exercising routing, flags, help, and error paths through `executeRootCommand` with a mock `runtimeRunner`.
 
-#### Scenario: Root with query routes to DPD
+#### Scenario: Root with query returns syntax fallback
 
 - GIVEN the CLI is invoked as `dlexa basto`
 - WHEN `executeRootCommand` processes the arguments
-- THEN `RunModule` MUST be called with module `"dpd"` and query `"basto"`
+- THEN `HandleSyntaxError` MUST be called
+- AND `RunModule` MUST NOT be called
 
 #### Scenario: Subcommand routing is deterministic
 

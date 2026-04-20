@@ -64,16 +64,16 @@ Do **not** use this skill to present `dlexa` as:
 Primary command forms:
 
 ```text
-dlexa [--format markdown|json] [--no-cache] <query>
+dlexa [--format markdown|json] [--no-cache] dpd <query>
 dlexa [--format markdown|json] [--no-cache] search [--source <id> ...] <query>
 dlexa [--format markdown|json] [--no-cache] dpd search <query>
 ```
 
 | Flag | Type | Values | Description | Example |
 |------|------|--------|-------------|---------|
-| `--format` | string | `markdown`, `json` | Output format (default: `markdown`) | `dlexa --format json tilde` |
+| `--format` | string | `markdown`, `json` | Output format (default: `markdown`) | `dlexa --format json dpd tilde` |
 | `--source` | string array | `search`, `dpd` | Search-only repeatable provider selector for `dlexa search` | `dlexa search --source dpd solo` |
-| `--no-cache` | bool | - | Skip cache read/write (default: false) | `dlexa --no-cache imprimido` |
+| `--no-cache` | bool | - | Skip cache read/write (default: false) | `dlexa --no-cache dpd imprimido` |
 | `--doctor` | bool | - | Run diagnostic checks | `dlexa --doctor` |
 | `--version` | bool | - | Print version info | `dlexa --version` |
 
@@ -294,7 +294,7 @@ echo "$result" | jq -r '.Entries[] | "\(.Headword) (\(.Source)): \(.Content)"'
 ### 1. Quick DPD Consultation
 
 ```bash
-dlexa tilde
+dlexa dpd tilde
 ```
 
 Returns human-readable markdown for a DPD-fit normative doubt.
@@ -302,7 +302,7 @@ Returns human-readable markdown for a DPD-fit normative doubt.
 ### 2. JSON for Automation
 
 ```bash
-dlexa --format json solo
+dlexa --format json dpd solo
 ```
 
 Returns structured JSON for programmatic parsing. Use with `jq` for extraction.
@@ -326,7 +326,7 @@ Use this in scripts when you need curated candidates, `article_key` values, prov
 ### 5. Force Fresh Data
 
 ```bash
-dlexa --no-cache imprimido
+dlexa --no-cache dpd imprimido
 ```
 
 Bypasses cache (24-hour TTL), fetches from sources. Use when data seems stale or cache corruption is suspected.
@@ -350,7 +350,7 @@ Runs diagnostic checks. Exit code 0 = healthy, exit code 1 = issues found.
 ### 8. Inspect DPD Sign Semantics
 
 ```bash
-dlexa --source dpd --format json alícuota
+dlexa --format json dpd alícuota
 ```
 
 Use this when you need structured DPD semantics, not just rendered prose. Inspect:
@@ -369,7 +369,7 @@ Expected pattern:
 
 ```bash
 dlexa --format json dpd search alicuota
-dlexa alícuoto
+dlexa dpd alícuoto
 ```
 
 Do this when search returns the candidate label you wanted but the final article key differs from the raw query or carries normalization such as accents.
@@ -377,7 +377,7 @@ Do this when search returns the candidate label you wanted but the final article
 ### 10. Handle a Lookup Miss Explicitly
 
 ```bash
-dlexa --format json alicuota
+dlexa --format json dpd alicuota
 ```
 
 If `.Entries` is empty, inspect `.Misses[]`:
@@ -416,10 +416,10 @@ If the user asks for a generic dictionary definition, translation, or encycloped
 
 ```bash
 # Basic DPD consultation (markdown)
-dlexa tilde
+dlexa dpd tilde
 
 # Consultation with JSON output
-dlexa --format json solo
+dlexa --format json dpd solo
 
 # Discover candidate entries before lookup
 dlexa search abu dhabi
@@ -431,7 +431,7 @@ dlexa --format json search guion
 dlexa dpd search abu dhabi
 
 # Force fresh data (bypass cache)
-dlexa --no-cache imprimido
+dlexa --no-cache dpd imprimido
 
 # Restrict search provider
 dlexa search --source dpd adecua
@@ -440,7 +440,7 @@ dlexa search --source dpd adecua
 dlexa --format json --no-cache search --source dpd solo
 
 # Inspect DPD sign semantics
-dlexa --format json alícuota
+dlexa --format json dpd alícuota
 
 # Health check
 dlexa --doctor

@@ -307,7 +307,7 @@ flowchart LR
 
 La CLI objetivo se organiza así:
 
-- `dlexa <query>` → lookup por defecto orientado a DPD (compatibilidad + ergonomía)
+- `dlexa dpd <query>` → acceso explícito al DPD para consultas directas
 - `dlexa dpd <query>` → acceso explícito al DPD
 - `dlexa search <query>` → gateway semántico
 - `dlexa <modulo> <id>` → profundización directa para módulos de contenido
@@ -1053,7 +1053,7 @@ Pruebas de integración esperadas:
 - wiring entre comandos y módulos;
 - uso real de servicios existentes de lookup y search;
 - interacción entre caché, parser y render final;
-- compatibilidad del flujo de `dlexa <query>` como atajo DPD.
+- uso explícito de `dlexa dpd <query>` como ruta única de consulta directa al DPD.
 
 ### 23.3. Qué se debe proteger como regresión
 

@@ -76,10 +76,10 @@ func TestAppHandlesStructuredFallbacksAndSyntaxErrors(t *testing.T) {
 	}
 
 	cli.stdout.Reset()
-	if err := application.HandleSyntaxError(context.Background(), errors.New("unknown command \"oops\" for \"dlexa\""), helpSyntaxDlexaQuery); err != nil {
+	if err := application.HandleSyntaxError(context.Background(), errors.New("unknown command \"oops\" for \"dlexa\""), helpSyntaxDlexaRoot); err != nil {
 		t.Fatalf("HandleSyntaxError() error = %v", err)
 	}
-	if text := cli.stdout.String(); !strings.Contains(text, "Nivel 1 · Syntax") || !strings.Contains(text, helpSyntaxDlexaQuery) {
+	if text := cli.stdout.String(); !strings.Contains(text, "Nivel 1 · Syntax") || !strings.Contains(text, helpSyntaxDlexaRoot) {
 		t.Fatalf("syntax stdout = %q", text)
 	}
 }
@@ -95,10 +95,10 @@ func TestAppRendersMarkdownHelpAndDoctorOutput(t *testing.T) {
 		render.NewEnvelopeRenderer(),
 	)
 
-	if err := application.RenderHelp(context.Background(), model.HelpEnvelope{Command: "dlexa", Summary: "Consulta dudas normativas del español.", Syntax: helpSyntaxDlexaQuery, Examples: []string{"dlexa basto", "dlexa search solo o sólo"}, RecoveryTip: "Usá `dlexa search <consulta>` cuando no conozcas la entrada exacta."}); err != nil {
+	if err := application.RenderHelp(context.Background(), model.HelpEnvelope{Command: "dlexa", Summary: "Consulta dudas normativas del español.", Syntax: helpSyntaxDlexaRoot, Examples: []string{"dlexa dpd basto", "dlexa search solo o sólo"}, RecoveryTip: "Usá `dlexa search <consulta>` cuando no conozcas la entrada exacta."}); err != nil {
 		t.Fatalf("RenderHelp() error = %v", err)
 	}
-	if text := cli.stdout.String(); !strings.Contains(text, "# Ayuda: dlexa") || !strings.Contains(text, "`dlexa basto`") {
+	if text := cli.stdout.String(); !strings.Contains(text, "# Ayuda: dlexa") || !strings.Contains(text, "`dlexa dpd basto`") {
 		t.Fatalf("help stdout = %q", text)
 	}
 

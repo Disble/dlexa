@@ -94,7 +94,7 @@ func (s *stubRuntime) PrintVersion() error {
 
 // --- Routing tests ---
 
-func TestRootCommand_QueryDefaultsToDPD(t *testing.T) {
+func TestRootCommand_BareQueryReturnsSyntaxFallback(t *testing.T) {
 	runtime := &stubRuntime{}
 	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
 	runtime.stdout = stdout
@@ -102,11 +102,17 @@ func TestRootCommand_QueryDefaultsToDPD(t *testing.T) {
 	if err := executeRootCommand(context.Background(), runtime, stdout, stderr, []string{"basto"}); err != nil {
 		t.Fatalf(unexpectedErrorFormat, err)
 	}
-	if runtime.executedModule != commandDPD {
-		t.Fatalf(moduleWantDPDFormat, runtime.executedModule)
+	if runtime.syntaxErr == nil {
+		t.Fatal("expected HandleSyntaxError to be called for bare query")
 	}
-	if runtime.request.Query != "basto" {
-		t.Fatalf("query = %q, want basto", runtime.request.Query)
+	if runtime.executedModule != "" {
+		t.Fatalf("executedModule = %q, want empty", runtime.executedModule)
+	}
+	if runtime.syntaxSyntax != syntaxRoot {
+		t.Fatalf("syntax = %q, want %q", runtime.syntaxSyntax, syntaxRoot)
+	}
+	if !strings.Contains(stdout.String(), "Nivel 1 · Syntax") {
+		t.Fatalf("stdout = %q, want syntax fallback output", stdout.String())
 	}
 }
 
@@ -170,7 +176,7 @@ func TestRootCommand_RootFormatFlagPropagates(t *testing.T) {
 	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
 	runtime.stdout = stdout
 
-	if err := executeRootCommand(context.Background(), runtime, stdout, stderr, []string{"basto", "--format", "json"}); err != nil {
+	if err := executeRootCommand(context.Background(), runtime, stdout, stderr, []string{commandDPD, "basto", "--format", "json"}); err != nil {
 		t.Fatalf(unexpectedErrorFormat, err)
 	}
 	if runtime.executedModule != commandDPD {
@@ -186,7 +192,7 @@ func TestRootCommand_RootNoCacheFlagPropagates(t *testing.T) {
 	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
 	runtime.stdout = stdout
 
-	if err := executeRootCommand(context.Background(), runtime, stdout, stderr, []string{"basto", "--no-cache"}); err != nil {
+	if err := executeRootCommand(context.Background(), runtime, stdout, stderr, []string{commandDPD, "basto", "--no-cache"}); err != nil {
 		t.Fatalf(unexpectedErrorFormat, err)
 	}
 	if runtime.executedModule != commandDPD {
@@ -210,6 +216,9 @@ func TestRootCommand_RootRendersHelpEnvelopeWithExpectedContent(t *testing.T) {
 	}
 	if !bytes.Contains(stdout.Bytes(), []byte("# Ayuda: dlexa")) {
 		t.Fatalf("stdout = %q, missing help header", stdout.String())
+	}
+	if !bytes.Contains(stdout.Bytes(), []byte("`dlexa dpd basto`")) {
+		t.Fatalf("stdout = %q, missing explicit dpd example", stdout.String())
 	}
 }
 

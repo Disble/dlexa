@@ -10,5 +10,5 @@ const (
 	commandDudaLinguistica   = "duda-linguistica"
 	commandEspanolAlDia      = "espanol-al-dia"
 	sourceBusquedaGeneralRAE = "búsqueda general RAE"
-	helpSyntaxDlexaQuery     = "dlexa <query>"
+	helpSyntaxDlexaRoot      = "dlexa <comando> [argumentos]"
 )
