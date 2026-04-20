@@ -65,18 +65,20 @@ func TestEnvelopeRendererWrapsMarkdownAndBypassesJSON(t *testing.T) {
 func TestEnvelopeRendererRendersMarkdownHelp(t *testing.T) {
 	renderer := NewEnvelopeRenderer()
 	payload, err := renderer.RenderHelp(context.Background(), model.HelpEnvelope{
-		Command:     "dlexa search",
-		Summary:     "Busca resultados lingüísticos y devuelve siguientes pasos ejecutables.",
-		Syntax:      "dlexa search <consulta>",
-		Examples:    []string{"dlexa search solo o sólo", "dlexa search tilde en qué"},
-		NextSteps:   []string{"Usá el comando sugerido para profundizar en el módulo correcto."},
-		RecoveryTip: "Si no sabés el módulo exacto, empezá por search.",
+		Command:      "dlexa search",
+		Summary:      "Busca resultados lingüísticos y devuelve rutas de consulta.",
+		Syntax:       "dlexa search <consulta>",
+		Capabilities: []string{"Descubrir el módulo adecuado a partir de una consulta libre."},
+		InputHints:   []string{"Recibe una consulta libre y puede devolver rutas ejecutables o diferidas."},
+		Examples:     []string{"dlexa search solo o sólo", "dlexa search tilde en qué"},
+		AgentNotes:   []string{"Leé la salida como router de comandos."},
+		NextSteps:    []string{"Usá el comando sugerido para profundizar en el módulo correcto."},
 	})
 	if err != nil {
 		t.Fatalf("RenderHelp() error = %v", err)
 	}
 	text := string(payload)
-	for _, want := range []string{"# Ayuda: dlexa search", "## Sintaxis", "`dlexa search <consulta>`", "`dlexa search solo o sólo`", "Si no sabés el módulo exacto"} {
+	for _, want := range []string{"# Ayuda: dlexa search", "## Sintaxis", "## Qué podés hacer", "## Qué recibe", "## Guía para agentes y automatizaciones", "`dlexa search <consulta>`", "`dlexa search solo o sólo`", "Leé la salida como router de comandos.", "Usá el comando sugerido para profundizar en el módulo correcto."} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("help payload missing %q\n%s", want, text)
 		}
@@ -86,9 +88,8 @@ func TestEnvelopeRendererRendersMarkdownHelp(t *testing.T) {
 func TestEnvelopeRendererRendersHelpSkippingBlankEntries(t *testing.T) {
 	renderer := NewEnvelopeRenderer()
 	payload, err := renderer.RenderHelp(context.Background(), model.HelpEnvelope{
-		Examples:    []string{"", "  ", "dlexa search tilde"},
-		NextSteps:   []string{"", "Usá search."},
-		RecoveryTip: " ",
+		Examples:  []string{"", "  ", "dlexa search tilde"},
+		NextSteps: []string{"", "Usá search."},
 	})
 	if err != nil {
 		t.Fatalf("RenderHelp() error = %v", err)
@@ -99,7 +100,7 @@ func TestEnvelopeRendererRendersHelpSkippingBlankEntries(t *testing.T) {
 			t.Fatalf("help payload missing %q\n%s", want, text)
 		}
 	}
-	for _, forbidden := range []string{"- ``", "## Si falla"} {
+	for _, forbidden := range []string{"- ``", "## Qué podés hacer", "## Qué recibe", "## Guía para agentes y automatizaciones"} {
 		if strings.Contains(text, forbidden) {
 			t.Fatalf("help payload contains forbidden %q\n%s", forbidden, text)
 		}

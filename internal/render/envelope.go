@@ -46,7 +46,8 @@ func (r *MarkdownEnvelopeRenderer) RenderSuccess(ctx context.Context, env model.
 	return []byte(fmt.Sprintf("# [dlexa:%s] %s\n*Fuente: %s | Caché: %s*\n\n---\n\n%s", moduleName, title, source, cacheState, bodyText)), nil
 }
 
-// RenderHelp renders agent-oriented Markdown help with syntax, examples, and recovery guidance.
+// RenderHelp renders capability-first Markdown help with syntax,
+// accepted input guidance, examples, and agent notes.
 func (r *MarkdownEnvelopeRenderer) RenderHelp(ctx context.Context, help model.HelpEnvelope) ([]byte, error) {
 	_ = ctx
 	var builder strings.Builder
@@ -56,9 +57,11 @@ func (r *MarkdownEnvelopeRenderer) RenderHelp(ctx context.Context, help model.He
 	builder.WriteString("\n\n")
 	appendHelpSummary(&builder, help.Summary)
 	appendHelpSyntax(&builder, help.Syntax)
+	appendHelpList(&builder, "## Qué podés hacer\n", normalizeNonEmpty(help.Capabilities), false)
+	appendHelpList(&builder, "## Qué recibe\n", normalizeNonEmpty(help.InputHints), false)
 	appendHelpList(&builder, "## Ejemplos\n", normalizeNonEmpty(help.Examples), true)
-	appendHelpList(&builder, "## Siguiente paso sugerido\n", normalizeNonEmpty(help.NextSteps), false)
-	appendHelpRecovery(&builder, help.RecoveryTip)
+	appendHelpList(&builder, "## Guía para agentes y automatizaciones\n", normalizeNonEmpty(help.AgentNotes), false)
+	appendHelpList(&builder, "## Próximo paso sugerido\n", normalizeNonEmpty(help.NextSteps), false)
 	return []byte(strings.TrimRight(builder.String(), "\n")), nil
 }
 
@@ -103,14 +106,6 @@ func appendHelpList(builder *strings.Builder, heading string, items []string, qu
 		builder.WriteString("\n")
 	}
 	builder.WriteString("\n")
-}
-
-func appendHelpRecovery(builder *strings.Builder, recovery string) {
-	if recovery = strings.TrimSpace(recovery); recovery != "" {
-		builder.WriteString("## Si falla\n")
-		builder.WriteString(recovery)
-		builder.WriteString("\n")
-	}
 }
 
 func normalizeNonEmpty(items []string) []string {

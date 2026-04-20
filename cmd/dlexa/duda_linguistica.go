@@ -23,12 +23,14 @@ func newDudaLinguisticaCommand(ctx context.Context, runtime runtimeRunner, forma
 	}
 	cmd.SetHelpFunc(func(*cobra.Command, []string) {
 		_ = runtime.RenderHelp(ctx, model.HelpEnvelope{
-			Command:     helpCommandDudaLinguistica,
-			Summary:     "Consulta una duda rápida concreta de la superficie Duda lingüística de la RAE.",
-			Syntax:      syntaxDudaLinguistica,
-			Examples:    []string{"dlexa duda-linguistica cuando-se-escriben-con-tilde-los-adverbios-en-mente"},
-			NextSteps:   []string{"Usá `dlexa search <consulta>` si todavía no conocés el slug exacto de la duda."},
-			RecoveryTip: "Este comando recibe el slug público de la duda, no una consulta libre.",
+			Command:      helpCommandDudaLinguistica,
+			Summary:      "Consulta una duda rápida concreta de la superficie Duda lingüística cuando ya conocés el slug exacto.",
+			Syntax:       syntaxDudaLinguistica,
+			Capabilities: []string{"Abrir una pieza puntual de Duda lingüística ya identificada.", "Consultar una duda rápida de la RAE a partir de su slug público."},
+			InputHints:   []string{"Recibe el slug público exacto de la duda.", "Si todavía estás explorando la pregunta, `dlexa search <consulta>` te ayuda a descubrir la ruta correcta."},
+			Examples:     []string{"dlexa duda-linguistica cuando-se-escriben-con-tilde-los-adverbios-en-mente"},
+			AgentNotes:   []string{"El input correcto es el slug de la URL.", "Usá este comando cuando la sugerencia de `search` ya apunte a una ruta ejecutable."},
+			NextSteps:    []string{"Si todavía no conocés el slug exacto de la duda, seguí con `dlexa search <consulta>`."},
 		})
 	})
 	cmd.SetFlagErrorFunc(func(_ *cobra.Command, err error) error {

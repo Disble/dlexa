@@ -156,14 +156,16 @@ type Envelope struct {
 	Format     string
 }
 
-// HelpEnvelope carries agent-oriented Markdown help content.
+// HelpEnvelope carries capability-first Markdown help content for humans and agents.
 type HelpEnvelope struct {
-	Command     string
-	Summary     string
-	Syntax      string
-	Examples    []string
-	NextSteps   []string
-	RecoveryTip string
+	Command      string
+	Summary      string
+	Syntax       string
+	Capabilities []string
+	InputHints   []string
+	Examples     []string
+	AgentNotes   []string
+	NextSteps    []string
 }
 
 // FallbackEnvelope carries structured fallback semantics independent from transport.

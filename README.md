@@ -135,6 +135,20 @@ dlexa [--format markdown|json] [--no-cache] search [--source <id> ...] <query>
 dlexa [--format markdown|json] [--no-cache] dpd search <query>
 ```
 
+## Help Model
+
+`dlexa --help` and `dlexa <cmd> --help` are part of the CLI contract for both humans and LLMs.
+
+The help output is capability-first:
+
+- what the command enables
+- what input shape it expects
+- literal examples you can copy as-is
+- agent-facing notes for structured automation
+- the next natural command when you want to continue the flow
+
+Common syntax failures stay in the fallback system (`Nivel 1 · Syntax`) instead of being the center of the command help body.
+
 ## Search command model
 
 Use `dlexa search <query>` when you need semantic discovery before deciding which exact consultation route to run.
@@ -143,9 +157,9 @@ Use `dlexa search <query>` when you need semantic discovery before deciding whic
 - It returns curated candidates plus safe follow-up commands.
 - It can surface executable follow-ups such as `dpd`, `espanol-al-dia`, `duda-linguistica`, and FAQ-compatible `noticia`.
 - It can also surface related RAE destinations as deferred guidance when a mapped CLI command still does not exist.
-- It does **not** search article body content.
-- It does **not** auto-fetch every candidate article.
-- It does **not** turn `dlexa` into a generic dictionary search engine.
+- It focuses on discovering the most useful next consultation route.
+- It can scope discovery to one provider with `--source`.
+- It preserves the distinction between executable suggestions and deferred guidance.
 
 Provider control:
 
@@ -169,8 +183,9 @@ In practice:
 
 This distinction matters for both humans and agents:
 
-- do **not** assume every `next_command`-shaped string can be executed directly
-- when output is JSON, inspect each candidate's `deferred` field before blindly running follow-up automation
+- some `next_command` values are ready to execute immediately
+- others are guidance about a future or indirect route
+- when output is JSON, inspect each candidate's `deferred` field before follow-up automation
 - today, `dlexa dpd <article-key>`, `dlexa espanol-al-dia <slug>`, `dlexa duda-linguistica <slug>`, and FAQ-compatible `dlexa noticia <slug>` lookups are executable
 
 Examples:

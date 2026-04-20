@@ -118,11 +118,13 @@ func stringValue(value *string) string {
 
 func rootHelp(ctx context.Context, runtime runtimeRunner) error {
 	return runtime.RenderHelp(ctx, model.HelpEnvelope{
-		Command:     helpCommandRoot,
-		Summary:     "Consulta dudas normativas del español y usá `search` cuando todavía no conocés la ruta exacta.",
-		Syntax:      syntaxRoot,
-		Examples:    []string{"dlexa dpd basto", "dlexa dpd solo", "dlexa search solo o sólo", "dlexa duda-linguistica cuando-se-escriben-con-tilde-los-adverbios-en-mente", "dlexa noticia preguntas-frecuentes-tilde-en-las-mayusculas"},
-		NextSteps:   []string{"Usá `dlexa dpd <termino>` para consultas directas al DPD.", "Si no encontrás el contenido exacto, escalá a `dlexa search <consulta>`."},
-		RecoveryTip: "Si la forma del comando falla, revisá esta ayuda antes de reintentar.",
+		Command:      helpCommandRoot,
+		Summary:      "Elegí la superficie correcta para resolver la duda: `dpd` abre entradas directas, `search` descubre rutas y los comandos por slug abren contenido ya identificado.",
+		Syntax:       syntaxRoot,
+		Capabilities: []string{"Consultar una entrada DPD exacta con `dlexa dpd <termino>`.", "Descubrir qué superficie conviene con `dlexa search <consulta>`.", "Abrir contenido ya identificado con `dlexa espanol-al-dia <slug>`, `dlexa duda-linguistica <slug>` o `dlexa noticia <slug>`."},
+		InputHints:   []string{"Una duda en lenguaje natural suele arrancar mejor en `search`.", "Un término puntual del DPD va directo en `dpd`.", "Un slug público exacto va en su comando específico."},
+		Examples:     []string{"dlexa dpd basto", "dlexa dpd solo", "dlexa search solo o sólo", "dlexa duda-linguistica cuando-se-escriben-con-tilde-los-adverbios-en-mente", "dlexa noticia preguntas-frecuentes-tilde-en-las-mayusculas"},
+		AgentNotes:   []string{"Leé esta ayuda como mapa de superficies: primero elegí comando, después copiá la sintaxis mínima del bloque correspondiente.", "Los ejemplos entre backticks son literales copiables.", "`--format json` sirve para automatización estructurada; Markdown prioriza lectura humana y LLM."},
+		NextSteps:    []string{"Si ya conocés la entrada exacta, seguí con `dlexa dpd <termino>`.", "Si partís de una duda en lenguaje natural, seguí con `dlexa search <consulta>`."},
 	})
 }

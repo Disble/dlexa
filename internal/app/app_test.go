@@ -95,7 +95,7 @@ func TestAppRendersMarkdownHelpAndDoctorOutput(t *testing.T) {
 		render.NewEnvelopeRenderer(),
 	)
 
-	if err := application.RenderHelp(context.Background(), model.HelpEnvelope{Command: "dlexa", Summary: "Consulta dudas normativas del español.", Syntax: helpSyntaxDlexaRoot, Examples: []string{"dlexa dpd basto", "dlexa search solo o sólo"}, RecoveryTip: "Usá `dlexa search <consulta>` cuando no conozcas la entrada exacta."}); err != nil {
+	if err := application.RenderHelp(context.Background(), model.HelpEnvelope{Command: "dlexa", Summary: "Consulta dudas normativas del español.", Syntax: helpSyntaxDlexaRoot, Examples: []string{"dlexa dpd basto", "dlexa search solo o sólo"}, NextSteps: []string{"Usá `dlexa search <consulta>` cuando no conozcas la entrada exacta."}}); err != nil {
 		t.Fatalf("RenderHelp() error = %v", err)
 	}
 	if text := cli.stdout.String(); !strings.Contains(text, "# Ayuda: dlexa") || !strings.Contains(text, "`dlexa dpd basto`") {

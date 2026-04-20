@@ -26,14 +26,28 @@ The CLI MUST expose a thin formal command tree from `cmd/dlexa` and MUST delegat
 
 ### Requirement: Agent-Optimized Markdown Help
 
-The CLI MUST provide help documentation formatted in Markdown, tailored for LLM consumption, providing clear syntax, actionable examples, and fallback strategies.
+The CLI MUST provide help documentation formatted in Markdown, tailored for LLM consumption, providing clear syntax, actionable examples, command capabilities, accepted input shapes, and next-step guidance.
 
 #### Scenario: Agent requests help
 
 - GIVEN the `dlexa` CLI is invoked
 - WHEN the agent passes the `--help` flag to any command or subcommand
 - THEN the system MUST render the help output in Markdown
-- AND the output MUST include copiable examples and error recovery suggestions
+- AND the output MUST include copiable examples, capability-focused guidance, accepted input guidance, and next-step suggestions
+
+#### Scenario: Help distinguishes command purpose from shell literals
+
+- GIVEN a user or agent reads `dlexa --help` or `dlexa <cmd> --help`
+- WHEN the help text is displayed
+- THEN it MUST separate capability and input guidance from literal copiable examples
+- AND it MUST help an agent choose the right surface before running the next command in the flow
+
+#### Scenario: Error handling stays in fallbacks, not help body
+
+- GIVEN a user or agent reads `dlexa --help` or `dlexa <cmd> --help`
+- WHEN the help text is displayed
+- THEN the command help MUST remain centered on what the command does and what input it accepts
+- AND syntax/error recovery guidance MUST remain the responsibility of fallback responses such as `Nivel 1 · Syntax`
 
 #### Scenario: Syntax failure shows help
 

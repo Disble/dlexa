@@ -220,6 +220,11 @@ func TestRootCommand_RootRendersHelpEnvelopeWithExpectedContent(t *testing.T) {
 	if !bytes.Contains(stdout.Bytes(), []byte("`dlexa dpd basto`")) {
 		t.Fatalf("stdout = %q, missing explicit dpd example", stdout.String())
 	}
+	for _, want := range [][]byte{[]byte("## Qué podés hacer"), []byte("## Qué recibe"), []byte("## Guía para agentes y automatizaciones"), []byte("Elegí la superficie correcta")} {
+		if !bytes.Contains(stdout.Bytes(), want) {
+			t.Fatalf("stdout = %q, missing %q", stdout.String(), string(want))
+		}
+	}
 }
 
 func TestRootCommand_UnknownFlagLikeSyntaxUsesSyntaxHandler(t *testing.T) {

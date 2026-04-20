@@ -44,12 +44,14 @@ func newSearchCommand(ctx context.Context, runtime runtimeRunner, format *string
 	cmd.Flags().StringArrayVar(&sources, "source", nil, "limit search to specific provider(s): search, dpd (repeatable; omit to federate all)")
 	cmd.SetHelpFunc(func(*cobra.Command, []string) {
 		_ = runtime.RenderHelp(ctx, model.HelpEnvelope{
-			Command:     "dlexa search",
-			Summary:     "Explora contenido normativo y devuelve sugerencias literales para profundizar; algunas rutas ya son ejecutables y otras siguen como guía diferida.",
-			Syntax:      "dlexa search [--source <id> ...] <consulta>",
-			Examples:    []string{"dlexa search solo o sólo", "dlexa search --source dpd tilde en qué"},
-			NextSteps:   []string{"Usá `--source search` o `--source dpd` para acotar proveedores; omitilo para federar todos.", "Leé la salida: `- sugerencia:` indica un siguiente paso ejecutable; los bloques con URL y acceso futuro siguen siendo guía diferida.", "No copies ni ejecutes a ciegas cada `next_command`; verificá primero si la sugerencia se presenta como ejecutable o solo informativa."},
-			RecoveryTip: "Si todavía no sabés el módulo adecuado, search es el primer paso correcto; después verificá si la sugerencia es ejecutable o solo informativa.",
+			Command:      "dlexa search",
+			Summary:      "Hace discovery semántico sobre superficies normativas y devuelve rutas de consulta dentro de `dlexa`.",
+			Syntax:       "dlexa search [--source <id> ...] <consulta>",
+			Capabilities: []string{"Transformar una duda en lenguaje natural en candidatos accionables.", "Descubrir entradas DPD, slugs editoriales y FAQs compatibles.", "Acotar la búsqueda por proveedor con `--source`."},
+			InputHints:   []string{"Recibe una consulta libre; no necesitás conocer todavía el comando final.", "Con `--source` podés limitar la búsqueda a `search` o `dpd`.", "La salida distingue entre sugerencias ejecutables y guía diferida según la ruta encontrada."},
+			Examples:     []string{"dlexa search solo o sólo", "dlexa search --source dpd tilde en qué"},
+			AgentNotes:   []string{"Leé la salida como router: `- sugerencia:` suele marcar el siguiente paso accionable.", "En JSON, inspeccioná cada candidato antes de automatizar; `--source` ayuda a controlar el alcance."},
+			NextSteps:    []string{"Si querés federación completa, omití `--source`.", "Si ya identificaste el destino exacto, ejecutá el comando sugerido correspondiente."},
 		})
 	})
 	cmd.SetFlagErrorFunc(func(_ *cobra.Command, err error) error {

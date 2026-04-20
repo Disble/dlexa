@@ -23,12 +23,14 @@ func newNoticiaCommand(ctx context.Context, runtime runtimeRunner, format *strin
 	}
 	cmd.SetHelpFunc(func(*cobra.Command, []string) {
 		_ = runtime.RenderHelp(ctx, model.HelpEnvelope{
-			Command:     "dlexa noticia",
-			Summary:     "Consulta una FAQ normativa publicada bajo la superficie Noticia de la RAE.",
-			Syntax:      syntaxNoticia,
-			Examples:    []string{"dlexa noticia preguntas-frecuentes-tilde-en-las-mayusculas"},
-			NextSteps:   []string{"Usá `dlexa search <consulta>` si todavía no conocés el slug exacto de la FAQ."},
-			RecoveryTip: "Este comando acepta solo slugs de noticias FAQ compatibles; no sirve para noticias institucionales generales.",
+			Command:      "dlexa noticia",
+			Summary:      "Consulta una FAQ normativa publicada bajo la superficie Noticia cuando ya conocés el slug exacto.",
+			Syntax:       syntaxNoticia,
+			Capabilities: []string{"Abrir una FAQ normativa ya identificada dentro de la superficie Noticia.", "Consultar una FAQ compatible a partir de un slug devuelto por `search` o por una URL conocida."},
+			InputHints:   []string{"Recibe el slug público exacto de la FAQ.", "Si todavía necesitás descubrir la ruta normativa correcta, `dlexa search <consulta>` te ayuda a encontrarla."},
+			Examples:     []string{"dlexa noticia preguntas-frecuentes-tilde-en-las-mayusculas"},
+			AgentNotes:   []string{"Este comando apunta a FAQs normativas compatibles dentro de la superficie Noticia.", "Usalo cuando tu flujo ya tenga identificada una sugerencia ejecutable hacia `noticia`."},
+			NextSteps:    []string{"Si todavía no conocés el slug exacto de la FAQ, seguí con `dlexa search <consulta>`."},
 		})
 	})
 	cmd.SetFlagErrorFunc(func(_ *cobra.Command, err error) error {

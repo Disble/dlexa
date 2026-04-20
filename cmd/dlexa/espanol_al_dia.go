@@ -23,12 +23,14 @@ func newEspanolAlDiaCommand(ctx context.Context, runtime runtimeRunner, format *
 	}
 	cmd.SetHelpFunc(func(*cobra.Command, []string) {
 		_ = runtime.RenderHelp(ctx, model.HelpEnvelope{
-			Command:     helpCommandEspanolAlDia,
-			Summary:     "Consulta un artículo concreto de la superficie Español al día de la RAE.",
-			Syntax:      syntaxEspanolAlDia,
-			Examples:    []string{"dlexa espanol-al-dia el-adverbio-solo-y-los-pronombres-demostrativos-sin-tilde"},
-			NextSteps:   []string{"Usá `dlexa search <consulta>` si todavía no conocés el slug exacto del artículo."},
-			RecoveryTip: "Este comando recibe el slug público del artículo, no una consulta libre.",
+			Command:      helpCommandEspanolAlDia,
+			Summary:      "Consulta un artículo concreto de Español al día cuando ya conocés el slug público exacto.",
+			Syntax:       syntaxEspanolAlDia,
+			Capabilities: []string{"Abrir un artículo editorial específico de Español al día.", "Consultar contenido ya identificado por URL o por un resultado previo de `search`."},
+			InputHints:   []string{"Recibe el slug público exacto del artículo.", "Si todavía necesitás descubrir el slug, `dlexa search <consulta>` es la entrada adecuada."},
+			Examples:     []string{"dlexa espanol-al-dia el-adverbio-solo-y-los-pronombres-demostrativos-sin-tilde"},
+			AgentNotes:   []string{"El argumento es un slug estable de URL, no una frase libre ni el título completo.", "Usá este comando cuando la ruta ya esté identificada en tu flujo."},
+			NextSteps:    []string{"Si todavía no conocés el slug exacto del artículo, seguí con `dlexa search <consulta>`."},
 		})
 	})
 	cmd.SetFlagErrorFunc(func(_ *cobra.Command, err error) error {

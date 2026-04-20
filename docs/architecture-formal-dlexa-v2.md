@@ -554,10 +554,10 @@ La ayuda deberá ser:
 Cada comando debería renderizar ayuda con esta estructura lógica:
 
 1. **qué hace** el comando;
-2. **sintaxis mínima**;
-3. **ejemplos válidos**;
-4. **errores comunes**;
-5. **siguiente paso sugerido si falla**.
+2. **qué entrada o forma de input espera**;
+3. **sintaxis mínima**;
+4. **ejemplos válidos**;
+5. **siguiente paso sugerido**.
 
 Ejemplo conceptual:
 
@@ -569,18 +569,22 @@ Consulta una entrada del Diccionario panhispánico de dudas.
 ## Sintaxis
 `dlexa dpd <termino>`
 
+## Qué recibe
+- término de entrada del DPD
+
 ## Ejemplos
 - `dlexa dpd basto`
 - `dlexa dpd que`
 
-## Si no encuentras el término
-Usa primero:
-`dlexa search <consulta>`
+## Próximo paso sugerido
+- `dlexa search <consulta>` si todavía necesitás descubrir la entrada exacta
 ```
 
 ### 16.4. Por qué esto importa arquitectónicamente
 
 En una app tradicional, `--help` es documentación auxiliar. En `dlexa`, `--help` forma parte del protocolo conversacional entre herramienta y agente.
+
+Los errores comunes y la recuperación de sintaxis pertenecen a la escalera de fallbacks, no al cuerpo principal del help.
 
 Si el help está mal diseñado:
 

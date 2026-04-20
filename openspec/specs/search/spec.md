@@ -173,7 +173,14 @@ The `search` command's help text MUST explain that some returned suggestions are
 - GIVEN a user or agent invokes `dlexa search --help`
 - WHEN the help text is displayed
 - THEN it MUST clarify that some suggestions are executable while others remain deferred guidance
-- AND MUST NOT instruct users to blindly copy and run all next-command outputs
+- AND it MUST explain that `search` is the command for discovery before choosing a destination surface
+
+#### Scenario: Search help frames the command as discovery, not final lookup
+
+- GIVEN a user or agent invokes `dlexa search --help`
+- WHEN the help text is displayed
+- THEN it MUST explain that `search` is the discovery entrypoint when the exact command or slug is not yet known
+- AND it MUST point to direct lookup commands as the natural next step once the exact destination is identified
 
 ### Requirement: Search Cache Degradation Semantics
 

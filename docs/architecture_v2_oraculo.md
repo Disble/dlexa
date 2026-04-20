@@ -54,7 +54,7 @@ El LLM recibirá instrucciones exactas y copiables:
 La CLI se diseña asumiendo que su usuario principal no es un humano, sino un bucle de ejecución de un Agente de IA.
 
 ### 4.1. `--help` Optimizado para IA
-La ayuda no debe depender del texto por defecto del framework. Se renderiza en Markdown estructurado, priorizando **ejemplos literales** copiables y explicaciones claras sobre qué comando usar si el actual falla.
+La ayuda no debe depender del texto por defecto del framework. Se renderiza en Markdown estructurado, priorizando **capacidades del comando**, **forma de input esperada**, **ejemplos literales** copiables y el siguiente paso natural dentro del flujo.
 
 ### 4.2. La Escalera de Errores (Niveles de Fallback)
 Para evitar que un LLM entre en un bucle infinito de reintentos por no saber de quién es la culpa de un fallo, se implementarán **4 Niveles de Error Explícitos** en formato Markdown:
