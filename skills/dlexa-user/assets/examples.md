@@ -2,15 +2,15 @@
 
 <!-- Examples captured: 2026-03-15, dlexa version 0.1.0-dev -->
 
-This file contains real dlexa command outputs to help LLMs understand the structure and content of **DPD consultation** responses.
+This file contains real dlexa command outputs to help LLMs understand the structure and content of **normative consultation** responses.
 
-Use these examples for normative doubts covered by the DPD. Do **not** treat them as proof that `dlexa` is a generic dictionary replacement with universal lexical coverage.
+Use these examples for in-scope normative doubts handled by `dlexa`. Do **not** treat them as proof that `dlexa` is a generic dictionary replacement with universal lexical coverage.
 
 ---
 
 ## Markdown Output Example
 
-**Command**: `dlexa tilde`
+**Command**: `dlexa dpd tilde`
 
 **Actual output** (truncated after first 30 lines):
 

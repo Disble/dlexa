@@ -93,7 +93,7 @@ Read, compare, and reconcile:
 - `internal/fetch/dpd_search.go`, `internal/parse/dpd_search.go`, `internal/normalize/dpd_search.go` → search payload transport and normalization behavior
 - `openspec/specs/dpd/spec.md` → validated vs speculative sign contract
 - `internal/version/version.go` → version constants
-- `README.md` → DPD-first project definition and non-goals
+- `README.md` → public project definition, consultation scope, and non-goals
 - `AGENTS.md` → repo-local routing and skill descriptions
 - `.atl/skill-registry.md` → fallback discovery notes and active instruction surfaces
 
@@ -110,7 +110,7 @@ Read, compare, and reconcile:
 4. **Version Info** → Update version string format if changed
 5. **Doctor Command** → Update diagnostic output format if changed
 6. **DPD Semantics** → Document validated inline kinds, speculative kinds, markdown/plain-sign behavior, and archived exclusions
-7. **Invocation Boundaries** → Teach when `dlexa` fits a DPD-style normative doubt and when it does not fit a generic dictionary task
+7. **Invocation Boundaries** → Teach when `dlexa` fits an in-scope normative linguistic doubt and when it does not fit a generic dictionary task
 8. **Validation Guidance** → Ensure maintenance checks cover bracket-context semantics, DPD sign preservation, positioning drift, and non-goal enforcement
 
 **Mirror rule**: When `.claude/skills/...` and `skills/...` both exist, update both trees in the same task. Missing mirrors should be created when the paired file is required for parity.
@@ -127,7 +127,7 @@ Run the relevant checks for the change surface:
 - CLI drift: confirm documented flags/commands still match source and help output
 - Search drift: confirm documented `search <query>` behavior, cache semantics, and candidate output contract still match source/tests
 - Semantic drift: confirm documented inline kinds and markdown behavior still match source/spec/fixtures
-- Positioning drift: confirm docs still present `dlexa` as DPD-first and not as a universal dictionary replacement
+- Positioning drift: confirm docs still present `dlexa` as a surface-based normative consultation CLI and not as a universal dictionary replacement
 - Discovery drift: confirm registry and AGENTS still point to the real instruction surfaces and local skills
 - Example drift: confirm DPD examples still reflect current golden/spec evidence
 - Mirror drift: confirm `.claude/skills/...` and `skills/...` copies match
@@ -174,7 +174,7 @@ Check specifically for:
 - Speculative-only kinds: `agrammatical`, `hypothetical`, `phoneme`
 - Markdown/plain authored sign preservation without synthetic bracket wrappers
 - Archived `<` and `>` exclusions remaining explicit
-- DPD-first positioning and explicit non-goal of generic-dictionary replacement
+- Surface-based normative positioning and explicit non-goal of generic-dictionary replacement
 - Contextual nuance language: current usage, cultured formal norm, register, geography, communicative context
 - Search contract details: `Candidates` top-level array, `raw_label_html`/`display_text`/`article_key`, and `/srv/keys` as entry discovery only
 

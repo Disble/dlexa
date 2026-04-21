@@ -40,13 +40,13 @@ Last updated: 2026-04-08 (search-cli-source-flag archived — 11 archived change
 | `dlexa-go-cli-lint` | Validating Go/CLI changes with the repo-pinned lint workflow, without building | `skills/dlexa-go-cli-lint/SKILL.md` |
 | `dlexa-skill-updater` | Updating `dlexa-user` docs when CLI, semantic DPD behavior, project positioning, discovery guidance, or mirror parity drifts | `skills/dlexa-skill-updater/SKILL.md` |
 | `dlexa-sonarqube-mcp` | Running the repository's SonarQube MCP workflow in the required order | `skills/dlexa-sonarqube-mcp/SKILL.md` |
-| `dlexa-user` | Using `dlexa` for DPD-style normative doubts and distinguishing those cases from out-of-scope generic dictionary tasks | `skills/dlexa-user/SKILL.md` |
+| `dlexa-user` | Using `dlexa` for normative linguistic doubts through its explicit consultation surfaces and distinguishing those cases from out-of-scope generic dictionary tasks | `skills/dlexa-user/SKILL.md` |
 | `no-duplication` | Eliminating Go test duplication detected by SonarQube; managing testdata fixture CPD exclusions | `.claude/skills/no-duplication/SKILL.md` |
 
 ## Project Positioning Notes
 
-- `dlexa` is DPD-first: a consultation interface for normative doubts in Spanish, not a generic dictionary replacement.
-- Valid use cases include orthographic, orthoepic/pronunciation, morphological, syntactic, and lexico-semantic doubts covered by the DPD.
+- `dlexa` is a surface-based consultation interface for normative doubts in Spanish, not a generic dictionary replacement.
+- Valid use cases include orthographic, orthoepic/pronunciation, morphological, syntactic, and lexico-semantic doubts handled through the current consultation surfaces.
 - Guidance must preserve contextual nuance: current usage, cultured formal norm, register, geography, and communicative context can matter.
 - The CLI uses `spf13/cobra` v1.10.2 — cobra migration is COMPLETE (subcommands: `dpd`, `search`).
 
@@ -114,7 +114,7 @@ All `sdd-apply` runs MUST follow RED → GREEN → REFACTOR for every task.
 1. Try Engram first for `skill-registry` (topic_key: `skill-registry`).
 2. Fall back to this file when Engram is unavailable.
 3. Read `AGENTS.md` before acting on repo-local workflow or skill-routing assumptions.
-4. Load `dlexa-user` before using the CLI for a DPD-style consultation task.
+4. Load `dlexa-user` before using the CLI for an in-scope normative consultation task.
 5. Load `dlexa-skill-updater` before maintaining `dlexa-user` or its mirrors.
 6. Load `go-testing` before writing Go tests.
 7. Load `kin` before using any external library API or version-sensitive dependency.

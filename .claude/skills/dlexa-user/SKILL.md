@@ -3,7 +3,7 @@ name: dlexa-user
 description: >
   User manual for LLM agents that need to invoke the dlexa CLI binary, parse outputs, and troubleshoot errors.
   Teaches operational patterns from an end-user perspective.
-  Trigger: When invoking dlexa for DPD-covered normative doubts, parsing dlexa output, troubleshooting dlexa, integrating dlexa into scripts, or automating DPD consultation workflows.
+  Trigger: When invoking dlexa for normative linguistic doubts handled by its consultation surfaces, parsing dlexa output, troubleshooting dlexa, integrating dlexa into scripts, or automating normative consultation workflows.
 license: Apache-2.0
 metadata:
   author: gentleman-programming
@@ -16,23 +16,23 @@ metadata:
 
 Load this skill when you need to:
 
-- Decide whether a Spanish-language question fits the DPD consultation model
-- Invoke the `dlexa` CLI binary for DPD-covered normative doubts in Spanish
+- Decide whether a Spanish-language question fits `dlexa`'s normative consultation scope
+- Invoke the `dlexa` CLI binary for normative linguistic doubts in Spanish
 - Parse markdown or JSON output from dlexa commands
 - Troubleshoot dlexa errors or unexpected behavior
 - Integrate dlexa into automation scripts or workflows
 - Choose the right output format for your use case
 - Handle cache behavior and force fresh data retrieval
 - Query specific sources for normative guidance
-- Discover DPD entry candidates before choosing a lookup term
+- Discover candidate routes before choosing a lookup surface or term
 
-Typical DPD-fit doubts include:
+Typical in-scope doubts include:
 
 - orthographic questions (`tilde`, accentuation, spelling, graphic variants)
 - orthoepic or pronunciation doubts
 - morphological variants and recommendations
 - syntactic constructions
-- lexico-semantic usage questions when the DPD treats them as normative doubts
+- lexico-semantic usage questions when `dlexa` surfaces them as normative doubts
 
 `dlexa` is appropriate even when the recommendation depends on **current usage**, **norma culta formal**, **register**, **geography**, or **communicative context**.
 
@@ -54,7 +54,7 @@ Do **not** use this skill to present `dlexa` as:
 
 | If the user needs... | Use `dlexa`? | Why |
 |---|---|---|
-| A DPD-style normative doubt about spelling, pronunciation, morphology, syntax, or usage | Yes | This is the intended consultation model |
+| A normative linguistic doubt about spelling, pronunciation, morphology, syntax, or usage | Yes | This matches `dlexa`'s consultation scope |
 | A context-sensitive recommendation that may vary by register, region, or current usage | Yes | DPD guidance is normative but contextual |
 | A generic dictionary definition for any arbitrary word | No | `dlexa` is not framed as a universal lexical lookup tool |
 | Translation, etymology, encyclopedic background, or broad lexical coverage | No | Use another source that actually fits the task |
@@ -297,7 +297,7 @@ echo "$result" | jq -r '.Entries[] | "\(.Headword) (\(.Source)): \(.Content)"'
 dlexa dpd tilde
 ```
 
-Returns human-readable markdown for a DPD-fit normative doubt.
+Returns human-readable markdown for a normative consultation.
 
 ### 2. JSON for Automation
 
@@ -455,5 +455,5 @@ dlexa --version
 
 For more detailed examples and integration patterns:
 
-- **Examples**: See [assets/examples.md](assets/examples.md) for DPD-first dlexa outputs (markdown, JSON, errors)
-- **Workflows**: See [assets/workflows.md](assets/workflows.md) for DPD consultation integration patterns
+- **Examples**: See [assets/examples.md](assets/examples.md) for `dlexa` outputs (markdown, JSON, errors)
+- **Workflows**: See [assets/workflows.md](assets/workflows.md) for normative consultation integration patterns

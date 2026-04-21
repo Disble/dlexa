@@ -1,8 +1,8 @@
 # dlexa Integration Workflows
 
-This file provides copy-paste integration patterns for using dlexa in automation scripts for **DPD consultation workflows**.
+This file provides copy-paste integration patterns for using dlexa in automation scripts for **normative consultation workflows**.
 
-These patterns assume the task is a DPD-fit normative doubt. If the job is generic dictionary lookup, etymology, translation, or encyclopedic retrieval, use a different source instead of cargo-culting these scripts.
+These patterns assume the task is an in-scope normative doubt. If the job is generic dictionary lookup, etymology, translation, or encyclopedic retrieval, use a different source instead of cargo-culting these scripts.
 
 ---
 
@@ -13,8 +13,8 @@ These patterns assume the task is a DPD-fit normative doubt. If the job is gener
 ```bash
 #!/bin/bash
 
-# Basic DPD consultation with error handling
-result=$(dlexa --format json "solo")
+# Basic direct lookup with error handling
+result=$(dlexa --format json dpd "solo")
 exit_code=$?
 
 if [ $exit_code -eq 0 ]; then
@@ -223,18 +223,18 @@ fi
 
 | Use Case | Command | Format | Notes |
 |----------|---------|--------|-------|
-| Quick DPD consultation | `dlexa tilde` | markdown | Human-readable, default |
-| Script parsing | `dlexa --format json solo` | json | Use with jq |
+| Quick DPD consultation | `dlexa dpd tilde` | markdown | Human-readable, default |
+| Script parsing | `dlexa --format json dpd solo` | json | Use with jq |
 | Discover DPD entry candidates | `dlexa dpd search abu dhabi` | markdown | DPD-only candidate labels plus article keys |
 | Federated search for automation | `dlexa --format json search guion` | json | Parse `.Candidates[]`, `next_command`, and `deferred` |
 | Search one provider only | `dlexa search --source dpd adecua` | markdown | Repeat `--source` to scope providers |
-| Force refresh | `dlexa --no-cache imprimido` | markdown | Bypass 24h cache |
+| Force refresh | `dlexa --no-cache dpd imprimido` | markdown | Bypass 24h cache |
 | Health check | `dlexa --doctor` | text | Exit 0 = healthy |
 | Version info | `dlexa --version` | text | Print version |
-| Error handling | `dlexa solo 2>&1` | any | Capture both stdout/stderr |
-| Check cache status | `dlexa --format json solo \| jq .CacheHit` | json | Boolean: true/false |
-| Extract headwords | `dlexa --format json solo \| jq -r '.Entries[].Headword'` | json | Array of strings |
-| Count results | `dlexa --format json solo \| jq '.Entries \| length'` | json | Integer |
+| Error handling | `dlexa dpd solo 2>&1` | any | Capture both stdout/stderr |
+| Check cache status | `dlexa --format json dpd solo \| jq .CacheHit` | json | Boolean: true/false |
+| Extract headwords | `dlexa --format json dpd solo \| jq -r '.Entries[].Headword'` | json | Array of strings |
+| Count results | `dlexa --format json dpd solo \| jq '.Entries \| length'` | json | Integer |
 
 ---
 

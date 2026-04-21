@@ -5,7 +5,7 @@
 
 `dlexa` is a surface-based Go CLI for consulting normative linguistic doubts in Spanish through explicit routes such as `search`, `dpd`, and slug-based commands.
 
-It is aimed at **DPD-covered normative doubts**: orthographic, orthoepic/pronunciation, morphological, syntactic, and lexico-semantic questions that may start from semantic discovery, direct DPD lookup, or a previously identified editorial/FAQ route. It is **not** positioned as a generic dictionary replacement, an encyclopedic lookup tool, or a universal lexical search engine.
+It is aimed at **normative linguistic doubts in Spanish**: orthographic, orthoepic/pronunciation, morphological, syntactic, and lexico-semantic questions that may start from semantic discovery, direct DPD lookup, or a previously identified editorial/FAQ route. It is **not** positioned as a generic dictionary replacement, an encyclopedic lookup tool, or a universal lexical search engine.
 
 ## Project Status
 

@@ -11,7 +11,7 @@ This document provides manual validation tests to verify the skill works correct
 
 ## Validation Tests
 
-### VT-1: DPD-Fit Invocation
+### VT-1: Normative Invocation
 
 **Test Prompt**:
 ```
@@ -19,15 +19,15 @@ Consult dlexa about whether "solo" should carry a tilde in this sentence.
 ```
 
 **Expected LLM Behavior**:
-- Recognizes this as a DPD-fit normative doubt
-- Invokes bash tool with a direct `dlexa` query about the doubt
+- Recognizes this as an in-scope normative doubt
+- Invokes bash tool with an explicit `dlexa` command surface for the doubt
 - Does NOT add unnecessary flags
 - Recognizes default output is markdown
 
 **Verification Method**:
 - [ ] Check bash tool call uses `dlexa` for the normative doubt
 - [ ] Verify no other unnecessary flags are added
-- [ ] Verify the explanation frames the task as DPD consultation, not generic dictionary lookup
+- [ ] Verify the explanation frames the task as normative consultation, not generic dictionary lookup
 
 **Status**: ⬜ Not Tested | ✅ Passed | ❌ Failed
 
@@ -42,7 +42,7 @@ Give me a generic dictionary definition and etymology for "casa" using dlexa.
 
 **Expected LLM Behavior**:
 - Refuses to present `dlexa` as the right sole tool for this task
-- Explains the request is outside DPD-first scope
+- Explains the request is outside `dlexa`'s normative consultation scope
 - Redirects to a more appropriate dictionary/etymology source instead of forcing a `dlexa` call
 
 **Verification Method**:
@@ -63,7 +63,7 @@ Get the dlexa result for 'solo' in a format I can parse programmatically
 
 **Expected LLM Behavior**:
 - Recognizes "parse programmatically" means JSON
-- Uses command: `dlexa --format json solo`
+- Uses command: `dlexa --format json dpd solo`
 - Explains why JSON is chosen
 
 **Verification Method**:
@@ -490,8 +490,8 @@ Extract the canonical article keys and explain which field is safe for human dis
   - [x] "parsing dlexa output"
   - [x] "troubleshooting dlexa"
   - [x] "integrating dlexa"
-  - [x] "DPD-covered normative doubts"
-  - [x] "DPD consultation workflows"
+  - [x] "normative linguistic doubts handled by its consultation surfaces"
+  - [x] "normative consultation workflows"
 
 ### Scope Boundaries
 
@@ -507,7 +507,7 @@ Extract the canonical article keys and explain which field is safe for human dis
 
 ### Positioning Accuracy
 
-- [x] `dlexa` is described as DPD-first rather than dictionary-generic
+- [x] `dlexa` is described as a normative consultation CLI with explicit surfaces, not as a dictionary-generic tool
 - [x] Supported doubt categories include orthographic, orthoepic/pronunciation, morphological, syntactic, and lexico-semantic questions
 - [x] Contextual nuance is explicit: current usage, norma culta formal, register, geography, communicative context
 - [x] Generic dictionary framing is treated as an error condition in validation prompts
