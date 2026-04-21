@@ -243,7 +243,7 @@ type Response struct {
 | File | Action | Description |
 |---|---|---|
 | `cmd/dlexa/main.go` | Present | Inicializa la plataforma CLI, construye `app.New(...)` y ejecuta el root command. |
-| `cmd/dlexa/root.go` | Present | Declara flags globales, help Markdown y default-to-DPD. |
+| `cmd/dlexa/root.go` | Present | Declara flags globales, help Markdown y el enrutamiento explícito por superficies sin bare-query aliasing. |
 | `cmd/dlexa/dpd.go` | Present | Subcomando explícito para DPD. |
 | `cmd/dlexa/search.go` | Present | Subcomando explícito para el router semántico. |
 | `internal/app/app.go` | Present | Boundary de ejecución, help y fallbacks compartidos. |

@@ -127,7 +127,7 @@ Una fuente clásica de confusión en refactorizaciones grandes es mezclar lo que
 | Área | Estado actual | Estado objetivo |
 |---|---|---|
 | CLI | árbol Cobra fino en `cmd/dlexa` con root, `dpd` y `search` | ampliar la superficie sin meter lógica de dominio en `cmd/` |
-| Entry flow | root default-to-DPD + `search` explícito | reforzar `search` como gateway principal sin romper compatibilidad |
+| Entry flow | root rechaza bare queries; `search`, `dpd` y comandos por slug son explícitos | reforzar `search` como gateway principal cuando todavía no se conoce la superficie destino |
 | Modelado de capacidades | `dpd` y `search` ya viven como módulos bajo contratos compartidos | sumar nuevos módulos reales cuando existan y no antes |
 | Help | ayuda Markdown agentiva ya renderizada por la capa compartida | refinar cobertura y consistencia sin depender del texto default del framework |
 | Errores | errores de aplicación más genéricos | ladder de 4 niveles con ownership explícito |
@@ -307,10 +307,10 @@ flowchart LR
 
 La CLI objetivo se organiza así:
 
-- `dlexa dpd <query>` → acceso explícito al DPD para consultas directas
-- `dlexa dpd <query>` → acceso explícito al DPD
-- `dlexa search <query>` → gateway semántico
-- `dlexa <modulo> <id>` → profundización directa para módulos de contenido
+- `dlexa dpd <termino>` → acceso explícito al DPD para consultas directas
+- `dlexa search <consulta>` → gateway semántico
+- `dlexa dpd search <termino-de-busqueda>` → discovery acotado al índice DPD
+- `dlexa espanol-al-dia <slug>`, `dlexa duda-linguistica <slug>`, `dlexa noticia <slug>` → profundización directa en rutas ya identificadas
 - `dlexa --help` y `dlexa <cmd> --help` → ayuda optimizada para agentes
 
 ### 10.2. Criterio de diseño
@@ -1057,7 +1057,7 @@ Pruebas de integración esperadas:
 - wiring entre comandos y módulos;
 - uso real de servicios existentes de lookup y search;
 - interacción entre caché, parser y render final;
-- uso explícito de `dlexa dpd <query>` como ruta única de consulta directa al DPD.
+- uso explícito de `dlexa dpd <termino>` como ruta de consulta directa al DPD, sin alias implícito en root.
 
 ### 23.3. Qué se debe proteger como regresión
 

@@ -18,14 +18,15 @@ The current architecture baseline is described in:
 - `docs/architecture-formal-dlexa-v2.md`
 - `docs/architecture_v2_oraculo.md`
 
-These documents explain the v2 direction, modular runtime boundaries, engine responsibilities, and the DPD-first product posture.
+These documents explain the v2 direction, modular runtime boundaries, engine responsibilities, and the explicit surface-based product posture.
 
 ## Core Architectural Principles
 
 The system architecture currently follows these principles:
 
-1. **DPD-first product posture**
+1. **Normative-doubt product posture with explicit surfaces**
    - `dlexa` is a consultation interface for normative linguistic doubts in Spanish.
+   - The runtime requires explicit command surfaces such as `search`, `dpd`, and slug-based commands.
    - It is not a generic dictionary replacement or universal lexical browser.
 
 2. **Thin CLI, explicit modules**
